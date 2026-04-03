@@ -8,12 +8,15 @@ Claude Code is powerful — it installs packages, modifies system files, and run
 
 ## Why devrig?
 
-- **Isolation** — Claude Code runs in a Docker container. Your host system stays untouched. This makes `--dangerously-skip-permissions` safe to use — the container _is_ the sandbox.
-- **Git safety** — `git push` is blocked inside the container. `git pull` on master is blocked. No SSH keys, no access to your remote repos. Claude can commit freely but can't ship broken code.
+- **Filesystem isolation** — Claude Code runs in a Docker container and can only touch `/workspace` (your project) and its own home directory. Your host OS, dotfiles, and other projects are untouched. This makes `--dangerously-skip-permissions` practical — Claude can't modify anything outside the container's filesystem.
+- **Git safety** — `git push` is blocked inside the container, and there are no SSH keys or git credentials mounted — so even if the block were bypassed, there's nothing to authenticate with. Claude can commit freely but can't ship code anywhere. You review and push from your host.
 - **Browser control** — Claude Code inside Docker can't access a browser on its own. devrig bridges that gap by relaying Chrome's debugging protocol into the container, letting Claude see and interact with your running app.
 - **Zero config** — `npx devrig init` scaffolds everything. No Dockerfiles to write, no compose files to maintain.
 - **Clean host** — no global packages, no Claude Code installation on your machine, no leftover processes after sessions end.
 - **Reproducible** — commit `.devrig/` to your repo and your whole team gets the same containerized setup.
+
+> [!NOTE]
+> **What devrig does and doesn't isolate:** The container provides filesystem and git credential isolation — Claude cannot access your host files or push to your repos. The container does have internet access, same as running on your host, because Claude Code needs it to install packages and function normally. devrig protects your machine and your repos, not your network.
 
 ## Quick Start
 
@@ -44,7 +47,7 @@ Here's what `devrig start` looks like:
 [devrig] Connecting to Claude Code in container...
 ```
 
-From here you're inside [Claude Code](https://docs.anthropic.com/en/docs/claude-code) with your project at `/workspace`, running with `--dangerously-skip-permissions` so there are no confirmation prompts. When you're done, Ctrl+C or type `/exit` — devrig cleans up everything automatically.
+From here you're inside [Claude Code](https://docs.anthropic.com/en/docs/claude-code) with your project at `/workspace`. Claude runs with `--dangerously-skip-permissions`, which skips confirmation prompts — safe here because Claude can't modify anything outside the container's filesystem. When you're done, Ctrl+C or type `/exit` — devrig stops the container, bridge, and dev server. Your code changes, git history, and node_modules persist; the next `devrig start` picks up where you left off.
 
 ## CLI
 
@@ -80,12 +83,9 @@ ready_timeout = 10       # Seconds to wait for the server to respond
 
 [chrome_bridge]
 port = 9229              # Chrome debugging protocol port
-
-# [claude]
-# ready_timeout = 120    # Seconds to wait for Claude Code to install
 ```
 
-Remove a section to disable that feature.
+To disable the Chrome bridge or dev server, delete its entire section (including the `[section_name]` header) from `devrig.toml`.
 
 <details>
 <summary>Full configuration reference</summary>
@@ -104,7 +104,7 @@ Remove a section to disable that feature.
 
 ### .env
 
-Set per-session environment variables. Managed by `devrig config`.
+Per-session environment variables. `devrig config` creates this file (or appends to it if it already exists) — your existing entries are preserved.
 
 ```bash
 CLAUDE_PARAMS=--dangerously-skip-permissions
@@ -113,10 +113,10 @@ GIT_AUTHOR_EMAIL=you@example.com
 ```
 
 > [!TIP]
-> `CLAUDE_PARAMS=--dangerously-skip-permissions` lets Claude Code run without confirmation prompts. Normally risky on a host machine, but inside devrig's container it's safe — the container is the sandbox. The config wizard sets this by default.
+> `CLAUDE_PARAMS=--dangerously-skip-permissions` lets Claude Code run without confirmation prompts. Normally risky on a host machine, but inside devrig's container Claude can only touch `/workspace` and `/home/dev` — your host filesystem is off limits. The config wizard sets this by default.
 
 > [!NOTE]
-> The container has **no SSH keys and no access to your remote repos** by design. This is a security feature — Claude Code can modify files and make commits locally, but it cannot push code, access private repositories, or reach any remote service via SSH. You review and push from your host.
+> The container has **no SSH keys and no git credentials** by design. Claude Code can modify files and make commits locally, but it cannot push code or access private repositories. You review and push from your host.
 
 ### Session Management
 
@@ -146,7 +146,7 @@ GIT_AUTHOR_EMAIL=you@example.com
 > [!IMPORTANT]
 >
 > - Node.js >= 18.3
-> - Docker Desktop (or Docker Engine + Compose plugin)
+> - [OrbStack](https://orbstack.dev/) (recommended on macOS), [Docker Desktop](https://www.docker.com/products/docker-desktop/), or any Docker-compatible runtime with Compose support (Docker Engine + plugin, Podman with `podman-compose`)
 
 ## Development
 

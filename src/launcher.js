@@ -172,15 +172,16 @@ export async function launch(argv) {
   // -- Step 11: Start Chrome bridge (launcher.py: chrome bridge) ------------
   if (cfg.bridge_enabled && !args['no-chrome']) {
     const bridgeScript = join(dirname(fileURLToPath(import.meta.url)), 'bridge-host.cjs');
-    const stderrLog = openSync(join(logsDir, 'bridge-host.err'), 'w');
+    const stderrFd = openSync(join(logsDir, 'bridge-host.err'), 'w');
     const bridgeProc = spawn('node', [bridgeScript], {
-      stdio: ['ignore', 'inherit', stderrLog],
+      stdio: ['ignore', 'inherit', stderrFd],
       env: {
         ...process.env,
         BRIDGE_LOG_DIR: logsDir,
         BRIDGE_PORT: String(cfg.bridge_port),
       },
     });
+    closeSync(stderrFd);
     registerProcess('bridge', bridgeProc);
 
     // Give bridge a moment to start, then verify it's still alive
@@ -195,11 +196,12 @@ export async function launch(argv) {
   // -- Step 12: Start dev server (launcher.py: dev server) ------------------
   if (cfg.dev_server_cmd && !args['no-dev-server']) {
     log(`Starting dev server: ${cfg.dev_server_cmd}`);
-    const devLogFile = openSync(join(logsDir, 'dev-server.log'), 'w');
+    const devLogFd = openSync(join(logsDir, 'dev-server.log'), 'w');
     const devProc = spawn('sh', ['-c', cfg.dev_server_cmd], {
-      stdio: ['ignore', devLogFile, devLogFile],
+      stdio: ['ignore', devLogFd, devLogFd],
       env: { ...process.env, PORT: String(cfg.dev_server_port) },
     });
+    closeSync(devLogFd);
     registerProcess('dev server', devProc);
     sessionInfo.devServerPid = devProc.pid;
 

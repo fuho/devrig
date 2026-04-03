@@ -34,7 +34,7 @@ const os = require('os');
 // the username so multiple users on the same machine don't collide.
 const SOCK_DIR = `/tmp/claude-mcp-browser-bridge-${process.env.BRIDGE_USER || os.userInfo().username}`;
 const TCP_PORT = parseInt(process.env.BRIDGE_PORT || '9229', 10);
-const TCP_HOST = process.env.BRIDGE_HOST || '0.0.0.0';
+const TCP_HOST = process.env.BRIDGE_HOST || '127.0.0.1';
 
 // ── Logging to file with size-based rotation ────────────────────────────────
 const LOG_FILE = process.env.BRIDGE_LOG_DIR

@@ -3,7 +3,7 @@
  * session.js — Session lock, stop, status, and scaffold staleness.
  */
 
-import { readFileSync, writeFileSync, unlinkSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, unlinkSync, existsSync, openSync, closeSync } from 'node:fs';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { log, die } from './log.js';
@@ -42,7 +42,22 @@ export function isSessionAlive(session) {
 
 /** Writes session lock file. Dies if another live session holds the lock. */
 export function acquireSession(projectDir, info) {
-  const path = sessionPath(projectDir);
+  const lockPath = sessionPath(projectDir);
+  const data = JSON.stringify(info, null, 2) + '\n';
+
+  // Try atomic exclusive create first
+  try {
+    const fd = openSync(lockPath, 'wx');
+    writeFileSync(fd, data);
+    closeSync(fd);
+    return;
+  } catch (err) {
+    if (err.code !== 'EEXIST') {
+      die(`Failed to write session lock: ${err.message}`);
+    }
+  }
+
+  // File exists — check if it's our own PID (update) or a conflict
   const existing = readSession(projectDir);
 
   if (existing && existing.pid !== info.pid && isSessionAlive(existing)) {
@@ -53,8 +68,9 @@ export function acquireSession(projectDir, info) {
     log(`WARNING: Removing stale session lock (PID ${existing.pid})`);
   }
 
+  // Overwrite with our session (stale lock or our own PID updating)
   try {
-    writeFileSync(path, JSON.stringify(info, null, 2) + '\n');
+    writeFileSync(lockPath, data);
   } catch (err) {
     die(`Failed to write session lock: ${err.message}`);
   }
