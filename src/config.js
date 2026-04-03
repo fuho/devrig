@@ -58,7 +58,7 @@ export function loadConfig(projectDir) {
   const configPath = join(projectDir, CONFIG_FILE);
 
   if (!existsSync(configPath)) {
-    die(`Config not found: ${configPath}`);
+    die(`Config not found: ${configPath}\n  Run 'devrig init' to set up your project.`);
   }
 
   const raw = parseTOML(readFileSync(configPath, 'utf8'));

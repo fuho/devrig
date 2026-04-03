@@ -1,9 +1,9 @@
 # devrig — project configuration
 #
-# Copy this file to devrig.toml and edit it, or run: ./devrig config
+# Copy this file to devrig.toml and edit it, or run: devrig config
 #
-# This file drives .devrig/launcher.py. It controls which services to start,
-# how to name Docker images/containers, and what dev tooling to run on the host.
+# Controls which services to start, how to name Docker images/containers,
+# and what dev tooling to run on the host.
 #
 # The project name is used for Docker image and container naming — no need to
 # edit the compose files when forking this as a template.

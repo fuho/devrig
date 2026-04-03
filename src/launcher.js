@@ -1,5 +1,5 @@
 /**
- * launcher.js — Main orchestrator for cdev.
+ * launcher.js — Main orchestrator for devrig.
  * Ported from Python launcher.py.
  * ESM module exporting a single launch(argv) async function.
  */
@@ -18,6 +18,7 @@ import {
 import { join, dirname } from 'node:path';
 import { parseArgs } from 'node:util';
 import { fileURLToPath } from 'node:url';
+import { userInfo } from 'node:os';
 import { log, die } from './log.js';
 import { loadConfig, loadDotenv, resolveProjectDir } from './config.js';
 import {
@@ -107,8 +108,9 @@ export async function launch(argv) {
   loadDotenv(projectDir);
   process.env.DEVRIG_PROJECT = cfg.project;
 
-  // -- Step 6: Change to project directory ----------------------------------
+  // -- Step 6: Change to project directory and set host UID ----------------
   process.chdir(projectDir);
+  process.env.HOST_UID = String(userInfo().uid);
 
   // -- Step 7: Preflight checks (launcher.py: preflight) --------------------
 
@@ -206,15 +208,20 @@ export async function launch(argv) {
 
     // Poll for dev server readiness
     const devUrl = `http://localhost:${cfg.dev_server_port}`;
+    let devReady = false;
     for (let i = 0; i < cfg.dev_server_timeout; i++) {
       if (devProc.exitCode !== null) die('Dev server exited unexpectedly');
       try {
         await fetch(devUrl, { signal: AbortSignal.timeout(1000) });
         log(`Dev server ready at ${devUrl}`);
+        devReady = true;
         break;
       } catch {
         await sleep(1000);
       }
+    }
+    if (!devReady) {
+      log(`WARNING: Dev server did not respond within ${cfg.dev_server_timeout}s — continuing anyway`);
     }
 
     // -- Step 13: Open browser (launcher.py: open browser) ------------------
