@@ -308,6 +308,11 @@ export async function launch(argv) {
     if (idx !== -1) claudeParams.splice(idx, 1);
   }
 
+  // Add initial prompt so Claude acts immediately on launch
+  claudeParams.push(
+    'Check if you have the Chrome MCP tool. If yes, open the dev server URL from CLAUDE.md. If no, tell the user to /exit and devrig start again.',
+  );
+
   log('Connecting to Claude Code in container...');
   log(`CLAUDE_PARAMS: ${claudeParams.join(' ') || '<none>'}`);
 
