@@ -6,7 +6,17 @@
  */
 
 import { execFileSync, spawn } from 'node:child_process';
-import { existsSync, openSync, closeSync, readSync, fstatSync, mkdirSync, statSync } from 'node:fs';
+import {
+  existsSync,
+  readFileSync,
+  writeFileSync,
+  openSync,
+  closeSync,
+  readSync,
+  fstatSync,
+  mkdirSync,
+  statSync,
+} from 'node:fs';
 import { join, dirname } from 'node:path';
 import { parseArgs } from 'node:util';
 import { fileURLToPath } from 'node:url';
@@ -160,6 +170,27 @@ export async function launch(argv) {
     const cmd = composeCmd(ctx, 'build', '--build-arg', `BUILD_HASH=${buildHash(ctx)}`);
     execFileSync(cmd[0], cmd.slice(1), { stdio: 'inherit' });
     log('Build complete.');
+  }
+
+  // -- Step 9b: Ensure Claude settings has Chrome MCP config (host side) ----
+  if (cfg.bridge_enabled && !args['no-chrome']) {
+    const claudeDir = join(projectDir, '.devrig', 'home', '.claude');
+    mkdirSync(claudeDir, { recursive: true });
+    const settingsPath = join(claudeDir, 'settings.json');
+    let settings = {};
+    if (existsSync(settingsPath)) {
+      try {
+        settings = JSON.parse(readFileSync(settingsPath, 'utf8'));
+      } catch {
+        /* start fresh */
+      }
+    }
+    settings.mcpServers = settings.mcpServers || {};
+    settings.mcpServers['claude-in-chrome'] = {
+      type: 'stdio',
+      command: '/home/dev/.claude/chrome/chrome-native-host',
+    };
+    writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n');
   }
 
   // -- Step 10: Start container (launcher.py: start container) --------------
