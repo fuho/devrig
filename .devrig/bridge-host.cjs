@@ -18,7 +18,7 @@
  *   BRIDGE_PORT  — TCP listen port (default: 9229)
  *   BRIDGE_HOST  — TCP bind address (default: 0.0.0.0)
  *
- * Counterpart: .cdev/entrypoint.sh + .cdev/container-setup.py (runs inside
+ * Counterpart: .devrig/entrypoint.sh + .devrig/container-setup.py (runs inside
  * the container, starts socat to relay from a local Unix socket to this server).
  *
  * Based on: https://github.com/vaclavpavek/claude-code-remote-chrome

@@ -60,7 +60,7 @@ RUN chmod +x /usr/local/bin/entrypoint.sh
 # Container setup script (called by entrypoint)
 COPY container-setup.py /usr/local/bin/container-setup.py
 
-LABEL cdev.build.hash="${BUILD_HASH}"
+LABEL devrig.build.hash="${BUILD_HASH}"
 
 # ── Everything below runs as dev ─────────────────────────────────────────
 USER dev

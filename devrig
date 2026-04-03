@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
-# cdev — subcommand dispatcher.
+# devrig — subcommand dispatcher.
 #
-# Usage: ./cdev <command> [flags]
+# Usage: ./devrig <command> [flags]
 #
 # Commands:
 #   claude    Start Claude Code in Docker with Chrome browser control
-#   config    Create cdev.toml interactively
+#   config    Create devrig.toml interactively
 #
-# Run ./cdev <command> --help for command-specific options.
+# Run ./devrig <command> --help for command-specific options.
 
 set -euo pipefail
 
-CDEV_DIR="$(cd "$(dirname "$0")/.cdev" && pwd)"
+DEVRIG_DIR="$(cd "$(dirname "$0")/.devrig" && pwd)"
 
 # Prevent Python from littering __pycache__ in the scaffold directory
 export PYTHONDONTWRITEBYTECODE=1
@@ -25,32 +25,32 @@ fi
 
 usage() {
   cat <<EOF
-Usage: ./cdev <command> [flags]
+Usage: ./devrig <command> [flags]
 
 Commands:
   claude    Start Claude Code in Docker with Chrome browser control
-  config    Create cdev.toml interactively
+  config    Create devrig.toml interactively
 
-Run ./cdev <command> --help for command-specific options.
+Run ./devrig <command> --help for command-specific options.
 EOF
 }
 
 ask_launch() {
-  printf "  Launch cdev now? [Y/n]: "
+  printf "  Launch devrig now? [Y/n]: "
   read -r answer
   case "${answer:-y}" in
-    [Yy]|[Yy]es) exec python3 "$CDEV_DIR/launcher.py" ;;
+    [Yy]|[Yy]es) exec python3 "$DEVRIG_DIR/launcher.py" ;;
     *)
       echo ""
-      echo "  Next: ./cdev claude"
+      echo "  Next: ./devrig claude"
       echo ""
       ;;
   esac
 }
 
 case "${1:-}" in
-  claude)     shift; exec python3 "$CDEV_DIR/launcher.py" "$@" ;;
-  config)     shift; python3 "$CDEV_DIR/configure.py" "$@" && ask_launch ;;
+  claude)     shift; exec python3 "$DEVRIG_DIR/launcher.py" "$@" ;;
+  config)     shift; python3 "$DEVRIG_DIR/configure.py" "$@" && ask_launch ;;
   help|-h|--help) usage; exit 0 ;;
   "")         usage; exit 0 ;;
   *)          echo "Unknown command: $1"; echo ""; usage; exit 1 ;;

@@ -10,7 +10,7 @@ Parses the hex-logged bidirectional TTY data and reports:
   - Timing gaps that suggest stalls
 
 Usage:
-    python3 .cdev/analyze-tty-log.py [path/to/tty-tunnel.log]
+    python3 .devrig/analyze-tty-log.py [path/to/tty-tunnel.log]
 
 Defaults to logs/tty-tunnel.log if no path given.
 """

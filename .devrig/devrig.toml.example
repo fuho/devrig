@@ -1,8 +1,8 @@
-# cdev — project configuration
+# devrig — project configuration
 #
-# Copy this file to cdev.toml and edit it, or run: ./cdev config
+# Copy this file to devrig.toml and edit it, or run: ./devrig config
 #
-# This file drives .cdev/launcher.py. It controls which services to start,
+# This file drives .devrig/launcher.py. It controls which services to start,
 # how to name Docker images/containers, and what dev tooling to run on the host.
 #
 # The project name is used for Docker image and container naming — no need to

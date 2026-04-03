@@ -1,4 +1,4 @@
-# cdev Scaffold
+# devrig Scaffold
 
 Run [Claude Code](https://docs.anthropic.com/en/docs/claude-code) inside a Docker container with optional Chrome browser control and dev server management.
 
@@ -12,8 +12,8 @@ Run [Claude Code](https://docs.anthropic.com/en/docs/claude-code) inside a Docke
 
 ```bash
 # 1. Copy the scaffold into your project
-cp -r .cdev/ /path/to/your-project/.cdev/
-cp cdev /path/to/your-project/
+cp -r .devrig/ /path/to/your-project/.devrig/
+cp devrig /path/to/your-project/
 cd /path/to/your-project
 
 # 2. Create your .env
@@ -21,15 +21,15 @@ cp .env.example .env
 # Edit .env — add your ANTHROPIC_API_KEY
 
 # 3. Configure
-./cdev config
+./devrig config
 
 # 4. Launch
-./cdev claude
+./devrig claude
 ```
 
 ## What It Does
 
-The launcher (`./cdev claude`) orchestrates a full session:
+The launcher (`./devrig claude`) orchestrates a full session:
 
 1. **Builds** a Docker image (auto-rebuilds when Dockerfile or compose config changes)
 2. **Starts** the container with your project mounted at `/workspace`
@@ -43,9 +43,9 @@ On exit (Ctrl+C or `/exit`), everything is cleaned up automatically.
 
 ## Configuration
 
-### cdev.toml
+### devrig.toml
 
-Created by `./cdev config` or by copying `cdev.toml.example`.
+Created by `./devrig config` or by copying `devrig.toml.example`.
 
 ```toml
 project = "my-project"           # Docker image/container naming
@@ -75,15 +75,15 @@ GIT_AUTHOR_EMAIL=you@example.com
 ## CLI Reference
 
 ```
-./cdev claude [flags]
+./devrig claude [flags]
   --npm            Use npm Claude Code installer instead of native (default: native)
   --rebuild        Force rebuild the Docker image
   --no-chrome      Skip opening the browser
   --no-dev-server  Skip starting the dev server (if configured)
   --tunnel         Log all TTY bytes for diagnostics
 
-./cdev config
-  Interactive wizard to create cdev.toml
+./devrig config
+  Interactive wizard to create devrig.toml
 ```
 
 ## Container Details
@@ -91,13 +91,13 @@ GIT_AUTHOR_EMAIL=you@example.com
 - **Base image**: `node:25-slim` with git, ripgrep, gh, socat, python3, vim, tree, pnpm
 - **User**: `dev` with UID matching your host (avoids permission issues)
 - **Git safety**: `git push` is blocked; `git pull` on master is blocked
-- **Volumes**: `node_modules` (named volume) + `.cdev/home/` (bind-mounted as `/home/dev` — persists Claude config, installs, npm cache)
+- **Volumes**: `node_modules` (named volume) + `.devrig/home/` (bind-mounted as `/home/dev` — persists Claude config, installs, npm cache)
 - **Resources**: 8 GB memory, 4 CPUs (configurable in compose files)
 
 ## Files
 
 ```
-.cdev/
+.devrig/
   compose.yml                       # Compose config (native installer, default)
   compose.npm.yml                   # Compose config (npm install)
   Dockerfile                        # Container image (native, default)
@@ -109,7 +109,7 @@ GIT_AUTHOR_EMAIL=you@example.com
   bridge-host.cjs                   # Chrome extension bridge relay
   tty-tunnel.py                     # TTY diagnostics logger
   analyze-tty-log.py                # TTY log analyzer
-  cdev.toml.example                 # Example config
-cdev                                # Entry point script
+  devrig.toml.example               # Example config
+devrig                              # Entry point script
 .env.example                        # Example environment variables
 ```

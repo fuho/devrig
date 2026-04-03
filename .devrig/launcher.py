@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """launcher.py — Config-driven orchestrator for Claude Code in Docker.
 
-Called via: ./cdev claude [flags]
+Called via: ./devrig claude [flags]
 
-Reads cdev.toml and starts everything needed for a Claude Code session:
+Reads devrig.toml and starts everything needed for a Claude Code session:
   1. Docker container (with auto-rebuild detection)
   2. Chrome bridge relay (optional — bridge-host.cjs on host)
   3. Dev server (optional — configurable command on host)
@@ -33,8 +33,8 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_DIR = SCRIPT_DIR.parent
 BRIDGE_SCRIPT = SCRIPT_DIR / "bridge-host.cjs"
 TTY_TUNNEL = SCRIPT_DIR / "tty-tunnel.py"
-CONFIG_FILE = "cdev.toml"
-BUILD_LABEL = "cdev.build.hash"
+CONFIG_FILE = "devrig.toml"
+BUILD_LABEL = "devrig.build.hash"
 
 # ── Runtime state (populated by main → init_variant) ────────────────────────
 
@@ -66,7 +66,7 @@ def die(msg: str) -> None:
 # ── Config ───────────────────────────────────────────────────────────────────
 
 def load_config() -> dict:
-    """Load cdev.toml and return a normalized config dict."""
+    """Load devrig.toml and return a normalized config dict."""
     config_path = PROJECT_DIR / CONFIG_FILE
     if not config_path.is_file():
         die(f"Config not found: {config_path}\n"
@@ -109,11 +109,11 @@ def init_variant(cfg: dict, variant: str) -> None:
     project = cfg["project"]
 
     if variant == "native":
-        _compose_file = ".cdev/compose.yml"
+        _compose_file = ".devrig/compose.yml"
         _image = f"{project}-dev:latest"
         _dockerfile = "Dockerfile"
     else:
-        _compose_file = ".cdev/compose.npm.yml"
+        _compose_file = ".devrig/compose.npm.yml"
         _image = f"{project}-dev-npm:latest"
         _dockerfile = "Dockerfile.npm"
 
@@ -216,7 +216,7 @@ def start_bridge() -> subprocess.Popen:
     log(f"Starting Chrome bridge on port {port}...")
     logs_dir = SCRIPT_DIR / "logs"
     logs_dir.mkdir(exist_ok=True)
-    log("Bridge logs: .cdev/logs/bridge-host.log")
+    log("Bridge logs: .devrig/logs/bridge-host.log")
 
     env = os.environ.copy()
     env["BRIDGE_LOG_DIR"] = str(logs_dir)
@@ -257,7 +257,7 @@ def start_dev_server() -> subprocess.Popen | None:
     log(f"Starting dev server: {cmd_str}")
     logs_dir = SCRIPT_DIR / "logs"
     logs_dir.mkdir(exist_ok=True)
-    log("Dev server logs: .cdev/logs/dev-server.log")
+    log("Dev server logs: .devrig/logs/dev-server.log")
 
     log_file = open(logs_dir / "dev-server.log", "w")  # noqa: SIM115
     cmd = shlex.split(cmd_str)
@@ -335,7 +335,7 @@ def wait_for_claude(timeout: int | None = None) -> None:
     """Block until the container entrypoint has finished setting up Claude Code.
 
     Polls for a sentinel file written by container-setup.py on the bind-mounted
-    .cdev/home/.claude/logs/ directory.  While waiting, tails the entrypoint log so the
+    .devrig/home/.claude/logs/ directory.  While waiting, tails the entrypoint log so the
     user can see installation progress.
     """
     if timeout is None:
@@ -360,7 +360,7 @@ def wait_for_claude(timeout: int | None = None) -> None:
         time.sleep(0.5)
 
     die(f"Claude Code not ready after {timeout}s — "
-        "check .cdev/home/.claude/logs/entrypoint.log")
+        "check .devrig/home/.claude/logs/entrypoint.log")
 
 
 # ── Cleanup ──────────────────────────────────────────────────────────────────
@@ -426,7 +426,7 @@ def exec_claude(*, tunnel: bool = False) -> None:
     silently, then runs cleanup when the child exits.
 
     When tunnel=True, routes through tty-tunnel.py which logs every byte
-    flowing in both directions to .cdev/logs/tty-tunnel.log for diagnostics.
+    flowing in both directions to .devrig/logs/tty-tunnel.log for diagnostics.
     """
     claude_params_raw = os.environ.get("CLAUDE_PARAMS", "")
     claude_params = shlex.split(claude_params_raw) if claude_params_raw else []
@@ -434,7 +434,7 @@ def exec_claude(*, tunnel: bool = False) -> None:
     log("Connecting to Claude Code in container...")
     log(f"CLAUDE_PARAMS: {claude_params_raw or '<none>'}")
     if tunnel:
-        log("TTY tunnel ENABLED — logging to .cdev/logs/tty-tunnel.log")
+        log("TTY tunnel ENABLED — logging to .devrig/logs/tty-tunnel.log")
     print("", flush=True)
 
     # Use docker exec directly (not docker compose exec) — eliminates the
@@ -518,7 +518,7 @@ def main() -> None:
                             help="Skip starting the dev server")
     parser.add_argument("--tunnel", action="store_true",
                         help="Route TTY through tty-tunnel.py "
-                        "(logs all bytes to .cdev/logs/tty-tunnel.log)")
+                        "(logs all bytes to .devrig/logs/tty-tunnel.log)")
     args = parser.parse_args()
 
     skip_dev_server = getattr(args, "no_dev_server", False)
@@ -528,7 +528,7 @@ def main() -> None:
 
     # Load environment variables from .env
     load_dotenv()
-    os.environ["CDEV_PROJECT"] = cfg["project"]
+    os.environ["DEVRIG_PROJECT"] = cfg["project"]
     os.chdir(PROJECT_DIR)
 
     # Preflight

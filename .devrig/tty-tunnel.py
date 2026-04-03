@@ -7,7 +7,7 @@ child process).  Designed to diagnose TTY passthrough issues with
 Docker exec + TUI apps like Claude Code.
 
 Usage:
-    python3 .cdev/tty-tunnel.py docker exec -it <container> claude
+    python3 .devrig/tty-tunnel.py docker exec -it <container> claude
 
 Log output goes to logs/tty-tunnel.log (one line per read, with
 timestamp, direction, byte count, hex dump, and printable repr).

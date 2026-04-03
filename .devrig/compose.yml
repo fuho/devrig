@@ -1,15 +1,15 @@
 services:
   dev:
-    image: ${CDEV_PROJECT:-my-project}-dev:latest
+    image: ${DEVRIG_PROJECT:-my-project}-dev:latest
     build:
-      context: .cdev
+      context: .devrig
       dockerfile: Dockerfile
       args:
         USER_UID: ${HOST_UID:-501}
     volumes:
       - .:/workspace
       - node_modules:/workspace/node_modules
-      - ./.cdev/home:/home/dev
+      - ./.devrig/home:/home/dev
     environment:
       - CLAUDE_CONFIG_DIR=/home/dev/.claude
       - CLAUDE_INSTALL_METHOD=native
