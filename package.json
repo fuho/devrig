@@ -1,0 +1,29 @@
+{
+  "name": "devrig",
+  "version": "0.1.0",
+  "description": "Containerized AI coding environment with browser control",
+  "type": "module",
+  "bin": {
+    "devrig": "./bin/devrig.js"
+  },
+  "files": [
+    "bin/",
+    "src/",
+    "scaffold/"
+  ],
+  "engines": {
+    "node": ">=18.3.0"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fuho/devrig.git"
+  },
+  "keywords": [
+    "docker",
+    "ai",
+    "claude",
+    "development",
+    "container"
+  ]
+}

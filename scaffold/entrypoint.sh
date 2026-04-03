@@ -13,8 +13,8 @@ exec >>"$LOG_FILE" 2>&1
 # previous run and skip waiting for setup to finish.
 rm -f "$LOG_DIR/.setup-ready"
 
-# All setup logic lives in Python
-python3 /usr/local/bin/container-setup.py
+# All setup logic lives in Node.js
+node /usr/local/bin/container-setup.js
 
 # Restore original stdout/stderr and exec the command
 exec 1>&3 2>&4 3>&- 4>&-

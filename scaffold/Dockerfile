@@ -4,7 +4,7 @@ ARG USER_UID=501
 ARG BUILD_HASH=unknown
 
 RUN apt-get update && \
-    apt-get install -y git socat ripgrep curl jq ca-certificates python3 vim tree && \
+    apt-get install -y git socat ripgrep curl jq ca-certificates vim tree && \
     rm -rf /var/lib/apt/lists/*
 
 # GitHub CLI (needs its own apt repo)
@@ -58,7 +58,7 @@ COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
 # Container setup script (called by entrypoint)
-COPY container-setup.py /usr/local/bin/container-setup.py
+COPY container-setup.js /usr/local/bin/container-setup.js
 
 LABEL devrig.build.hash="${BUILD_HASH}"
 

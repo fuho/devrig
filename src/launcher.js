@@ -1,0 +1,289 @@
+/**
+ * launcher.js — Main orchestrator for cdev.
+ * Ported from Python launcher.py.
+ * ESM module exporting a single launch(argv) async function.
+ */
+
+import { execFileSync, spawn } from 'node:child_process';
+import {
+  existsSync,
+  readFileSync,
+  openSync,
+  closeSync,
+  readSync,
+  fstatSync,
+  mkdirSync,
+  statSync,
+} from 'node:fs';
+import { join, dirname } from 'node:path';
+import { parseArgs } from 'node:util';
+import { fileURLToPath } from 'node:url';
+import { log, die } from './log.js';
+import { loadConfig, loadDotenv, resolveProjectDir } from './config.js';
+import {
+  composeCmd,
+  buildHash,
+  needsRebuild,
+  startContainer,
+  initVariant,
+} from './docker.js';
+import { openBrowser } from './browser.js';
+import {
+  registerProcess,
+  setComposeArgs,
+  cleanup,
+  setupSignalHandlers,
+  disableSignalHandlers,
+} from './cleanup.js';
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/** Promise-based sleep. */
+function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+/**
+ * Incrementally print new lines from a log file since lastPos.
+ * Returns the new position in the file.
+ */
+function printNewLogLines(logPath, lastPos) {
+  if (!existsSync(logPath)) return lastPos;
+  try {
+    const fd = openSync(logPath, 'r');
+    const stat = fstatSync(fd);
+    if (stat.size <= lastPos) {
+      closeSync(fd);
+      return lastPos;
+    }
+    const buf = Buffer.alloc(stat.size - lastPos);
+    readSync(fd, buf, 0, buf.length, lastPos);
+    closeSync(fd);
+    for (const line of buf.toString('utf8').split('\n')) {
+      const trimmed = line.trimEnd();
+      if (trimmed) console.log(`  [container] ${trimmed}`);
+    }
+    return lastPos + buf.length;
+  } catch {
+    return lastPos;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Main entry point
+// ---------------------------------------------------------------------------
+
+export async function launch(argv) {
+  // -- Step 1: Resolve project directory (launcher.py: resolve project dir) --
+  const projectDir = resolveProjectDir();
+
+  // -- Step 2: Load configuration (launcher.py: load config) ----------------
+  const cfg = loadConfig(projectDir);
+
+  // -- Step 3: Parse CLI flags (launcher.py: parse arguments) ---------------
+  const { values: args } = parseArgs({
+    args: argv,
+    options: {
+      npm:            { type: 'boolean', default: false },
+      rebuild:        { type: 'boolean', default: false },
+      'no-chrome':    { type: 'boolean', default: false },
+      'no-dev-server':{ type: 'boolean', default: false },
+      tunnel:         { type: 'boolean', default: false },
+    },
+    strict: false,
+  });
+
+  if (args.tunnel) {
+    log('Tunnel support is not yet available.');
+    process.exit(0);
+  }
+
+  // -- Step 4: Initialize variant (launcher.py: init variant) ---------------
+  const ctx = initVariant(cfg, args.npm ? 'npm' : 'native');
+
+  // -- Step 5: Load dotenv and set project env var -------------------------
+  loadDotenv(projectDir);
+  process.env.DEVRIG_PROJECT = cfg.project;
+
+  // -- Step 6: Change to project directory ----------------------------------
+  process.chdir(projectDir);
+
+  // -- Step 7: Preflight checks (launcher.py: preflight) --------------------
+
+  // Check docker binary
+  try {
+    execFileSync('which', ['docker'], { stdio: 'ignore' });
+  } catch {
+    die('Docker is not installed or not in PATH.');
+  }
+
+  // Check node binary
+  try {
+    execFileSync('which', ['node'], { stdio: 'ignore' });
+  } catch {
+    die('Node.js is not installed or not in PATH.');
+  }
+
+  // Check Docker daemon is running
+  try {
+    execFileSync('docker', ['info'], { stdio: 'ignore' });
+  } catch {
+    die('Docker daemon is not running. Please start Docker and try again.');
+  }
+
+  // If dev server enabled and not skipped, verify its command is available
+  if (cfg.dev_server_cmd && !args['no-dev-server']) {
+    const devBin = cfg.dev_server_cmd.split(/\s+/)[0];
+    try {
+      execFileSync('which', [devBin], { stdio: 'ignore' });
+    } catch {
+      die(`Dev server command '${devBin}' not found in PATH.`);
+    }
+  }
+
+  // Warn if .env is missing
+  if (!existsSync(join(projectDir, '.env'))) {
+    log('WARNING: .env not found');
+  }
+
+  // -- Step 8: Signal handlers & compose args -------------------------------
+  setupSignalHandlers();
+  setComposeArgs(composeCmd(ctx).slice(1)); // slice off 'docker'
+
+  // -- Step 9: Build / rebuild Docker image ---------------------------------
+  const rebuild = args.rebuild || needsRebuild(ctx);
+  if (rebuild) {
+    const reason = args.rebuild ? 'forced' : 'files changed';
+    log(`Building Docker image (${reason})...`);
+    const cmd = composeCmd(ctx, 'build', '--build-arg', `BUILD_HASH=${buildHash(ctx)}`);
+    execFileSync(cmd[0], cmd.slice(1), { stdio: 'inherit' });
+    log('Build complete.');
+  }
+
+  // -- Step 10: Start container (launcher.py: start container) --------------
+  startContainer(ctx);
+
+  // Prepare logs directory (used by bridge & dev server)
+  const logsDir = join(projectDir, '.devrig', 'logs');
+  mkdirSync(logsDir, { recursive: true });
+
+  // -- Step 11: Start Chrome bridge (launcher.py: chrome bridge) ------------
+  if (cfg.bridge_enabled && !args['no-chrome']) {
+    const bridgeScript = join(
+      dirname(fileURLToPath(import.meta.url)),
+      'bridge-host.cjs',
+    );
+    const stderrLog = openSync(join(logsDir, 'bridge-host.err'), 'w');
+    const bridgeProc = spawn('node', [bridgeScript], {
+      stdio: ['ignore', 'inherit', stderrLog],
+      env: {
+        ...process.env,
+        BRIDGE_LOG_DIR: logsDir,
+        BRIDGE_PORT: String(cfg.bridge_port),
+      },
+    });
+    registerProcess('bridge', bridgeProc);
+
+    // Give bridge a moment to start, then verify it's still alive
+    await sleep(1000);
+    if (bridgeProc.exitCode !== null) {
+      die(`bridge-host failed to start (port ${cfg.bridge_port} may be in use)`);
+    }
+    log(`Chrome bridge started on port ${cfg.bridge_port}`);
+  }
+
+  // -- Step 12: Start dev server (launcher.py: dev server) ------------------
+  if (cfg.dev_server_cmd && !args['no-dev-server']) {
+    log(`Starting dev server: ${cfg.dev_server_cmd}`);
+    const devLogFile = openSync(join(logsDir, 'dev-server.log'), 'w');
+    const devProc = spawn('sh', ['-c', cfg.dev_server_cmd], {
+      stdio: ['ignore', devLogFile, devLogFile],
+      env: { ...process.env, PORT: String(cfg.dev_server_port) },
+    });
+    registerProcess('dev server', devProc);
+
+    // Poll for dev server readiness
+    const devUrl = `http://localhost:${cfg.dev_server_port}`;
+    for (let i = 0; i < cfg.dev_server_timeout; i++) {
+      if (devProc.exitCode !== null) die('Dev server exited unexpectedly');
+      try {
+        await fetch(devUrl, { signal: AbortSignal.timeout(1000) });
+        log(`Dev server ready at ${devUrl}`);
+        break;
+      } catch {
+        await sleep(1000);
+      }
+    }
+
+    // -- Step 13: Open browser (launcher.py: open browser) ------------------
+    if (!args['no-chrome']) {
+      log('Opening browser...');
+      openBrowser(`http://localhost:${cfg.dev_server_port}`);
+    }
+  }
+
+  // -- Step 14: Wait for Claude readiness (launcher.py: wait for claude) ----
+  const sentinel = join(
+    projectDir, '.devrig', 'home', '.claude', 'logs', '.setup-ready',
+  );
+  const entrypointLog = join(
+    projectDir, '.devrig', 'home', '.claude', 'logs', 'entrypoint.log',
+  );
+
+  log('Waiting for Claude Code to be ready in container...');
+  let logPos = 0;
+  if (existsSync(entrypointLog)) logPos = statSync(entrypointLog).size;
+
+  const timeout = cfg.claude_timeout;
+  const start = Date.now();
+  while (Date.now() - start < timeout * 1000) {
+    if (existsSync(sentinel)) {
+      logPos = printNewLogLines(entrypointLog, logPos);
+      log('Claude Code is ready.');
+      break;
+    }
+    logPos = printNewLogLines(entrypointLog, logPos);
+    await sleep(500);
+  }
+
+  if (!existsSync(sentinel)) {
+    die(`Claude Code not ready after ${timeout}s`);
+  }
+
+  // -- Step 15: Exec into container (launcher.py: exec into container) ------
+  const containerId = execFileSync(
+    'docker',
+    composeCmd(ctx, 'ps', '-q', ctx.service).slice(1),
+    { encoding: 'utf8' },
+  ).trim();
+
+  if (!containerId) die('Container is not running');
+
+  const claudeParams = process.env.CLAUDE_PARAMS
+    ? process.env.CLAUDE_PARAMS.split(/\s+/)
+    : [];
+
+  log('Connecting to Claude Code in container...');
+  log(`CLAUDE_PARAMS: ${process.env.CLAUDE_PARAMS || '<none>'}`);
+
+  const child = spawn(
+    'docker',
+    ['exec', '-it', containerId, 'claude', ...claudeParams],
+    { stdio: 'inherit' },
+  );
+
+  // Let the child process own the terminal — disable our signal handlers
+  disableSignalHandlers(child);
+
+  const exitCode = await new Promise((resolve) => {
+    child.on('exit', (code, signal) => {
+      if (signal) resolve(128);
+      else resolve(code ?? 1);
+    });
+  });
+
+  await cleanup();
+  process.exit(exitCode);
+}

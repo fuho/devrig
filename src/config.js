@@ -1,0 +1,148 @@
+import { readFileSync, existsSync, statSync } from 'node:fs';
+import { join, dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { die } from './log.js';
+
+const CONFIG_FILE = 'devrig.toml';
+
+// ---------------------------------------------------------------------------
+// 1. Hand-rolled TOML parser (flat sections, string/int values only)
+// ---------------------------------------------------------------------------
+
+export function parseTOML(text) {
+  const result = {};
+  let section = null;
+
+  for (const raw of text.split('\n')) {
+    const line = raw.trim();
+
+    if (!line || line.startsWith('#')) continue;
+
+    const sectionMatch = line.match(/^\[([A-Za-z_][A-Za-z0-9_]*)\]$/);
+    if (sectionMatch) {
+      section = sectionMatch[1];
+      if (!(section in result)) result[section] = {};
+      continue;
+    }
+
+    const kvMatch = line.match(/^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.+)$/);
+    if (kvMatch) {
+      const key = kvMatch[1];
+      let value = kvMatch[2].trim();
+
+      if (
+        (value.startsWith('"') && value.endsWith('"')) ||
+        (value.startsWith("'") && value.endsWith("'"))
+      ) {
+        value = value.slice(1, -1);
+      } else if (/^-?\d+$/.test(value)) {
+        value = parseInt(value, 10);
+      }
+
+      if (section) {
+        result[section][key] = value;
+      } else {
+        result[key] = value;
+      }
+    }
+  }
+
+  return result;
+}
+
+// ---------------------------------------------------------------------------
+// 2. loadConfig(projectDir)
+// ---------------------------------------------------------------------------
+
+export function loadConfig(projectDir) {
+  const configPath = join(projectDir, CONFIG_FILE);
+
+  if (!existsSync(configPath)) {
+    die(`Config not found: ${configPath}`);
+  }
+
+  const raw = parseTOML(readFileSync(configPath, 'utf8'));
+
+  const dev = raw.dev_server ?? {};
+  const bridge = raw.chrome_bridge ?? {};
+  const claude = raw.claude ?? {};
+
+  return {
+    project: raw.project ?? 'claude-project',
+    tool: raw.tool ?? 'claude',
+    bridge_enabled: 'chrome_bridge' in raw,
+    bridge_port: bridge.port ?? 9229,
+    dev_server_cmd: dev.command,
+    dev_server_port: dev.port ?? 3000,
+    dev_server_timeout: dev.ready_timeout ?? 10,
+    claude_timeout: claude.ready_timeout ?? 120,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// 3. loadDotenv(projectDir)
+// ---------------------------------------------------------------------------
+
+export function loadDotenv(projectDir) {
+  const envPath = join(projectDir, '.env');
+
+  if (!existsSync(envPath)) return;
+
+  const text = readFileSync(envPath, 'utf8');
+
+  for (const raw of text.split('\n')) {
+    const line = raw.trim();
+    if (!line || line.startsWith('#') || !line.includes('=')) continue;
+
+    const idx = line.indexOf('=');
+    const key = line.slice(0, idx).trim();
+    let value = line.slice(idx + 1).trim();
+
+    if (
+      value.length >= 2 &&
+      value[0] === value[value.length - 1] &&
+      (value[0] === '"' || value[0] === "'")
+    ) {
+      value = value.slice(1, -1);
+    }
+
+    process.env[key] = value;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 4. resolveProjectDir()
+// ---------------------------------------------------------------------------
+
+export function resolveProjectDir() {
+  let dir = process.cwd();
+
+  while (true) {
+    if (existsSync(join(dir, CONFIG_FILE))) return dir;
+    if (existsSync(join(dir, '.devrig'))) {
+      try {
+        if (statSync(join(dir, '.devrig')).isDirectory()) return dir;
+      } catch { /* ignore */ }
+    }
+
+    // Stop at .git boundary
+    if (existsSync(join(dir, '.git'))) break;
+
+    const parent = dirname(dir);
+    if (parent === dir) break; // filesystem root
+    dir = parent;
+  }
+
+  die(`Could not find ${CONFIG_FILE} or .devrig/ in any parent directory`);
+}
+
+// ---------------------------------------------------------------------------
+// 5. getPackageVersion()
+// ---------------------------------------------------------------------------
+
+export function getPackageVersion() {
+  const thisFile = fileURLToPath(import.meta.url);
+  const pkgPath = resolve(dirname(thisFile), '..', 'package.json');
+  const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));
+  return pkg.version;
+}
