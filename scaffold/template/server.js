@@ -80,10 +80,11 @@ const server = createServer((req, res) => {
     return;
   }
 
-  if (req.method === 'GET' && (path === '/' || path === '/index.html')) {
+  // Agent detection: only triggers on ?agent= query param
+  if (req.method === 'GET' && (path === '/' || path === '/index.html') && url.searchParams.has('agent')) {
     if (!agentConnected) {
       agentConnected = true;
-      broadcast('agent-connected', { agent: agentName });
+      broadcast('agent-connected', { agent: url.searchParams.get('agent') || agentName });
     }
   }
 

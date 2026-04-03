@@ -15,7 +15,7 @@ const AGENTS_END = '<!-- devrig:end -->';
 /**
  * Generates or updates the devrig section in AGENTS.md.
  * @param {string} projectDir
- * @param {{ dev_server_port: number, bridge_enabled: boolean, bridge_port: number }} cfg
+ * @param {{ tool: string, dev_server_port: number, bridge_enabled: boolean, bridge_port: number }} cfg
  */
 export function generateAgentsMd(projectDir, cfg) {
   const agentsPath = join(projectDir, 'AGENTS.md');
@@ -29,7 +29,7 @@ export function generateAgentsMd(projectDir, cfg) {
     `- **Dev server:** http://localhost:${cfg.dev_server_port}`,
     `- **Chrome bridge:** ${cfg.bridge_enabled ? `enabled (port ${cfg.bridge_port})` : 'disabled'}`,
     '',
-    `When starting a session, open http://localhost:${cfg.dev_server_port} in your Chrome MCP tab`,
+    `When starting a session, open http://localhost:${cfg.dev_server_port}?agent=${cfg.tool} in your Chrome MCP tab`,
     'group to see the project and confirm the connection.',
     '',
     'Git push is blocked inside this container. Make commits freely — the user will',

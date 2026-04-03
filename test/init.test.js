@@ -125,7 +125,7 @@ describe('devrig.toml.example copy', () => {
 
 describe('AGENTS.md generation', () => {
   let tmp;
-  const cfg = { dev_server_port: 3000, bridge_enabled: true, bridge_port: 9229 };
+  const cfg = { tool: 'claude', dev_server_port: 3000, bridge_enabled: true, bridge_port: 9229 };
 
   afterEach(() => {
     if (tmp) rmSync(tmp, { recursive: true, force: true });
@@ -153,7 +153,12 @@ describe('AGENTS.md generation', () => {
   it('replaces devrig section on re-run', () => {
     tmp = mkdtempSync(join(tmpdir(), 'devrig-agents-'));
     generateAgentsMd(tmp, cfg);
-    generateAgentsMd(tmp, { dev_server_port: 8080, bridge_enabled: false, bridge_port: 9229 });
+    generateAgentsMd(tmp, {
+      tool: 'claude',
+      dev_server_port: 8080,
+      bridge_enabled: false,
+      bridge_port: 9229,
+    });
     const content = readFileSync(join(tmp, 'AGENTS.md'), 'utf8');
     assert.ok(content.includes('http://localhost:8080'));
     assert.ok(!content.includes('http://localhost:3000'));
