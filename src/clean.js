@@ -1,56 +1,64 @@
 // @ts-check
 /**
- * clean.js — Remove Docker artifacts for the current project.
+ * clean.js — Remove Docker artifacts for the current project or all devrig projects.
  */
 
 import { execFileSync } from 'node:child_process';
 import { createInterface } from 'node:readline/promises';
 import { log } from './log.js';
 import { loadConfig, resolveProjectDir } from './config.js';
-import { composeCmd, initVariant } from './docker.js';
+import { initVariant } from './docker.js';
 import { readSession, isSessionAlive } from './session.js';
 
-/** Discovers and removes Docker images, volumes, and networks for this project. */
-export async function clean(argv) {
-  const projectDir = resolveProjectDir();
-  const cfg = loadConfig(projectDir);
-  const skipConfirm = argv.includes('-y') || argv.includes('--yes');
+const LABEL = 'devrig.project';
 
-  // Check for running session
-  const session = readSession(projectDir);
-  if (session && isSessionAlive(session)) {
-    log(`A session is running (PID ${session.pid}). Stop it first with "devrig stop".`);
-    process.exit(1);
-  }
-
-  const ctx = initVariant(cfg, 'native');
-  const ctxNpm = initVariant(cfg, 'npm');
-
-  // Discover artifacts
+/**
+ * Queries Docker for resources with the devrig.project label.
+ * @param {string} [project] - Filter to a specific project name. Omit for all.
+ * @returns {{ type: string, name: string, detail: string }[]}
+ */
+function discoverByLabel(project) {
+  const filter = project ? `label=${LABEL}=${project}` : `label=${LABEL}`;
   const found = [];
 
-  // Images
-  for (const image of [ctx.image, ctxNpm.image]) {
-    try {
-      const info = execFileSync('docker', ['image', 'inspect', image, '--format', '{{.Size}}'], {
-        encoding: 'utf8',
-        stdio: ['pipe', 'pipe', 'ignore'],
-      }).trim();
-      const sizeMB = (parseInt(info, 10) / 1024 / 1024).toFixed(0);
-      found.push({ type: 'Image', name: image, detail: `${sizeMB} MB` });
-    } catch {
-      /* image doesn't exist */
+  // Containers (including stopped)
+  try {
+    const out = execFileSync(
+      'docker',
+      ['ps', '-a', '--filter', filter, '--format', '{{.Names}}\t{{.Status}}'],
+      { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] },
+    ).trim();
+    for (const line of out.split('\n').filter(Boolean)) {
+      const [name, ...status] = line.split('\t');
+      found.push({ type: 'Container', name, detail: status.join('\t') });
     }
+  } catch {
+    /* ignore */
+  }
+
+  // Images
+  try {
+    const out = execFileSync(
+      'docker',
+      ['images', '--filter', filter, '--format', '{{.Repository}}:{{.Tag}}\t{{.Size}}'],
+      { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] },
+    ).trim();
+    for (const line of out.split('\n').filter(Boolean)) {
+      const [name, size] = line.split('\t');
+      found.push({ type: 'Image', name, detail: size || '' });
+    }
+  } catch {
+    /* ignore */
   }
 
   // Volumes
   try {
-    const volumes = execFileSync(
+    const out = execFileSync(
       'docker',
-      ['volume', 'ls', '--filter', `name=${cfg.project}`, '--format', '{{.Name}}'],
+      ['volume', 'ls', '--filter', filter, '--format', '{{.Name}}'],
       { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] },
     ).trim();
-    for (const v of volumes.split('\n').filter(Boolean)) {
+    for (const v of out.split('\n').filter(Boolean)) {
       found.push({ type: 'Volume', name: v, detail: '' });
     }
   } catch {
@@ -59,35 +67,110 @@ export async function clean(argv) {
 
   // Networks
   try {
-    const networks = execFileSync(
+    const out = execFileSync(
       'docker',
-      ['network', 'ls', '--filter', `name=${cfg.project}`, '--format', '{{.Name}}', '--no-trunc'],
+      ['network', 'ls', '--filter', filter, '--format', '{{.Name}}', '--no-trunc'],
       { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] },
     ).trim();
-    for (const n of networks.split('\n').filter(Boolean)) {
-      if (n !== 'bridge' && n !== 'host' && n !== 'none') {
-        found.push({ type: 'Network', name: n, detail: '' });
-      }
+    for (const n of out.split('\n').filter(Boolean)) {
+      found.push({ type: 'Network', name: n, detail: '' });
     }
   } catch {
     /* ignore */
   }
 
+  return found;
+}
+
+/**
+ * Removes a list of discovered Docker resources.
+ * @param {{ type: string, name: string }[]} items
+ */
+function removeResources(items) {
+  for (const item of items) {
+    try {
+      switch (item.type) {
+        case 'Container':
+          execFileSync('docker', ['rm', '-f', item.name], { stdio: 'ignore' });
+          break;
+        case 'Image':
+          execFileSync('docker', ['rmi', '-f', item.name], { stdio: 'ignore' });
+          break;
+        case 'Volume':
+          execFileSync('docker', ['volume', 'rm', '-f', item.name], { stdio: 'ignore' });
+          break;
+        case 'Network':
+          execFileSync('docker', ['network', 'rm', item.name], { stdio: 'ignore' });
+          break;
+      }
+    } catch {
+      /* ignore — resource may already be gone */
+    }
+  }
+}
+
+/** Discovers and removes Docker artifacts. Supports --all for label-based global cleanup. */
+export async function clean(argv) {
+  const skipConfirm = argv.includes('-y') || argv.includes('--yes');
+  const cleanAll = argv.includes('--all');
+
+  let found;
+  let label;
+
+  if (cleanAll) {
+    // Find ALL devrig resources across all projects
+    found = discoverByLabel();
+    label = 'all devrig projects';
+  } else {
+    // Find resources for the current project
+    const projectDir = resolveProjectDir();
+    const cfg = loadConfig(projectDir);
+
+    const session = readSession(projectDir);
+    if (session && isSessionAlive(session)) {
+      log(`A session is running (PID ${session.pid}). Stop it first with "devrig stop".`);
+      process.exit(1);
+    }
+
+    // Try label-based discovery first, fall back to compose-based
+    found = discoverByLabel(cfg.project);
+
+    // Also check by image name for pre-label resources
+    const ctx = initVariant(cfg, 'native');
+    const ctxNpm = initVariant(cfg, 'npm');
+    const imageNames = new Set(found.map((f) => f.name));
+    for (const image of [ctx.image, ctxNpm.image]) {
+      if (!imageNames.has(image)) {
+        try {
+          const info = execFileSync(
+            'docker',
+            ['image', 'inspect', image, '--format', '{{.Size}}'],
+            { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] },
+          ).trim();
+          const sizeMB = (parseInt(info, 10) / 1024 / 1024).toFixed(0);
+          found.push({ type: 'Image', name: image, detail: `${sizeMB} MB` });
+        } catch {
+          /* doesn't exist */
+        }
+      }
+    }
+
+    label = `"${cfg.project}"`;
+  }
+
   if (found.length === 0) {
-    log(`No Docker resources found for "${cfg.project}".`);
+    log(`No Docker resources found for ${label}.`);
     return;
   }
 
-  // Print what was found
-  log(`Found ${found.length} Docker resource(s) for "${cfg.project}":`);
+  log(`Found ${found.length} Docker resource(s) for ${label}:`);
   console.log('');
   for (const item of found) {
     const detail = item.detail ? ` (${item.detail})` : '';
-    console.log(`  ${item.type.padEnd(8)} ${item.name}${detail}`);
+    console.log(`  ${item.type.padEnd(10)} ${item.name}${detail}`);
   }
   console.log('');
 
-  // Confirm
   if (!skipConfirm) {
     const rl = createInterface({ input: process.stdin, output: process.stdout });
     const answer = (await rl.question('  Remove all of the above? [y/N]: ')).trim().toLowerCase();
@@ -98,24 +181,6 @@ export async function clean(argv) {
     }
   }
 
-  // Remove via compose down (handles containers, volumes, networks, images)
-  for (const variant of [ctx, ctxNpm]) {
-    try {
-      const cmd = composeCmd(variant, 'down', '-v', '--rmi', 'local');
-      execFileSync(cmd[0], cmd.slice(1), { stdio: 'ignore', timeout: 30000 });
-    } catch {
-      /* ignore — variant may not have been used */
-    }
-  }
-
-  // Remove any remaining images directly (in case compose didn't catch them)
-  for (const image of [ctx.image, ctxNpm.image]) {
-    try {
-      execFileSync('docker', ['rmi', image], { stdio: 'ignore' });
-    } catch {
-      /* already removed or doesn't exist */
-    }
-  }
-
+  removeResources(found);
   log('Cleaned up.');
 }

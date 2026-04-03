@@ -1,11 +1,15 @@
 services:
   dev:
     image: ${DEVRIG_PROJECT:-my-project}-dev:latest
+    labels:
+      devrig.project: ${DEVRIG_PROJECT:-my-project}
     build:
       context: .devrig
       dockerfile: Dockerfile
       args:
         USER_UID: ${HOST_UID:-501}
+      labels:
+        devrig.project: ${DEVRIG_PROJECT:-my-project}
     volumes:
       - .:/workspace
       - node_modules:/workspace/node_modules
@@ -32,3 +36,5 @@ services:
 
 volumes:
   node_modules:
+    labels:
+      devrig.project: ${DEVRIG_PROJECT:-my-project}
