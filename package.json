@@ -4,7 +4,7 @@
   "description": "Containerized AI coding environment with browser control",
   "type": "module",
   "bin": {
-    "devrig": "./bin/devrig.js"
+    "devrig": "bin/devrig.js"
   },
   "files": [
     "bin/",
