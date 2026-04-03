@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>devrig — Setup</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      background: #0a0a0a; color: #e0e0e0;
+      min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    }
+    .card {
+      background: #161616; border: 1px solid #2a2a2a; border-radius: 12px;
+      padding: 48px; max-width: 520px; width: 90%;
+    }
+    h1 { font-size: 28px; font-weight: 600; margin-bottom: 8px; }
+    .subtitle { color: #888; font-size: 14px; margin-bottom: 32px; }
+    .checks { list-style: none; margin-bottom: 32px; }
+    .checks li {
+      padding: 10px 0; border-bottom: 1px solid #1e1e1e;
+      display: flex; align-items: center; gap: 12px; font-size: 15px;
+    }
+    .checks li:last-child { border-bottom: none; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; flex-shrink: 0; }
+    .dot.pending { background: #555; animation: pulse 1.5s ease-in-out infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
+    .hint {
+      background: #1a1a1a; border: 1px solid #252525; border-radius: 8px;
+      padding: 16px; font-size: 13px; color: #999; line-height: 1.5;
+    }
+    .hint code {
+      background: #222; padding: 2px 6px; border-radius: 4px; font-size: 12px; color: #ccc;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>devrig</h1>
+    <div class="subtitle">Setup status</div>
+    <ul class="checks">
+      <li><span class="dot"></span> Dev server running</li>
+      <li><span class="dot pending" id="agent-dot"></span> <span id="agent-status">Waiting for Claude Code...</span></li>
+    </ul>
+    <div class="hint" id="hint">Waiting for Claude Code to connect via Chrome MCP...</div>
+  </div>
+  <script>
+    const dot = document.getElementById('agent-dot');
+    const status = document.getElementById('agent-status');
+    const hint = document.getElementById('hint');
+    const es = new EventSource('/devrig/events');
+    es.addEventListener('agent-connected', () => {
+      dot.classList.remove('pending');
+      status.textContent = 'Claude Code connected';
+      hint.innerHTML = 'Claude Code is connected and can see your app at <code>localhost:' + location.port + '</code>';
+    });
+    es.onerror = () => {
+      status.textContent = 'Connection lost — refresh to retry';
+      dot.classList.add('pending');
+    };
+  </script>
+</body>
+</html>
