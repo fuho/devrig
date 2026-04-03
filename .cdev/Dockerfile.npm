@@ -1,0 +1,77 @@
+FROM node:25-slim
+
+ARG USER_UID=501
+ARG BUILD_HASH=unknown
+
+RUN apt-get update && \
+    apt-get install -y git socat ripgrep curl jq ca-certificates python3 vim tree && \
+    rm -rf /var/lib/apt/lists/*
+
+# GitHub CLI (needs its own apt repo)
+RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+      -o /usr/share/keyrings/githubcli-archive-keyring.gpg && \
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
+      > /etc/apt/sources.list.d/github-cli.list && \
+    apt-get update && apt-get install -y gh && \
+    rm -rf /var/lib/apt/lists/*
+
+# Remove built-in node user (UID 1000) to avoid collision on Linux
+RUN userdel -r node 2>/dev/null || true
+
+# Create dev user with host-matching UID
+RUN useradd -m -s /bin/bash -u ${USER_UID} dev
+
+WORKDIR /workspace
+RUN chown dev:dev /workspace
+
+# npm global prefix (volume-backed at runtime)
+RUN mkdir -p /home/dev/.npm-global /home/dev/.npm && \
+    chown -R dev:dev /home/dev/.npm-global /home/dev/.npm
+
+# Git shim — blocks push; blocks pull on master
+COPY <<'GITSHIM' /usr/local/bin/git
+#!/bin/sh
+for arg in "$@"; do
+  case "$arg" in
+    push)
+      echo "ERROR: git push is blocked inside this container." >&2
+      exit 1
+      ;;
+    pull)
+      branch=$(/usr/bin/git rev-parse --abbrev-ref HEAD 2>/dev/null)
+      if [ "$branch" = "master" ]; then
+        echo "ERROR: git pull on master is blocked inside this container." >&2
+        exit 1
+      fi
+      break
+      ;;
+    -*) ;;
+    *)  break ;;
+  esac
+done
+exec /usr/bin/git "$@"
+GITSHIM
+RUN chmod +x /usr/local/bin/git
+
+# Entrypoint (runs setup, then hands off to CMD)
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+# Container setup script (called by entrypoint)
+COPY container-setup.py /usr/local/bin/container-setup.py
+
+LABEL cdev.build.hash="${BUILD_HASH}"
+
+# ── Everything below runs as dev ─────────────────────────────────────────
+USER dev
+ENV USER=dev
+ENV NPM_CONFIG_PREFIX=/home/dev/.npm-global
+ENV PATH="/home/dev/.npm-global/bin:$PATH"
+
+RUN git config --global --add safe.directory /workspace
+
+# Install pnpm globally so Claude Code can run project scripts
+RUN npm install -g pnpm@latest
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+CMD ["bash"]

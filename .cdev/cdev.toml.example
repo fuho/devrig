@@ -1,0 +1,27 @@
+# cdev — project configuration
+#
+# Copy this file to cdev.toml and edit it, or run: ./cdev config
+#
+# This file drives .cdev/launcher.py. It controls which services to start,
+# how to name Docker images/containers, and what dev tooling to run on the host.
+#
+# The project name is used for Docker image and container naming — no need to
+# edit the compose files when forking this as a template.
+
+project = "my-project"
+
+# Dev server to start on the host before connecting to Claude Code.
+# Remove this entire section to skip dev server startup.
+# [dev_server]
+# command = "npm run dev"
+# port = 3000
+# ready_timeout = 10  # seconds to wait for server readiness
+
+# Chrome browser bridge — relays the Chrome extension's NMH socket into the
+# Docker container so Claude Code can control the host browser.
+# Remove this entire section to disable the Chrome bridge.
+[chrome_bridge]
+port = 9229
+
+# [claude]
+# ready_timeout = 120  # seconds to wait for Claude Code setup in container

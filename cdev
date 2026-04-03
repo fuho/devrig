@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+# cdev — subcommand dispatcher.
+#
+# Usage: ./cdev <command> [flags]
+#
+# Commands:
+#   claude    Start Claude Code in Docker with Chrome browser control
+#   config    Create cdev.toml interactively
+#
+# Run ./cdev <command> --help for command-specific options.
+
+set -euo pipefail
+
+CDEV_DIR="$(cd "$(dirname "$0")/.cdev" && pwd)"
+
+# Prevent Python from littering __pycache__ in the scaffold directory
+export PYTHONDONTWRITEBYTECODE=1
+
+# Verify Python 3 is available before dispatching
+if ! command -v python3 &>/dev/null; then
+  echo "ERROR: python3 not found in PATH" >&2
+  echo "  Install Python 3.11+ to use this tool." >&2
+  exit 1
+fi
+
+usage() {
+  cat <<EOF
+Usage: ./cdev <command> [flags]
+
+Commands:
+  claude    Start Claude Code in Docker with Chrome browser control
+  config    Create cdev.toml interactively
+
+Run ./cdev <command> --help for command-specific options.
+EOF
+}
+
+ask_launch() {
+  printf "  Launch cdev now? [Y/n]: "
+  read -r answer
+  case "${answer:-y}" in
+    [Yy]|[Yy]es) exec python3 "$CDEV_DIR/launcher.py" ;;
+    *)
+      echo ""
+      echo "  Next: ./cdev claude"
+      echo ""
+      ;;
+  esac
+}
+
+case "${1:-}" in
+  claude)     shift; exec python3 "$CDEV_DIR/launcher.py" "$@" ;;
+  config)     shift; python3 "$CDEV_DIR/configure.py" "$@" && ask_launch ;;
+  help|-h|--help) usage; exit 0 ;;
+  "")         usage; exit 0 ;;
+  *)          echo "Unknown command: $1"; echo ""; usage; exit 1 ;;
+esac
