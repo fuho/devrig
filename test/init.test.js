@@ -15,6 +15,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 import { getPackageVersion } from '../src/config.js';
+import { generateAgentsMd } from '../src/init.js';
 
 const scaffoldDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'scaffold');
 
@@ -119,5 +120,44 @@ describe('devrig.toml.example copy', () => {
     if (existsSync(src) && !existsSync(dest)) cpSync(src, dest);
     assert.ok(existsSync(dest));
     assert.equal(readFileSync(dest, 'utf8'), readFileSync(src, 'utf8'));
+  });
+});
+
+describe('AGENTS.md generation', () => {
+  let tmp;
+  const cfg = { dev_server_port: 3000, bridge_enabled: true, bridge_port: 9229 };
+
+  afterEach(() => {
+    if (tmp) rmSync(tmp, { recursive: true, force: true });
+  });
+
+  it('creates AGENTS.md when none exists', () => {
+    tmp = mkdtempSync(join(tmpdir(), 'devrig-agents-'));
+    generateAgentsMd(tmp, cfg);
+    const content = readFileSync(join(tmp, 'AGENTS.md'), 'utf8');
+    assert.ok(content.includes('<!-- devrig:start -->'));
+    assert.ok(content.includes('<!-- devrig:end -->'));
+    assert.ok(content.includes('http://localhost:3000'));
+    assert.ok(content.includes('enabled (port 9229)'));
+  });
+
+  it('appends to existing AGENTS.md', () => {
+    tmp = mkdtempSync(join(tmpdir(), 'devrig-agents-'));
+    writeFileSync(join(tmp, 'AGENTS.md'), '# My Project\n\nExisting content.\n');
+    generateAgentsMd(tmp, cfg);
+    const content = readFileSync(join(tmp, 'AGENTS.md'), 'utf8');
+    assert.ok(content.startsWith('# My Project'));
+    assert.ok(content.includes('<!-- devrig:start -->'));
+  });
+
+  it('replaces devrig section on re-run', () => {
+    tmp = mkdtempSync(join(tmpdir(), 'devrig-agents-'));
+    generateAgentsMd(tmp, cfg);
+    generateAgentsMd(tmp, { dev_server_port: 8080, bridge_enabled: false, bridge_port: 9229 });
+    const content = readFileSync(join(tmp, 'AGENTS.md'), 'utf8');
+    assert.ok(content.includes('http://localhost:8080'));
+    assert.ok(!content.includes('http://localhost:3000'));
+    assert.ok(content.includes('disabled'));
+    assert.equal(content.split('<!-- devrig:start -->').length - 1, 1);
   });
 });
