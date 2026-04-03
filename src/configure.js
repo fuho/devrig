@@ -132,7 +132,7 @@ export async function configure(projectDir) {
     const copyFiles = await askYN(rl, 'No package.json found. Copy starter template files?');
     if (copyFiles) {
       const tplDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'scaffold', 'template');
-      for (const f of ['index.html', 'package.json']) {
+      for (const f of ['index.html', 'package.json', 'server.js']) {
         const src = join(tplDir, f);
         if (existsSync(src)) {
           copyFileSync(src, join(projectDir, f));

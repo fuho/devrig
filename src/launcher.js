@@ -228,7 +228,7 @@ export async function launch(argv) {
     // -- Step 13: Open browser (launcher.py: open browser) ------------------
     if (!args['no-chrome']) {
       log('Opening browser...');
-      openBrowser(`http://localhost:${cfg.dev_server_port}`);
+      openBrowser(`http://localhost:${cfg.dev_server_port}/devrig/setup`);
     }
   }
 

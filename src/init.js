@@ -3,11 +3,56 @@ import { cpSync, chmodSync, readFileSync, writeFileSync, existsSync } from 'node
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createInterface } from 'node:readline/promises';
-import { getPackageVersion } from './config.js';
+import { getPackageVersion, loadConfig } from './config.js';
 import { configure } from './configure.js';
 import { log, die } from './log.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+
+const AGENTS_START = '<!-- devrig:start -->';
+const AGENTS_END = '<!-- devrig:end -->';
+
+/**
+ * Generates or updates the devrig section in AGENTS.md.
+ * @param {string} projectDir
+ * @param {{ dev_server_port: number, bridge_enabled: boolean, bridge_port: number }} cfg
+ */
+export function generateAgentsMd(projectDir, cfg) {
+  const agentsPath = join(projectDir, 'AGENTS.md');
+  const block = [
+    AGENTS_START,
+    '## devrig',
+    '',
+    'This project uses devrig to run AI agents in a Docker container.',
+    '',
+    `- **Workspace:** /workspace`,
+    `- **Dev server:** http://localhost:${cfg.dev_server_port}`,
+    `- **Chrome bridge:** ${cfg.bridge_enabled ? `enabled (port ${cfg.bridge_port})` : 'disabled'}`,
+    '',
+    `When starting a session, open http://localhost:${cfg.dev_server_port} in your Chrome MCP tab`,
+    'group to see the project and confirm the connection.',
+    '',
+    'Git push is blocked inside this container. Make commits freely — the user will',
+    'review and push from the host.',
+    AGENTS_END,
+  ].join('\n');
+
+  if (existsSync(agentsPath)) {
+    let content = readFileSync(agentsPath, 'utf8');
+    const startIdx = content.indexOf(AGENTS_START);
+    const endIdx = content.indexOf(AGENTS_END);
+    if (startIdx !== -1 && endIdx !== -1) {
+      content = content.slice(0, startIdx) + block + content.slice(endIdx + AGENTS_END.length);
+    } else {
+      const sep = content.endsWith('\n') ? '\n' : '\n\n';
+      content = content + sep + block + '\n';
+    }
+    writeFileSync(agentsPath, content);
+  } else {
+    writeFileSync(agentsPath, block + '\n');
+  }
+  log('Generated AGENTS.md');
+}
 
 /** Scaffolds .devrig/ directory, sets permissions, and runs configuration wizard. */
 export async function init(projectDir) {
@@ -63,6 +108,12 @@ export async function init(projectDir) {
     log('Updated .gitignore');
   }
 
+  // Copy setup.html into .devrig/ (not in template/ — survives user file changes)
+  const setupSrc = join(scaffoldDir, 'setup.html');
+  if (existsSync(setupSrc)) {
+    cpSync(setupSrc, join(targetDir, 'setup.html'));
+  }
+
   // Copy devrig.toml.example to project root if absent
   const exampleSrc = join(scaffoldDir, 'devrig.toml.example');
   const exampleDest = join(projectDir, 'devrig.toml.example');
@@ -75,6 +126,14 @@ export async function init(projectDir) {
   // Run configuration wizard
   await configure(projectDir);
 
+  // Generate AGENTS.md with devrig section
+  try {
+    const cfg = loadConfig(projectDir);
+    generateAgentsMd(projectDir, cfg);
+  } catch {
+    log('WARNING: Could not generate AGENTS.md');
+  }
+
   // Summary of what was created
   console.log('');
   log("Done! Here's what was created:");
@@ -85,6 +144,7 @@ export async function init(projectDir) {
   console.log(
     '  .gitignore         Updated with .devrig/logs/, .devrig/home/, .devrig/session.json',
   );
+  console.log('  AGENTS.md          Instructions for AI agents');
   console.log('');
 
   // Show config files
