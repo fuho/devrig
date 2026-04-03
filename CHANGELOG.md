@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.3.0 — 2026-04-03
+## 0.3.0 — 2026-04-04
 
 ### Features
 
@@ -8,9 +8,17 @@
 - `/devrig/setup` — user-facing status dashboard with live SSE updates when agent connects
 - `/devrig/status` — JSON endpoint for programmatic status checks
 - `/devrig/events` — SSE stream for real-time agent connection events
-- `AGENTS.md` generated during `devrig init` with workspace, dev server, and Chrome bridge details
-- AGENTS.md uses `<!-- devrig:start/end -->` markers for safe re-generation on subsequent inits
-- Browser now opens `/devrig/setup` instead of the raw dev server root
+- Agent handshake: `?agent=claude` query param triggers connection notification on setup page
+- `CLAUDE.md` generated during `devrig init` with workspace, dev server, and Chrome bridge instructions (replaces AGENTS.md)
+- Claude Code auto-opens Chrome MCP on launch via initial prompt
+- First-run handling: Claude detects if Chrome MCP is unavailable and tells user to restart
+- Chrome MCP settings written from host side before container starts — available on second launch
+- `devrig clean --all` finds ALL devrig resources system-wide via Docker labels
+- Docker resources (containers, images, volumes) labeled with `devrig.project` for reliable cleanup
+- `devrig clean` uses label-based discovery with fallback to image name matching
+- `--chrome` flag auto-injected into Claude Code params when bridge is running
+- `devrig init` prints summary of created files with config contents
+- `--help`/`-h` on all subcommands with examples and cross-references
 
 ## 0.2.2 — 2026-04-03
 

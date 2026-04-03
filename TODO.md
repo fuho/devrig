@@ -8,7 +8,6 @@
 
 - [ ] Multi-tool support — implement adapters for Codex, open-code (config `tool` field is parsed but only Claude is wired up)
 - [ ] `devrig logs` — tail container/bridge/dev-server logs
-- [ ] `--help` for subcommands (`devrig start --help`)
 
 ## Low priority
 
@@ -23,7 +22,11 @@
 - [x] Scaffold staleness warning on `devrig start`
 - [x] Error hardening in `init.js` (user-friendly file I/O errors)
 - [x] Dual-page handshake with custom Node dev server (replaces `npx -y serve`)
-- [x] AGENTS.md generation during `devrig init`
+- [x] CLAUDE.md generation during `devrig init` (auto-loaded by Claude Code)
+- [x] Chrome MCP auto-configuration (settings.json written from host side)
+- [x] `devrig clean --all` with Docker label-based discovery
+- [x] `--help`/`-h` on all subcommands
+- [x] `--chrome` auto-injected into Claude params when bridge is enabled
 - [x] Port/project name validation
 - [x] HOST_UID set from host for Linux permissions
 - [x] Dev server timeout warning
