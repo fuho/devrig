@@ -6,7 +6,7 @@
  */
 
 import { execFileSync, spawn } from 'node:child_process';
-import { existsSync, mkdirSync, writeFileSync, chmodSync, rmSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, mkdirSync, writeFileSync, chmodSync, rmSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 const NPM_PKG = '@anthropic-ai/claude-code';
@@ -123,6 +123,22 @@ function setupChromeBridge() {
   ], { stdio: 'ignore', detached: true }).unref();
 
   log(`Chrome bridge: ${sockPath} → host.docker.internal:${bridgePort}`);
+
+  // Write MCP server config so Claude Code picks up the chrome bridge on first start
+  const settingsPath = join(home, '.claude', 'settings.json');
+  let settings = {};
+  if (existsSync(settingsPath)) {
+    try {
+      settings = JSON.parse(readFileSync(settingsPath, 'utf8'));
+    } catch { /* start fresh */ }
+  }
+  settings.mcpServers = settings.mcpServers || {};
+  settings.mcpServers['claude-in-chrome'] = {
+    type: 'stdio',
+    command: hostScript,
+  };
+  writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n');
+  log('Wrote MCP config for claude-in-chrome');
 }
 
 // -- Main --------------------------------------------------------------------

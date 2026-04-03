@@ -9,49 +9,49 @@ import { log, die } from './log.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-const AGENTS_START = '<!-- devrig:start -->';
-const AGENTS_END = '<!-- devrig:end -->';
+const DEVRIG_START = '<!-- devrig:start -->';
+const DEVRIG_END = '<!-- devrig:end -->';
 
 /**
- * Generates or updates the devrig section in AGENTS.md.
+ * Generates or updates the devrig section in CLAUDE.md.
  * @param {string} projectDir
  * @param {{ tool: string, dev_server_port: number, bridge_enabled: boolean, bridge_port: number }} cfg
  */
-export function generateAgentsMd(projectDir, cfg) {
-  const agentsPath = join(projectDir, 'AGENTS.md');
+export function generateClaudeMd(projectDir, cfg) {
+  const claudeMdPath = join(projectDir, 'CLAUDE.md');
   const block = [
-    AGENTS_START,
+    DEVRIG_START,
     '## devrig',
     '',
-    'This project uses devrig to run AI agents in a Docker container.',
+    'You are running inside a devrig Docker container.',
     '',
     `- **Workspace:** /workspace`,
     `- **Dev server:** http://localhost:${cfg.dev_server_port}`,
     `- **Chrome bridge:** ${cfg.bridge_enabled ? `enabled (port ${cfg.bridge_port})` : 'disabled'}`,
     '',
-    `When starting a session, open http://localhost:${cfg.dev_server_port}?agent=${cfg.tool} in your Chrome MCP tab`,
-    'group to see the project and confirm the connection.',
+    `On first message, open http://localhost:${cfg.dev_server_port}?agent=${cfg.tool} in your Chrome MCP tab`,
+    'group to confirm the connection and see the project.',
     '',
     'Git push is blocked inside this container. Make commits freely — the user will',
     'review and push from the host.',
-    AGENTS_END,
+    DEVRIG_END,
   ].join('\n');
 
-  if (existsSync(agentsPath)) {
-    let content = readFileSync(agentsPath, 'utf8');
-    const startIdx = content.indexOf(AGENTS_START);
-    const endIdx = content.indexOf(AGENTS_END);
+  if (existsSync(claudeMdPath)) {
+    let content = readFileSync(claudeMdPath, 'utf8');
+    const startIdx = content.indexOf(DEVRIG_START);
+    const endIdx = content.indexOf(DEVRIG_END);
     if (startIdx !== -1 && endIdx !== -1) {
-      content = content.slice(0, startIdx) + block + content.slice(endIdx + AGENTS_END.length);
+      content = content.slice(0, startIdx) + block + content.slice(endIdx + DEVRIG_END.length);
     } else {
       const sep = content.endsWith('\n') ? '\n' : '\n\n';
       content = content + sep + block + '\n';
     }
-    writeFileSync(agentsPath, content);
+    writeFileSync(claudeMdPath, content);
   } else {
-    writeFileSync(agentsPath, block + '\n');
+    writeFileSync(claudeMdPath, block + '\n');
   }
-  log('Generated AGENTS.md');
+  log('Generated CLAUDE.md');
 }
 
 /** Scaffolds .devrig/ directory, sets permissions, and runs configuration wizard. */
@@ -126,12 +126,12 @@ export async function init(projectDir) {
   // Run configuration wizard
   await configure(projectDir);
 
-  // Generate AGENTS.md with devrig section
+  // Generate CLAUDE.md with devrig section
   try {
     const cfg = loadConfig(projectDir);
-    generateAgentsMd(projectDir, cfg);
+    generateClaudeMd(projectDir, cfg);
   } catch {
-    log('WARNING: Could not generate AGENTS.md');
+    log('WARNING: Could not generate CLAUDE.md');
   }
 
   // Summary of what was created
@@ -144,7 +144,7 @@ export async function init(projectDir) {
   console.log(
     '  .gitignore         Updated with .devrig/logs/, .devrig/home/, .devrig/session.json',
   );
-  console.log('  AGENTS.md          Instructions for AI agents');
+  console.log('  CLAUDE.md          Instructions for Claude Code (auto-loaded on session start)');
   console.log('');
 
   // Show config files
