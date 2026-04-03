@@ -2,65 +2,18 @@
 
 # devrig
 
-**Run AI coding agents in Docker so they can't break your machine.**
+**Run [Claude Code](https://docs.anthropic.com/en/docs/claude-code) in Docker so it can't break your machine.**
 
-AI agents install packages, modify system files, run arbitrary commands. devrig gives them a containerized playground with your project mounted, optional browser control, and git safety rails. Two commands to start, zero runtime dependencies.
+Claude Code is powerful — it installs packages, modifies system files, and runs arbitrary commands on your behalf. devrig gives it a containerized playground with your project mounted, optional Chrome browser control, and git safety rails. Two commands to start, zero runtime dependencies. Support for other CLI AI tools may be added in the future.
 
 ## Why devrig?
 
-- **Isolation** — the AI runs in a Docker container. Your host system stays untouched.
-- **Git safety** — `git push` is blocked inside the container. `git pull` on master is blocked. The AI can commit freely but can't ship broken code.
-- **Browser control** — the AI can see and interact with your running app through Chrome, not just edit files blind.
+- **Isolation** — Claude Code runs in a Docker container. Your host system stays untouched. This makes `--dangerously-skip-permissions` safe to use — the container _is_ the sandbox.
+- **Git safety** — `git push` is blocked inside the container. `git pull` on master is blocked. No SSH keys, no access to your remote repos. Claude can commit freely but can't ship broken code.
+- **Browser control** — Claude Code inside Docker can't access a browser on its own. devrig bridges that gap by relaying Chrome's debugging protocol into the container, letting Claude see and interact with your running app.
 - **Zero config** — `npx devrig init` scaffolds everything. No Dockerfiles to write, no compose files to maintain.
 - **Clean host** — no global packages, no Claude Code installation on your machine, no leftover processes after sessions end.
 - **Reproducible** — commit `.devrig/` to your repo and your whole team gets the same containerized setup.
-
-## How It Works
-
-```mermaid
-flowchart TD
-    A([devrig start]):::dark --> B[Build Docker image]
-    B --> C[Start container]
-    C --> D{Chrome bridge?}
-    D -->|yes| E[Start bridge]
-    D -->|no| F{Dev server?}
-    E --> F
-    F -->|yes| G[Start dev server]
-    F -->|no| H[Open browser]
-    G --> H
-    H --> I[Wait for Claude Code]
-    I --> J[Connect TTY]
-    J --> K([You're coding with AI]):::dark
-
-    classDef dark fill:#1a1a2e,color:#e0e0ff,stroke:#4a4aff
-```
-
-<details>
-<summary>ASCII version (for terminals)</summary>
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                        Host machine                         │
-│                                                             │
-│   devrig CLI ──────────────────────────────────────────┐   │
-│                                                         │   │
-│   Chrome (browser) ◄── chrome bridge (port 9229)       │   │
-│                                                         │   │
-│   Dev server (npm run dev, port 3000)                   │   │
-│                                                         │   │
-│   ┌─────────────────────────────────────────────────┐  │   │
-│   │               Docker container                  │  │   │
-│   │                                                 │  │   │
-│   │   /workspace  (your project, bind-mounted)      │  │   │
-│   │                                                 │  │   │
-│   │   Claude Code ◄──────────────────────────────── ┼──┘   │
-│   │                                                 │      │
-│   │   tools: git, ripgrep, gh, pnpm, jq, vim...    │      │
-│   └─────────────────────────────────────────────────┘      │
-└─────────────────────────────────────────────────────────────┘
-```
-
-</details>
 
 ## Quick Start
 
@@ -91,7 +44,7 @@ Here's what `devrig start` looks like:
 [devrig] Connecting to Claude Code in container...
 ```
 
-From here you're inside Claude Code with your project at `/workspace`. When you're done, Ctrl+C or type `/exit` — devrig cleans up everything automatically.
+From here you're inside [Claude Code](https://docs.anthropic.com/en/docs/claude-code) with your project at `/workspace`, running with `--dangerously-skip-permissions` so there are no confirmation prompts. When you're done, Ctrl+C or type `/exit` — devrig cleans up everything automatically.
 
 ## CLI
 
@@ -159,30 +112,11 @@ GIT_AUTHOR_NAME=Your Name
 GIT_AUTHOR_EMAIL=you@example.com
 ```
 
-<details>
-<summary>SSH &amp; Git setup</summary>
-
-`.devrig/home/` is mounted as `/home/dev` inside the container — so anything you put there is available to the AI agent as its home directory.
-
 > [!TIP]
-> Copy your SSH config and key into `.devrig/home/.ssh/`:
->
-> ```
-> Host github.com
->     HostName github.com
->     User git
->     IdentityFile ~/.ssh/id_ed25519
->     IdentitiesOnly yes
-> ```
->
-> Copy the config to `.devrig/home/.ssh/config` and your key to `.devrig/home/.ssh/`.
+> `CLAUDE_PARAMS=--dangerously-skip-permissions` lets Claude Code run without confirmation prompts. Normally risky on a host machine, but inside devrig's container it's safe — the container is the sandbox. The config wizard sets this by default.
 
-Use a passwordless key — passphrase-protected keys won't work inside the container without an ssh-agent relay.
-
-> [!WARNING]
-> `.devrig/home/` is gitignored by default. Your SSH keys will never be accidentally committed to version control.
-
-</details>
+> [!NOTE]
+> The container has **no SSH keys and no access to your remote repos** by design. This is a security feature — Claude Code can modify files and make commits locally, but it cannot push code, access private repositories, or reach any remote service via SSH. You review and push from your host.
 
 ### Session Management
 
@@ -200,7 +134,7 @@ Use a passwordless key — passphrase-protected keys won't work inside the conta
 | **Base image**  | `node:25-slim`                                                           |
 | **Tools**       | git, ripgrep, gh, socat, vim, tree, pnpm, curl, jq                       |
 | **User**        | `dev` with UID matching your host (no permission issues on Linux)        |
-| **Git safety**  | `git push` blocked, `git pull` on master blocked                         |
+| **Git safety**  | `git push` blocked, `git pull` on master blocked, no SSH keys            |
 | **Resources**   | 8 GB memory, 4 CPUs (edit compose files to change)                       |
 | **Claude Code** | Installed automatically on first start (native or npm)                   |
 | **Volumes**     | Project at `/workspace`, node_modules persisted, home dir at `/home/dev` |

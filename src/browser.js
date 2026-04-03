@@ -1,14 +1,10 @@
+// @ts-check
 import { platform } from 'node:os';
 import { existsSync } from 'node:fs';
 import { spawn, execFileSync } from 'node:child_process';
 import { log } from './log.js';
 
-const MAC_BROWSERS = [
-  'Google Chrome',
-  'Google Chrome Canary',
-  'Google Chrome Dev',
-  'Chromium',
-];
+const MAC_BROWSERS = ['Google Chrome', 'Google Chrome Canary', 'Google Chrome Dev', 'Chromium'];
 
 const LINUX_BROWSERS = [
   'google-chrome',
@@ -19,6 +15,7 @@ const LINUX_BROWSERS = [
   'chromium',
 ];
 
+/** Opens a URL in Chrome/Chromium. Supports macOS and Linux. */
 export function openBrowser(url) {
   const os = platform();
 

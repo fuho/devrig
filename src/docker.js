@@ -1,7 +1,7 @@
+// @ts-check
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
-import { die } from './log.js';
 
 const BUILD_LABEL = 'devrig.build.hash';
 
@@ -10,10 +10,14 @@ const BUILD_LABEL = 'devrig.build.hash';
  */
 export function composeCmd(ctx, ...args) {
   return [
-    'docker', 'compose',
-    '--project-directory', '.',
-    '--project-name', ctx.project,
-    '-f', ctx.composeFile,
+    'docker',
+    'compose',
+    '--project-directory',
+    '.',
+    '--project-name',
+    ctx.project,
+    '-f',
+    ctx.composeFile,
     ...args,
   ];
 }
@@ -48,10 +52,11 @@ export function buildHash(ctx) {
 export function needsRebuild(ctx) {
   let imageHash;
   try {
-    const result = execFileSync('docker', [
-      'inspect', ctx.image,
-      '--format', `{{index .Config.Labels "${BUILD_LABEL}"}}`,
-    ], { encoding: 'utf-8' });
+    const result = execFileSync(
+      'docker',
+      ['inspect', ctx.image, '--format', `{{index .Config.Labels "${BUILD_LABEL}"}}`],
+      { encoding: 'utf-8' },
+    );
     imageHash = result.trim();
   } catch {
     imageHash = 'none';

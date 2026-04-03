@@ -23,23 +23,23 @@
  *
  * Based on: https://github.com/vaclavpavek/claude-code-remote-chrome
  */
-"use strict";
+'use strict';
 
-const net = require("net");
-const fs = require("fs");
-const path = require("path");
-const os = require("os");
+const net = require('net');
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
 
 // Chrome's NMH extension creates .sock files here; the directory name includes
 // the username so multiple users on the same machine don't collide.
 const SOCK_DIR = `/tmp/claude-mcp-browser-bridge-${process.env.BRIDGE_USER || os.userInfo().username}`;
-const TCP_PORT = parseInt(process.env.BRIDGE_PORT || "9229", 10);
-const TCP_HOST = process.env.BRIDGE_HOST || "0.0.0.0";
+const TCP_PORT = parseInt(process.env.BRIDGE_PORT || '9229', 10);
+const TCP_HOST = process.env.BRIDGE_HOST || '0.0.0.0';
 
 // ── Logging to file with size-based rotation ────────────────────────────────
 const LOG_FILE = process.env.BRIDGE_LOG_DIR
-  ? path.join(process.env.BRIDGE_LOG_DIR, "bridge-host.log")
-  : path.join(os.tmpdir(), "bridge-host.log");
+  ? path.join(process.env.BRIDGE_LOG_DIR, 'bridge-host.log')
+  : path.join(os.tmpdir(), 'bridge-host.log');
 const LOG_MAX_BYTES = 100 * 1024 * 1024; // 100 MB
 const LOG_CHECK_INTERVAL = 60 * 60 * 1000; // 1 hour
 
@@ -48,14 +48,23 @@ function rotateIfNeeded() {
     const stat = fs.statSync(LOG_FILE);
     if (stat.size > LOG_MAX_BYTES) {
       fs.truncateSync(LOG_FILE, 0);
-      fs.appendFileSync(LOG_FILE, `[bridge-host] Log rotated (was ${(stat.size / 1024 / 1024).toFixed(1)} MB)\n`);
+      fs.appendFileSync(
+        LOG_FILE,
+        `[bridge-host] Log rotated (was ${(stat.size / 1024 / 1024).toFixed(1)} MB)\n`,
+      );
     }
-  } catch { /* file doesn't exist yet */ }
+  } catch {
+    /* file doesn't exist yet */
+  }
 }
 
 function log(msg) {
   const line = `[bridge-host] ${msg}\n`;
-  try { fs.appendFileSync(LOG_FILE, line); } catch { /* best-effort */ }
+  try {
+    fs.appendFileSync(LOG_FILE, line);
+  } catch {
+    /* best-effort */
+  }
 }
 
 // Check log size at startup and every hour.
@@ -70,7 +79,7 @@ function isSocketAlive(sockPath) {
       conn.destroy();
       resolve(true);
     });
-    conn.on("error", () => resolve(false));
+    conn.on('error', () => resolve(false));
     conn.setTimeout(500, () => {
       conn.destroy();
       resolve(false);
@@ -82,7 +91,7 @@ function isSocketAlive(sockPath) {
 async function pruneStale() {
   let files;
   try {
-    files = fs.readdirSync(SOCK_DIR).filter((f) => f.endsWith(".sock"));
+    files = fs.readdirSync(SOCK_DIR).filter((f) => f.endsWith('.sock'));
   } catch {
     return;
   }
@@ -90,7 +99,11 @@ async function pruneStale() {
     const p = path.join(SOCK_DIR, f);
     if (!(await isSocketAlive(p))) {
       log(`Removing stale socket: ${p}`);
-      try { fs.unlinkSync(p); } catch { /* already gone */ }
+      try {
+        fs.unlinkSync(p);
+      } catch {
+        /* already gone */
+      }
     }
   }
 }
@@ -99,7 +112,7 @@ async function pruneStale() {
 // alphabetically and pick the last one (most recent by naming convention).
 function findSock() {
   try {
-    const files = fs.readdirSync(SOCK_DIR).filter((f) => f.endsWith(".sock"));
+    const files = fs.readdirSync(SOCK_DIR).filter((f) => f.endsWith('.sock'));
     if (files.length === 0) return null;
     files.sort();
     return path.join(SOCK_DIR, files[files.length - 1]);
@@ -129,19 +142,19 @@ const server = net.createServer((tcpConn) => {
   tcpConn.pipe(nmh);
   nmh.pipe(tcpConn);
 
-  tcpConn.on("error", (e) => {
+  tcpConn.on('error', (e) => {
     log(`TCP error: ${e.message}`);
     nmh.destroy();
   });
-  nmh.on("error", (e) => {
+  nmh.on('error', (e) => {
     log(`NMH error: ${e.message}`);
     tcpConn.destroy();
   });
-  tcpConn.on("close", () => {
+  tcpConn.on('close', () => {
     log(`TCP client ${addr} disconnected`);
     nmh.destroy();
   });
-  nmh.on("close", () => {
+  nmh.on('close', () => {
     log(`NMH disconnected`);
     tcpConn.destroy();
   });

@@ -1,6 +1,16 @@
 import { describe, it, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { cpSync, chmodSync, readFileSync, writeFileSync, existsSync, statSync, mkdtempSync, rmSync, mkdirSync } from 'node:fs';
+import {
+  cpSync,
+  chmodSync,
+  readFileSync,
+  writeFileSync,
+  existsSync,
+  statSync,
+  mkdtempSync,
+  rmSync,
+  mkdirSync,
+} from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
@@ -10,7 +20,9 @@ const scaffoldDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'scaffol
 
 describe('init scaffold', () => {
   let tmp;
-  afterEach(() => { if (tmp) rmSync(tmp, { recursive: true, force: true }); });
+  afterEach(() => {
+    if (tmp) rmSync(tmp, { recursive: true, force: true });
+  });
 
   it('copies scaffold files and sets executable permissions', () => {
     tmp = mkdtempSync(join(tmpdir(), 'cdev-init-'));
@@ -20,9 +32,15 @@ describe('init scaffold', () => {
     chmodSync(join(target, 'container-setup.js'), 0o755);
 
     const expected = [
-      'Dockerfile', 'Dockerfile.npm', 'compose.yml', 'compose.npm.yml',
-      'entrypoint.sh', 'container-setup.js', 'devrig.toml.example',
-      'template/index.html', 'template/package.json',
+      'Dockerfile',
+      'Dockerfile.npm',
+      'compose.yml',
+      'compose.npm.yml',
+      'entrypoint.sh',
+      'container-setup.js',
+      'devrig.toml.example',
+      'template/index.html',
+      'template/package.json',
     ];
     for (const f of expected) assert.ok(existsSync(join(target, f)), `${f} missing`);
 
@@ -46,7 +64,9 @@ describe('init scaffold', () => {
 describe('gitignore update', () => {
   let tmp;
   const entries = ['.devrig/logs/', '.devrig/home/'];
-  afterEach(() => { if (tmp) rmSync(tmp, { recursive: true, force: true }); });
+  afterEach(() => {
+    if (tmp) rmSync(tmp, { recursive: true, force: true });
+  });
 
   function applyGitignore(projectDir) {
     const p = join(projectDir, '.gitignore');
@@ -88,7 +108,9 @@ describe('gitignore update', () => {
 
 describe('devrig.toml.example copy', () => {
   let tmp;
-  afterEach(() => { if (tmp) rmSync(tmp, { recursive: true, force: true }); });
+  afterEach(() => {
+    if (tmp) rmSync(tmp, { recursive: true, force: true });
+  });
 
   it('copies devrig.toml.example to project root', () => {
     tmp = mkdtempSync(join(tmpdir(), 'cdev-toml-'));

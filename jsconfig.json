@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": false,
+    "noEmit": true,
+    "strict": false,
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "skipLibCheck": true,
+    "types": ["node"],
+    "resolveJsonModule": true
+  },
+  "include": ["src/**/*.js", "bin/**/*.js"],
+  "exclude": ["node_modules", "scaffold", ".devrig", "test"]
+}

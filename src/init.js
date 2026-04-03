@@ -1,13 +1,15 @@
+// @ts-check
 import { cpSync, chmodSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createInterface } from 'node:readline/promises';
 import { getPackageVersion } from './config.js';
 import { configure } from './configure.js';
-import { log } from './log.js';
+import { log, die } from './log.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
+/** Scaffolds .devrig/ directory, sets permissions, and runs configuration wizard. */
 export async function init(projectDir) {
   const scaffoldDir = join(__dirname, '..', 'scaffold');
   const targetDir = join(projectDir, '.devrig');
@@ -15,7 +17,9 @@ export async function init(projectDir) {
   // Warn if .devrig/ already exists
   if (existsSync(targetDir)) {
     const rl = createInterface({ input: process.stdin, output: process.stdout });
-    const answer = (await rl.question('  .devrig/ already exists. Overwrite? [y/N]: ')).trim().toLowerCase();
+    const answer = (await rl.question('  .devrig/ already exists. Overwrite? [y/N]: '))
+      .trim()
+      .toLowerCase();
     rl.close();
     if (answer !== 'y' && answer !== 'yes') {
       console.log('  Aborted.');
@@ -25,19 +29,31 @@ export async function init(projectDir) {
 
   // Copy scaffold files into .devrig/
   log('Copying scaffold files to .devrig/...');
-  cpSync(scaffoldDir, targetDir, { recursive: true });
+  try {
+    cpSync(scaffoldDir, targetDir, { recursive: true });
+  } catch (err) {
+    die(`Failed to copy scaffold files: ${err.message}`);
+  }
 
   // Set executable permissions on key files
-  chmodSync(join(targetDir, 'entrypoint.sh'), 0o755);
-  chmodSync(join(targetDir, 'container-setup.js'), 0o755);
+  try {
+    chmodSync(join(targetDir, 'entrypoint.sh'), 0o755);
+    chmodSync(join(targetDir, 'container-setup.js'), 0o755);
+  } catch (err) {
+    die(`Failed to set file permissions: ${err.message}`);
+  }
 
   // Write version marker
   const version = getPackageVersion();
-  writeFileSync(join(targetDir, '.devrig-version'), version + '\n');
+  try {
+    writeFileSync(join(targetDir, '.devrig-version'), version + '\n');
+  } catch (err) {
+    log(`WARNING: Could not write version marker: ${err.message}`);
+  }
 
   // Append .gitignore entries if not already present
   const gitignorePath = join(projectDir, '.gitignore');
-  const gitignoreEntries = ['.devrig/logs/', '.devrig/home/'];
+  const gitignoreEntries = ['.devrig/logs/', '.devrig/home/', '.devrig/session.json'];
   let existing = existsSync(gitignorePath) ? readFileSync(gitignorePath, 'utf8') : '';
 
   const missing = gitignoreEntries.filter((entry) => !existing.includes(entry));

@@ -1,3 +1,4 @@
+// @ts-check
 import { createInterface } from 'node:readline/promises';
 import { readFileSync, writeFileSync, existsSync, copyFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
@@ -19,36 +20,52 @@ async function askYN(rl, prompt, defaultVal = true) {
 
 function parsePort(value, fallback) {
   const n = parseInt(value, 10);
-  return (Number.isInteger(n) && n >= 1 && n <= 65535) ? n : fallback;
+  return Number.isInteger(n) && n >= 1 && n <= 65535 ? n : fallback;
 }
 
 function gitConfig(key) {
   try {
     return execFileSync('git', ['config', '--global', key], { encoding: 'utf8' }).trim();
-  } catch { return ''; }
+  } catch {
+    return '';
+  }
 }
 
+/** Interactive configuration wizard. Generates devrig.toml and .env from user input. */
 export async function configure(projectDir) {
   const rl = createInterface({ input: process.stdin, output: process.stdout });
-  rl.on('close', () => { console.log('\nAborted.'); process.exit(1); });
+  rl.on('close', () => {
+    console.log('\nAborted.');
+    process.exit(1);
+  });
 
   const tomlPath = join(projectDir, 'devrig.toml');
   if (existsSync(tomlPath)) {
     const overwrite = await askYN(rl, 'devrig.toml already exists. Overwrite?', false);
-    if (!overwrite) { rl.close(); return; }
+    if (!overwrite) {
+      rl.close();
+      return;
+    }
   }
 
   console.log('\n  devrig \u2014 Configuration');
-  console.log('  \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n');
+  console.log(
+    '  \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n',
+  );
 
   let project = await ask(rl, 'Project name', basename(projectDir));
-  project = project.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/^-+|-+$/g, '');
+  project = project
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, '-')
+    .replace(/^-+|-+$/g, '');
   if (!project) project = 'my-project';
   const tool = await ask(rl, 'AI tool', 'claude');
 
   // Dev server
   const useDevServer = await askYN(rl, 'Start a dev server on the host?');
-  let devCommand = '', devPort = 0, devTimeout = 0;
+  let devCommand = '',
+    devPort = 0,
+    devTimeout = 0;
   if (useDevServer) {
     devCommand = await ask(rl, 'Dev server command', 'npm run dev');
     devPort = parsePort(await ask(rl, 'Dev server port', '3000'), 3000);

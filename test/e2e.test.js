@@ -34,7 +34,9 @@ function runInit(cwd, answers) {
         promptCount++;
       }
     });
-    child.stderr.on('data', (d) => { stderr += d.toString(); });
+    child.stderr.on('data', (d) => {
+      stderr += d.toString();
+    });
 
     const timer = setTimeout(() => {
       child.kill();
@@ -57,8 +59,17 @@ describe('e2e: devrig init', () => {
       //   project name, tool, dev server Y, command, port, timeout,
       //   chrome Y, port, git name, git email, copy template Y
       const answers = [
-        'e2e-test', 'claude', 'y', 'npm run dev', '3000', '10',
-        'y', '9229', 'E2E Tester', 'e2e@test.com', 'y',
+        'e2e-test',
+        'claude',
+        'y',
+        'npm run dev',
+        '3000',
+        '10',
+        'y',
+        '9229',
+        'E2E Tester',
+        'e2e@test.com',
+        'y',
       ];
 
       await runInit(tmpDir, answers);
@@ -69,7 +80,10 @@ describe('e2e: devrig init', () => {
       assert.ok(existsSync(join(tmpDir, '.devrig', 'compose.yml')), 'compose.yml exists');
       assert.ok(existsSync(join(tmpDir, '.devrig', 'compose.npm.yml')), 'compose.npm.yml exists');
       assert.ok(existsSync(join(tmpDir, '.devrig', 'entrypoint.sh')), 'entrypoint.sh exists');
-      assert.ok(existsSync(join(tmpDir, '.devrig', 'container-setup.js')), 'container-setup.js exists');
+      assert.ok(
+        existsSync(join(tmpDir, '.devrig', 'container-setup.js')),
+        'container-setup.js exists',
+      );
 
       // Verify version marker
       assert.ok(existsSync(join(tmpDir, '.devrig', '.devrig-version')), 'version marker exists');
@@ -95,7 +109,6 @@ describe('e2e: devrig init', () => {
       // Verify template files copied (we said yes)
       assert.ok(existsSync(join(tmpDir, 'package.json')), 'template package.json copied');
       assert.ok(existsSync(join(tmpDir, 'index.html')), 'template index.html copied');
-
     } finally {
       rmSync(tmpDir, { recursive: true, force: true });
     }

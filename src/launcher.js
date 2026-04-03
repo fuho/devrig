@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * launcher.js — Main orchestrator for devrig.
  * Ported from Python launcher.py.
@@ -5,29 +6,14 @@
  */
 
 import { execFileSync, spawn } from 'node:child_process';
-import {
-  existsSync,
-  readFileSync,
-  openSync,
-  closeSync,
-  readSync,
-  fstatSync,
-  mkdirSync,
-  statSync,
-} from 'node:fs';
+import { existsSync, openSync, closeSync, readSync, fstatSync, mkdirSync, statSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { parseArgs } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { userInfo } from 'node:os';
 import { log, die } from './log.js';
 import { loadConfig, loadDotenv, resolveProjectDir } from './config.js';
-import {
-  composeCmd,
-  buildHash,
-  needsRebuild,
-  startContainer,
-  initVariant,
-} from './docker.js';
+import { composeCmd, buildHash, needsRebuild, startContainer, initVariant } from './docker.js';
 import { openBrowser } from './browser.js';
 import {
   registerProcess,
@@ -36,6 +22,7 @@ import {
   setupSignalHandlers,
   disableSignalHandlers,
 } from './cleanup.js';
+import { acquireSession, checkScaffoldStaleness } from './session.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -76,6 +63,7 @@ function printNewLogLines(logPath, lastPos) {
 // Main entry point
 // ---------------------------------------------------------------------------
 
+/** Main orchestrator: builds container, starts services, connects to Claude Code. */
 export async function launch(argv) {
   // -- Step 1: Resolve project directory (launcher.py: resolve project dir) --
   const projectDir = resolveProjectDir();
@@ -83,14 +71,17 @@ export async function launch(argv) {
   // -- Step 2: Load configuration (launcher.py: load config) ----------------
   const cfg = loadConfig(projectDir);
 
+  // -- Step 2b: Scaffold staleness check -------------------------------------
+  checkScaffoldStaleness(projectDir);
+
   // -- Step 3: Parse CLI flags (launcher.py: parse arguments) ---------------
   const { values: args } = parseArgs({
     args: argv,
     options: {
-      npm:            { type: 'boolean', default: false },
-      rebuild:        { type: 'boolean', default: false },
-      'no-chrome':    { type: 'boolean', default: false },
-      'no-dev-server':{ type: 'boolean', default: false },
+      npm: { type: 'boolean', default: false },
+      rebuild: { type: 'boolean', default: false },
+      'no-chrome': { type: 'boolean', default: false },
+      'no-dev-server': { type: 'boolean', default: false },
     },
     strict: false,
   });
@@ -144,9 +135,22 @@ export async function launch(argv) {
     log('WARNING: .env not found');
   }
 
+  // -- Step 7b: Acquire session lock ------------------------------------------
+  const sessionInfo = {
+    pid: process.pid,
+    startedAt: new Date().toISOString(),
+    project: cfg.project,
+    bridgePort: cfg.bridge_enabled ? cfg.bridge_port : null,
+    devServerPort: cfg.dev_server_cmd ? cfg.dev_server_port : null,
+    bridgePid: null,
+    devServerPid: null,
+    composeArgs: composeCmd(ctx).slice(1),
+  };
+  acquireSession(projectDir, sessionInfo);
+
   // -- Step 8: Signal handlers & compose args -------------------------------
   setupSignalHandlers();
-  setComposeArgs(composeCmd(ctx).slice(1)); // slice off 'docker'
+  setComposeArgs(sessionInfo.composeArgs);
 
   // -- Step 9: Build / rebuild Docker image ---------------------------------
   const rebuild = args.rebuild || needsRebuild(ctx);
@@ -167,10 +171,7 @@ export async function launch(argv) {
 
   // -- Step 11: Start Chrome bridge (launcher.py: chrome bridge) ------------
   if (cfg.bridge_enabled && !args['no-chrome']) {
-    const bridgeScript = join(
-      dirname(fileURLToPath(import.meta.url)),
-      'bridge-host.cjs',
-    );
+    const bridgeScript = join(dirname(fileURLToPath(import.meta.url)), 'bridge-host.cjs');
     const stderrLog = openSync(join(logsDir, 'bridge-host.err'), 'w');
     const bridgeProc = spawn('node', [bridgeScript], {
       stdio: ['ignore', 'inherit', stderrLog],
@@ -188,6 +189,7 @@ export async function launch(argv) {
       die(`bridge-host failed to start (port ${cfg.bridge_port} may be in use)`);
     }
     log(`Chrome bridge started on port ${cfg.bridge_port}`);
+    sessionInfo.bridgePid = bridgeProc.pid;
   }
 
   // -- Step 12: Start dev server (launcher.py: dev server) ------------------
@@ -199,6 +201,7 @@ export async function launch(argv) {
       env: { ...process.env, PORT: String(cfg.dev_server_port) },
     });
     registerProcess('dev server', devProc);
+    sessionInfo.devServerPid = devProc.pid;
 
     // Poll for dev server readiness
     const devUrl = `http://localhost:${cfg.dev_server_port}`;
@@ -215,7 +218,9 @@ export async function launch(argv) {
       }
     }
     if (!devReady) {
-      log(`WARNING: Dev server did not respond within ${cfg.dev_server_timeout}s — continuing anyway`);
+      log(
+        `WARNING: Dev server did not respond within ${cfg.dev_server_timeout}s — continuing anyway`,
+      );
     }
 
     // -- Step 13: Open browser (launcher.py: open browser) ------------------
@@ -225,13 +230,12 @@ export async function launch(argv) {
     }
   }
 
+  // -- Step 13b: Update session with child PIDs ------------------------------
+  acquireSession(projectDir, sessionInfo);
+
   // -- Step 14: Wait for Claude readiness (launcher.py: wait for claude) ----
-  const sentinel = join(
-    projectDir, '.devrig', 'home', '.claude', 'logs', '.setup-ready',
-  );
-  const entrypointLog = join(
-    projectDir, '.devrig', 'home', '.claude', 'logs', 'entrypoint.log',
-  );
+  const sentinel = join(projectDir, '.devrig', 'home', '.claude', 'logs', '.setup-ready');
+  const entrypointLog = join(projectDir, '.devrig', 'home', '.claude', 'logs', 'entrypoint.log');
 
   log('Waiting for Claude Code to be ready in container...');
   let logPos = 0;
@@ -241,7 +245,7 @@ export async function launch(argv) {
   const start = Date.now();
   while (Date.now() - start < timeout * 1000) {
     if (existsSync(sentinel)) {
-      logPos = printNewLogLines(entrypointLog, logPos);
+      printNewLogLines(entrypointLog, logPos);
       log('Claude Code is ready.');
       break;
     }
@@ -254,26 +258,20 @@ export async function launch(argv) {
   }
 
   // -- Step 15: Exec into container (launcher.py: exec into container) ------
-  const containerId = execFileSync(
-    'docker',
-    composeCmd(ctx, 'ps', '-q', ctx.service).slice(1),
-    { encoding: 'utf8' },
-  ).trim();
+  const containerId = execFileSync('docker', composeCmd(ctx, 'ps', '-q', ctx.service).slice(1), {
+    encoding: 'utf8',
+  }).trim();
 
   if (!containerId) die('Container is not running');
 
-  const claudeParams = process.env.CLAUDE_PARAMS
-    ? process.env.CLAUDE_PARAMS.split(/\s+/)
-    : [];
+  const claudeParams = process.env.CLAUDE_PARAMS ? process.env.CLAUDE_PARAMS.split(/\s+/) : [];
 
   log('Connecting to Claude Code in container...');
   log(`CLAUDE_PARAMS: ${process.env.CLAUDE_PARAMS || '<none>'}`);
 
-  const child = spawn(
-    'docker',
-    ['exec', '-it', containerId, 'claude', ...claudeParams],
-    { stdio: 'inherit' },
-  );
+  const child = spawn('docker', ['exec', '-it', containerId, 'claude', ...claudeParams], {
+    stdio: 'inherit',
+  });
 
   // Let the child process own the terminal — disable our signal handlers
   disableSignalHandlers(child);

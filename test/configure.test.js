@@ -40,7 +40,9 @@ function runConfigure(tmpDir, answers) {
         promptCount++;
       }
     });
-    child.stderr.on('data', (d) => { stderr += d.toString(); });
+    child.stderr.on('data', (d) => {
+      stderr += d.toString();
+    });
 
     const timer = setTimeout(() => {
       child.kill();
@@ -63,11 +65,20 @@ describe('configure', () => {
       //   project name, tool, dev server Y, command, port, timeout,
       //   chrome Y, port, git name, git email, copy template N
       const answers = [
-        'test-project', 'claude', 'y', 'npm run dev', '3000', '10',
-        'y', '9229', 'Test User', 'test@example.com', 'n',
+        'test-project',
+        'claude',
+        'y',
+        'npm run dev',
+        '3000',
+        '10',
+        'y',
+        '9229',
+        'Test User',
+        'test@example.com',
+        'n',
       ];
 
-      const result = await runConfigure(tmpDir, answers);
+      await runConfigure(tmpDir, answers);
 
       // Verify devrig.toml was written
       const toml = readFileSync(join(tmpDir, 'devrig.toml'), 'utf8');
@@ -103,9 +114,7 @@ describe('configure', () => {
       writeFileSync(join(tmpDir, '.env'), existingEnv);
 
       // Answers: project name, tool, dev server N, chrome N, git name, git email, copy template N
-      const answers = [
-        'updated-proj', 'claude', 'n', 'n', 'New User', 'new@example.com', 'n',
-      ];
+      const answers = ['updated-proj', 'claude', 'n', 'n', 'New User', 'new@example.com', 'n'];
 
       await runConfigure(tmpDir, answers);
 
@@ -125,8 +134,17 @@ describe('configure', () => {
     try {
       // Feed bad project name (uppercase, spaces) and invalid port
       const answers = [
-        'My Cool Project!', 'claude', 'y', 'npm run dev', 'not-a-number', '10',
-        'y', '99999', 'Test User', 'test@example.com', 'n',
+        'My Cool Project!',
+        'claude',
+        'y',
+        'npm run dev',
+        'not-a-number',
+        '10',
+        'y',
+        '99999',
+        'Test User',
+        'test@example.com',
+        'n',
       ];
 
       await runConfigure(tmpDir, answers);

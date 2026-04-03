@@ -1,4 +1,4 @@
-import { describe, it, beforeEach, afterEach } from 'node:test';
+import { describe, it, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, realpathSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
@@ -162,11 +162,16 @@ describe('composeCmd', () => {
     const ctx = { project: 'test', composeFile: '.devrig/compose.yml' };
     const result = composeCmd(ctx, 'up', '-d');
     assert.deepStrictEqual(result, [
-      'docker', 'compose',
-      '--project-directory', '.',
-      '--project-name', 'test',
-      '-f', '.devrig/compose.yml',
-      'up', '-d',
+      'docker',
+      'compose',
+      '--project-directory',
+      '.',
+      '--project-name',
+      'test',
+      '-f',
+      '.devrig/compose.yml',
+      'up',
+      '-d',
     ]);
   });
 });
@@ -245,10 +250,11 @@ describe('resolveProjectDir', () => {
       // Run in a subprocess because die() calls process.exit(1) via a captured binding
       const srcPath = new URL('../src/config.js', import.meta.url).pathname;
       assert.throws(() => {
-        execFileSync('node', [
-          '-e',
-          `import { resolveProjectDir } from '${srcPath}'; resolveProjectDir();`,
-        ], { cwd: join(tmpDir, 'sub'), stdio: 'pipe' });
+        execFileSync(
+          'node',
+          ['-e', `import { resolveProjectDir } from '${srcPath}'; resolveProjectDir();`],
+          { cwd: join(tmpDir, 'sub'), stdio: 'pipe' },
+        );
       });
     } finally {
       rmSync(tmpDir, { recursive: true, force: true });
@@ -262,9 +268,18 @@ describe('resolveProjectDir', () => {
 
 describe('buildFiles', () => {
   it('returns the correct array of file paths', () => {
-    const ctx = { devrigDir: '.devrig', dockerfile: 'Dockerfile', composeFile: '.devrig/compose.yml' };
+    const ctx = {
+      devrigDir: '.devrig',
+      dockerfile: 'Dockerfile',
+      composeFile: '.devrig/compose.yml',
+    };
     const files = buildFiles(ctx);
-    assert.deepStrictEqual(files, ['.devrig/Dockerfile', '.devrig/entrypoint.sh', '.devrig/container-setup.js', '.devrig/compose.yml']);
+    assert.deepStrictEqual(files, [
+      '.devrig/Dockerfile',
+      '.devrig/entrypoint.sh',
+      '.devrig/container-setup.js',
+      '.devrig/compose.yml',
+    ]);
   });
 });
 

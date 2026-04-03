@@ -1,3 +1,4 @@
+// @ts-check
 import { readFileSync, existsSync, statSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -9,6 +10,7 @@ const CONFIG_FILE = 'devrig.toml';
 // 1. Hand-rolled TOML parser (flat sections, string/int values only)
 // ---------------------------------------------------------------------------
 
+/** Parses flat TOML text into a nested object (sections become keys). */
 export function parseTOML(text) {
   const result = {};
   let section = null;
@@ -54,6 +56,7 @@ export function parseTOML(text) {
 // 2. loadConfig(projectDir)
 // ---------------------------------------------------------------------------
 
+/** Loads devrig.toml and returns normalized config with defaults applied. */
 export function loadConfig(projectDir) {
   const configPath = join(projectDir, CONFIG_FILE);
 
@@ -83,6 +86,7 @@ export function loadConfig(projectDir) {
 // 3. loadDotenv(projectDir)
 // ---------------------------------------------------------------------------
 
+/** Loads .env file entries into process.env. No-op if .env is missing. */
 export function loadDotenv(projectDir) {
   const envPath = join(projectDir, '.env');
 
@@ -114,6 +118,7 @@ export function loadDotenv(projectDir) {
 // 4. resolveProjectDir()
 // ---------------------------------------------------------------------------
 
+/** Walks up from cwd to find devrig.toml or .devrig/. Stops at .git boundary. */
 export function resolveProjectDir() {
   let dir = process.cwd();
 
@@ -122,7 +127,9 @@ export function resolveProjectDir() {
     if (existsSync(join(dir, '.devrig'))) {
       try {
         if (statSync(join(dir, '.devrig')).isDirectory()) return dir;
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     }
 
     // Stop at .git boundary
@@ -140,6 +147,7 @@ export function resolveProjectDir() {
 // 5. getPackageVersion()
 // ---------------------------------------------------------------------------
 
+/** Returns the version string from this package's package.json. */
 export function getPackageVersion() {
   const thisFile = fileURLToPath(import.meta.url);
   const pkgPath = resolve(dirname(thisFile), '..', 'package.json');

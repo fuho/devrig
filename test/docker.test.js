@@ -4,7 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { needsRebuild, buildHash, buildFiles } from '../src/docker.js';
+import { needsRebuild, buildHash } from '../src/docker.js';
 
 describe('needsRebuild (Docker)', () => {
   const testImage = 'devrig-test-needsrebuild:latest';
@@ -34,13 +34,17 @@ describe('needsRebuild (Docker)', () => {
 
   after(() => {
     // Clean up test image
-    try { execFileSync('docker', ['rmi', testImage], { stdio: 'ignore' }); } catch {}
+    try {
+      execFileSync('docker', ['rmi', testImage], { stdio: 'ignore' });
+    } catch {}
     rmSync(tmpDir, { recursive: true, force: true });
   });
 
   it('returns true when image does not exist', () => {
     // Make sure image doesn't exist
-    try { execFileSync('docker', ['rmi', testImage], { stdio: 'ignore' }); } catch {}
+    try {
+      execFileSync('docker', ['rmi', testImage], { stdio: 'ignore' });
+    } catch {}
     assert.strictEqual(needsRebuild(ctx), true);
   });
 
@@ -50,7 +54,11 @@ describe('needsRebuild (Docker)', () => {
     // Use docker build with a label from stdin
     const dockerfile = `FROM scratch\nLABEL devrig.build.hash="${hash}"\n`;
     writeFileSync(join(ctx.devrigDir, 'Dockerfile.test'), dockerfile);
-    execFileSync('docker', ['build', '-t', testImage, '-f', join(ctx.devrigDir, 'Dockerfile.test'), ctx.devrigDir], { stdio: 'ignore' });
+    execFileSync(
+      'docker',
+      ['build', '-t', testImage, '-f', join(ctx.devrigDir, 'Dockerfile.test'), ctx.devrigDir],
+      { stdio: 'ignore' },
+    );
 
     assert.strictEqual(needsRebuild(ctx), false);
   });
