@@ -1,10 +1,37 @@
 # Changelog
 
+## 0.2.0 — 2026-04-03
+
+### Features
+
+- `devrig stop` — stop a running session from another terminal
+- `devrig status` — show running components and their state
+- Session lock — prevents parallel sessions on the same project with PID-based lock file
+- Scaffold staleness warning — alerts when `.devrig/` files are from an older version
+- Error hardening — user-friendly messages for file I/O failures in `devrig init`
+
+### Development
+
+- ESLint 9 with flat config and eslint-config-prettier
+- Prettier formatting (2-space indent, single quotes, trailing commas)
+- TypeScript JSDoc type checking via `tsc --checkJs`
+- Test coverage via Node's built-in `--experimental-test-coverage`
+- GitHub Actions CI across Node 18, 20, and 22
+- JSDoc on all exported functions
+- `npm run check` runs lint + format + typecheck + test in one command
+
+### Documentation
+
+- README rewritten with Mermaid architecture diagram, GitHub alerts, collapsible sections, badges
+- SSH & Git setup guide for containerized workflows
+- Expanded CLI and configuration reference tables
+
 ## 0.1.0 — 2026-04-03
 
 Initial release as a pure JavaScript npm package.
 
 ### Features
+
 - `devrig init` — scaffold `.devrig/` with Docker infrastructure and run config wizard
 - `devrig start` — build container, start Chrome bridge + dev server, attach to Claude Code
 - `devrig config` — re-run the configuration wizard
@@ -16,10 +43,12 @@ Initial release as a pure JavaScript npm package.
 - Scaffold staleness detection via `.devrig-version` marker
 
 ### Container
+
 - Based on `node:25-slim` with git, ripgrep, gh, socat, vim, tree, pnpm
 - Git safety: `push` blocked, `pull` on master blocked
 - Host UID matching for correct file permissions
 - Claude Code installed via native installer or npm (configurable)
 
 ### Prior art
+
 - Chrome bridge based on [claude-code-remote-chrome](https://github.com/vaclavpavek/claude-code-remote-chrome) by Vaclav Pavek
