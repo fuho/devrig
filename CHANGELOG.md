@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.2.1 — 2026-04-03
+
+### Security
+
+- Chrome bridge now listens on `127.0.0.1` instead of `0.0.0.0`
+- Session lock uses atomic file creation (`O_EXCL`) to prevent race conditions
+- README security messaging rewritten to be precise about what's protected (filesystem, git credentials) and what's not (network)
+
+### Fixes
+
+- File descriptor leak in launcher after spawning bridge and dev server
+- README clarifies what persists on exit vs what stops
+- Added `author`, `homepage`, `bugs` fields to package.json
+
 ## 0.2.0 — 2026-04-03
 
 ### Features
