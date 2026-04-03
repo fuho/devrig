@@ -14,6 +14,12 @@
   "engines": {
     "node": ">=18.3.0"
   },
+  "scripts": {
+    "test": "node --test test/unit.test.js test/init.test.js test/cleanup.test.js test/configure.test.js",
+    "test:docker": "node --test test/docker.test.js",
+    "test:e2e": "node --test test/e2e.test.js",
+    "test:all": "node --test test/*.test.js"
+  },
   "license": "MIT",
   "repository": {
     "type": "git",
