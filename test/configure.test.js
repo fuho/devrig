@@ -118,4 +118,28 @@ describe('configure', () => {
       rmSync(tmpDir, { recursive: true, force: true });
     }
   });
+
+  it('sanitizes project name and validates ports', async () => {
+    const tmpDir = mkdtempSync(join(tmpdir(), 'devrig-cfg-'));
+
+    try {
+      // Feed bad project name (uppercase, spaces) and invalid port
+      const answers = [
+        'My Cool Project!', 'claude', 'y', 'npm run dev', 'not-a-number', '10',
+        'y', '99999', 'Test User', 'test@example.com', 'n',
+      ];
+
+      await runConfigure(tmpDir, answers);
+
+      const toml = readFileSync(join(tmpDir, 'devrig.toml'), 'utf8');
+      // Project name should be sanitized to lowercase with hyphens
+      assert.ok(toml.includes('project = "my-cool-project"'), 'project name sanitized');
+      // Invalid port should fall back to default 3000
+      assert.ok(toml.includes('port = 3000'), 'invalid dev port falls back to 3000');
+      // Port 99999 is out of range, should fall back to 9229
+      assert.ok(toml.includes('port = 9229'), 'out-of-range chrome port falls back to 9229');
+    } finally {
+      rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
 });

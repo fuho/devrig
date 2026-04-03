@@ -2,8 +2,6 @@
 
 ## High priority
 
-- [ ] Validate port numbers in config wizard (range 1-65535, must be integer)
-- [ ] Validate project name for Docker naming rules (`^[a-z0-9][a-z0-9-]*$`)
 - [ ] Guard against parallel `devrig start` sessions (port/container conflicts)
 - [ ] `devrig update` — refresh scaffold files from newer package version while preserving config
 
@@ -19,11 +17,18 @@
 ## Low priority
 
 - [ ] `devrig doctor` — diagnose setup issues (Docker, Node, ports, config)
-- [ ] `--tunnel` flag — TTY diagnostic logging (needs node-pty or keep Python fallback)
 - [ ] Lock file to prevent concurrent sessions on same project
+- [ ] Document `.devrig/logs/` for TTY and bridge debugging
+
+## Done
+
+- [x] Port/project name validation
+- [x] HOST_UID set from host for Linux permissions
+- [x] Dev server timeout warning
+- [x] Config-missing error suggests `devrig init`
+- [x] Remove stale launcher.py reference from devrig.toml.example
 
 ## Known rough edges
 
-- compose.npm.yml doesn't explicitly set `CLAUDE_INSTALL_METHOD` (relies on container-setup.js default)
 - Template dev server uses `npx -y serve` which can hang on slow networks
 - No timeout enforcement for npm install inside container (second retry can hang)

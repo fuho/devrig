@@ -12,6 +12,7 @@ services:
       - ./.devrig/home:/home/dev
     environment:
       - CLAUDE_CONFIG_DIR=/home/dev/.claude
+      - CLAUDE_INSTALL_METHOD=npm
       - BRIDGE_PORT=9229
       - TERM=xterm-256color
       - NODE_OPTIONS=--max-old-space-size=4096
