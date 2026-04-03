@@ -51,13 +51,16 @@ From here you're inside [Claude Code](https://docs.anthropic.com/en/docs/claude-
 
 ## CLI
 
-| Command                | Description                                                |
-| ---------------------- | ---------------------------------------------------------- |
-| `devrig init`          | Scaffold `.devrig/` directory and run configuration wizard |
-| `devrig start [flags]` | Start a coding session (alias: `devrig claude`)            |
-| `devrig stop`          | Stop a running session from another terminal               |
-| `devrig status`        | Show whether container, bridge, and dev server are running |
-| `devrig config`        | Re-run the configuration wizard                            |
+| Command                | Description                                                  |
+| ---------------------- | ------------------------------------------------------------ |
+| `devrig init`          | Scaffold `.devrig/` directory and run configuration wizard   |
+| `devrig start [flags]` | Start a coding session (alias: `devrig claude`)              |
+| `devrig stop`          | Stop a running session from another terminal                 |
+| `devrig status`        | Show whether container, bridge, and dev server are running   |
+| `devrig config`        | Re-run the configuration wizard                              |
+| `devrig clean [-y]`    | Remove Docker images, volumes, and networks for this project |
+
+All commands support `--help` for usage details.
 
 ### Flags for `start`
 

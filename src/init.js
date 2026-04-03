@@ -74,4 +74,33 @@ export async function init(projectDir) {
 
   // Run configuration wizard
   await configure(projectDir);
+
+  // Summary of what was created
+  console.log('');
+  log("Done! Here's what was created:");
+  console.log('');
+  console.log('  .devrig/           Docker infrastructure (Dockerfile, compose, entrypoint)');
+  console.log('  devrig.toml        Project configuration');
+  console.log('  .env               Environment variables (git author, Claude params)');
+  console.log(
+    '  .gitignore         Updated with .devrig/logs/, .devrig/home/, .devrig/session.json',
+  );
+  console.log('');
+
+  // Show config files
+  const tomlPath = join(projectDir, 'devrig.toml');
+  const envPath = join(projectDir, '.env');
+  if (existsSync(tomlPath)) {
+    console.log('  ── devrig.toml ──');
+    console.log(readFileSync(tomlPath, 'utf8').replace(/^/gm, '  '));
+  }
+  if (existsSync(envPath)) {
+    console.log('  ── .env ──');
+    console.log(readFileSync(envPath, 'utf8').replace(/^/gm, '  '));
+  }
+
+  log('To start a session, run:');
+  console.log('');
+  console.log('  devrig start');
+  console.log('');
 }

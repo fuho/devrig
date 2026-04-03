@@ -268,8 +268,17 @@ export async function launch(argv) {
 
   const claudeParams = process.env.CLAUDE_PARAMS ? process.env.CLAUDE_PARAMS.split(/\s+/) : [];
 
+  // Inject --chrome if bridge is running; strip it if --no-chrome was passed
+  const bridgeRunning = cfg.bridge_enabled && !args['no-chrome'];
+  if (bridgeRunning && !claudeParams.includes('--chrome')) {
+    claudeParams.push('--chrome');
+  } else if (!bridgeRunning) {
+    const idx = claudeParams.indexOf('--chrome');
+    if (idx !== -1) claudeParams.splice(idx, 1);
+  }
+
   log('Connecting to Claude Code in container...');
-  log(`CLAUDE_PARAMS: ${process.env.CLAUDE_PARAMS || '<none>'}`);
+  log(`CLAUDE_PARAMS: ${claudeParams.join(' ') || '<none>'}`);
 
   const child = spawn('docker', ['exec', '-it', containerId, 'claude', ...claudeParams], {
     stdio: 'inherit',

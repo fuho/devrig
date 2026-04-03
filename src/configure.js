@@ -34,15 +34,19 @@ function gitConfig(key) {
 /** Interactive configuration wizard. Generates devrig.toml and .env from user input. */
 export async function configure(projectDir) {
   const rl = createInterface({ input: process.stdin, output: process.stdout });
+  let finished = false;
   rl.on('close', () => {
-    console.log('\nAborted.');
-    process.exit(1);
+    if (!finished) {
+      console.log('\nAborted.');
+      process.exit(1);
+    }
   });
 
   const tomlPath = join(projectDir, 'devrig.toml');
   if (existsSync(tomlPath)) {
     const overwrite = await askYN(rl, 'devrig.toml already exists. Overwrite?', false);
     if (!overwrite) {
+      finished = true;
       rl.close();
       return;
     }
@@ -138,6 +142,6 @@ export async function configure(projectDir) {
     }
   }
 
+  finished = true;
   rl.close();
-  console.log('\n  Done!\n');
 }

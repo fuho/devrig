@@ -2,6 +2,13 @@
 
 ## 0.2.2 — 2026-04-03
 
+### Features
+
+- `devrig clean` — remove Docker images, volumes, and networks for the current project (with `-y` to skip confirmation)
+- `--help` / `-h` support on all subcommands
+- `devrig init` now shows a summary of created files and next steps
+- `--chrome` flag automatically injected into Claude Code params when bridge is enabled (and stripped when `--no-chrome` is passed)
+
 ### Security
 
 - Chrome bridge now listens on `127.0.0.1` instead of `0.0.0.0`
@@ -11,6 +18,9 @@
 ### Fixes
 
 - File descriptor leak in launcher after spawning bridge and dev server
+- `devrig init` no longer prints "Aborted." on normal completion
+- Fixed CLAUDE_PARAMS log to show actual params including injected `--chrome`
+- Template `index.html` now shows correct `devrig start` command
 - README clarifies what persists on exit vs what stops
 - Added `author`, `homepage`, `bugs` fields to package.json
 
