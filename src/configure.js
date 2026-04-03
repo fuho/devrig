@@ -17,6 +17,11 @@ async function askYN(rl, prompt, defaultVal = true) {
   return answer === 'y' || answer === 'yes';
 }
 
+function parsePort(value, fallback) {
+  const n = parseInt(value, 10);
+  return (Number.isInteger(n) && n >= 1 && n <= 65535) ? n : fallback;
+}
+
 function gitConfig(key) {
   try {
     return execFileSync('git', ['config', '--global', key], { encoding: 'utf8' }).trim();
@@ -36,7 +41,9 @@ export async function configure(projectDir) {
   console.log('\n  devrig \u2014 Configuration');
   console.log('  \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n');
 
-  const project = await ask(rl, 'Project name', basename(projectDir));
+  let project = await ask(rl, 'Project name', basename(projectDir));
+  project = project.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/^-+|-+$/g, '');
+  if (!project) project = 'my-project';
   const tool = await ask(rl, 'AI tool', 'claude');
 
   // Dev server
@@ -44,15 +51,15 @@ export async function configure(projectDir) {
   let devCommand = '', devPort = 0, devTimeout = 0;
   if (useDevServer) {
     devCommand = await ask(rl, 'Dev server command', 'npm run dev');
-    devPort = parseInt(await ask(rl, 'Dev server port', '3000'), 10);
-    devTimeout = parseInt(await ask(rl, 'Startup timeout (s)', '10'), 10);
+    devPort = parsePort(await ask(rl, 'Dev server port', '3000'), 3000);
+    devTimeout = parseInt(await ask(rl, 'Startup timeout (s)', '10'), 10) || 10;
   }
 
   // Chrome bridge
   const useChrome = await askYN(rl, 'Enable Chrome browser bridge?');
   let chromePort = 0;
   if (useChrome) {
-    chromePort = parseInt(await ask(rl, 'Chrome debug port', '9229'), 10);
+    chromePort = parsePort(await ask(rl, 'Chrome debug port', '9229'), 9229);
   }
 
   // Build TOML

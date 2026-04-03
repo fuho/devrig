@@ -91,15 +91,9 @@ export async function launch(argv) {
       rebuild:        { type: 'boolean', default: false },
       'no-chrome':    { type: 'boolean', default: false },
       'no-dev-server':{ type: 'boolean', default: false },
-      tunnel:         { type: 'boolean', default: false },
     },
     strict: false,
   });
-
-  if (args.tunnel) {
-    log('Tunnel support is not yet available.');
-    process.exit(0);
-  }
 
   // -- Step 4: Initialize variant (launcher.py: init variant) ---------------
   const ctx = initVariant(cfg, args.npm ? 'npm' : 'native');
