@@ -17,6 +17,7 @@ export default [
         URL: 'readonly',
         AbortSignal: 'readonly',
         fetch: 'readonly',
+        TextDecoder: 'readonly',
       },
     },
     rules: {

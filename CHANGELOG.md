@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.0 — 2026-04-03
+
+### Features
+
+- Custom Node dev server (`server.js`) replaces `npx -y serve` in project template — zero dependencies
+- `/devrig/setup` — user-facing status dashboard with live SSE updates when agent connects
+- `/devrig/status` — JSON endpoint for programmatic status checks
+- `/devrig/events` — SSE stream for real-time agent connection events
+- `AGENTS.md` generated during `devrig init` with workspace, dev server, and Chrome bridge details
+- AGENTS.md uses `<!-- devrig:start/end -->` markers for safe re-generation on subsequent inits
+- Browser now opens `/devrig/setup` instead of the raw dev server root
+
 ## 0.2.2 — 2026-04-03
 
 ### Features

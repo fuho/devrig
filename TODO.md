@@ -22,6 +22,8 @@
 - [x] `devrig status` — show what's running (container, bridge, dev server)
 - [x] Scaffold staleness warning on `devrig start`
 - [x] Error hardening in `init.js` (user-friendly file I/O errors)
+- [x] Dual-page handshake with custom Node dev server (replaces `npx -y serve`)
+- [x] AGENTS.md generation during `devrig init`
 - [x] Port/project name validation
 - [x] HOST_UID set from host for Linux permissions
 - [x] Dev server timeout warning
@@ -30,5 +32,5 @@
 
 ## Known rough edges
 
-- Template dev server uses `npx -y serve` which can hang on slow networks
+- ~~Template dev server uses `npx -y serve` which can hang on slow networks~~ (replaced with Node server)
 - No timeout enforcement for npm install inside container (second retry can hang)

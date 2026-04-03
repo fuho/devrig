@@ -47,6 +47,8 @@ Here's what `devrig start` looks like:
 [devrig] Connecting to Claude Code in container...
 ```
 
+Your browser opens `/devrig/setup` — a status dashboard that updates live when Claude connects. Once Claude is ready, `AGENTS.md` tells it to open `localhost:3000` in its Chrome MCP tab group, and the setup page flips to "Connected."
+
 From here you're inside [Claude Code](https://docs.anthropic.com/en/docs/claude-code) with your project at `/workspace`. Claude runs with `--dangerously-skip-permissions`, which skips confirmation prompts — safe here because Claude can't modify anything outside the container's filesystem. When you're done, Ctrl+C or type `/exit` — devrig stops the container, bridge, and dev server. Your code changes, git history, and node_modules persist; the next `devrig start` picks up where you left off.
 
 ## CLI
