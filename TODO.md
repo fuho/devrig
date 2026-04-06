@@ -2,7 +2,7 @@
 
 ## High priority
 
-- [ ] CLAUDE.md host/container isolation — shadow mount so each side gets its own instructions (spec: `docs/superpowers/specs/2026-04-06-claudemd-isolation-design.md`)
+_(none)_
 
 ## Medium priority
 
@@ -43,6 +43,7 @@ _(none)_
 - [x] `tmpfs /tmp` in compose for faster temp operations
 - [x] Scaffold verification tests (no npm variant, Dockerfile structure, compose config)
 - [x] Docker integration tests (image build, package verification, tini, tmpfs)
+- [x] CLAUDE.md host/container isolation — shadow mount + devrig-mask volume, separate instructions for each side
 
 ## Known rough edges
 

@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Features
+
+- **CLAUDE.md host/container isolation** — `devrig init` now generates two CLAUDE.md files: host version (generic devrig commands) and container version (workspace, ports, git push warning). The container version is shadow-mounted read-only over `/workspace/CLAUDE.md`, so host and container Claude can run simultaneously with their own instructions. `.devrig/` is masked inside the container via a named volume, preventing context pollution from scaffold files and runtime artifacts.
+- `devrig start` and `devrig update` regenerate the container CLAUDE.md to pick up user edits
+
 ### Docker
 
 - `.dockerignore` added to scaffold — reduces build context by excluding runtime artifacts (`home/`, `logs/`, `session.json`, `*.log`, `.devrig-version`, `template/`)
@@ -20,6 +25,8 @@
 - Docker integration tests in `test/docker.test.js` — builds scaffold image and verifies gh, pnpm 9.x, all system packages; compose runtime tests for tini PID 1 and tmpfs /tmp
 - New e2e assertions: `--npm` flag removed from help, `.dockerignore` copied during init
 - `.dockerignore` added to init test expected files list
+- Docker integration tests for CLAUDE.md shadow mount and `.devrig/` masking
+- E2E test verifies both host and container CLAUDE.md generated during init
 
 ## 0.3.0 — 2026-04-04
 
