@@ -88,7 +88,6 @@ export async function launch(argv) {
   const { values: args } = parseArgs({
     args: argv,
     options: {
-      npm: { type: 'boolean', default: false },
       rebuild: { type: 'boolean', default: false },
       'no-chrome': { type: 'boolean', default: false },
       'no-dev-server': { type: 'boolean', default: false },
@@ -97,7 +96,7 @@ export async function launch(argv) {
   });
 
   // -- Step 4: Initialize variant (launcher.py: init variant) ---------------
-  const ctx = initVariant(cfg, args.npm ? 'npm' : 'native');
+  const ctx = initVariant(cfg);
 
   // -- Step 5: Load dotenv and set project env var -------------------------
   loadDotenv(projectDir);

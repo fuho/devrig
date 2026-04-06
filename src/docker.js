@@ -73,29 +73,18 @@ export function startContainer(ctx) {
 }
 
 /**
- * Returns a ctx-like object based on variant ('native' or 'npm').
+ * Returns a ctx-like object for Docker operations.
  */
-export function initVariant(cfg, variant) {
+export function initVariant(cfg) {
   const project = cfg.project;
   const devrigDir = '.devrig';
 
-  if (variant === 'native') {
-    return {
-      project,
-      composeFile: `${devrigDir}/compose.yml`,
-      service: 'dev',
-      image: `${project}-dev:latest`,
-      dockerfile: 'Dockerfile',
-      devrigDir,
-    };
-  } else {
-    return {
-      project,
-      composeFile: `${devrigDir}/compose.npm.yml`,
-      service: 'dev',
-      image: `${project}-dev-npm:latest`,
-      dockerfile: 'Dockerfile.npm',
-      devrigDir,
-    };
-  }
+  return {
+    project,
+    composeFile: `${devrigDir}/compose.yml`,
+    service: 'dev',
+    image: `${project}-dev:latest`,
+    dockerfile: 'Dockerfile',
+    devrigDir,
+  };
 }

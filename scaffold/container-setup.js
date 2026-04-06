@@ -6,10 +6,9 @@
  */
 
 import { execFileSync, spawn } from 'node:child_process';
-import { existsSync, readFileSync, mkdirSync, writeFileSync, chmodSync, rmSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, mkdirSync, writeFileSync, chmodSync } from 'node:fs';
 import { join } from 'node:path';
 
-const NPM_PKG = '@anthropic-ai/claude-code';
 const NATIVE_INSTALLER_URL = 'https://claude.ai/install.sh';
 
 function log(msg) {
@@ -32,48 +31,6 @@ function which(cmd) {
 
 // -- Claude Code installation ------------------------------------------------
 
-function installClaudeCodeNpm() {
-  const prefix = process.env.NPM_CONFIG_PREFIX;
-  const pkgDir = join(prefix, 'lib/node_modules/@anthropic-ai/claude-code');
-  const tempPattern = join(prefix, 'lib/node_modules/@anthropic-ai');
-
-  function cleanupStale() {
-    if (existsSync(pkgDir)) {
-      log(`Removing stale install: ${pkgDir}`);
-      rmSync(pkgDir, { recursive: true, force: true });
-    }
-    // Clean temp dirs
-    try {
-      for (const d of readdirSync(tempPattern)) {
-        if (d.startsWith('.claude-code-')) {
-          const full = join(tempPattern, d);
-          log(`Removing temp dir: ${full}`);
-          rmSync(full, { recursive: true, force: true });
-        }
-      }
-    } catch { /* dir may not exist */ }
-  }
-
-  if (which('claude')) {
-    log(`claude found: ${claudeVersion()}`);
-    execFileSync('npm', ['update', '-g', NPM_PKG], { stdio: 'ignore' });
-    log(`claude after update: ${claudeVersion()}`);
-    return;
-  }
-
-  log(`claude not found — installing ${NPM_PKG}`);
-  cleanupStale();
-  try {
-    execFileSync('npm', ['install', '-g', NPM_PKG], { stdio: 'inherit' });
-  } catch {
-    log('First install attempt failed — cleaning cache and retrying');
-    execFileSync('npm', ['cache', 'clean', '--force'], { stdio: 'ignore' });
-    cleanupStale();
-    execFileSync('npm', ['install', '-g', NPM_PKG], { stdio: 'inherit' });
-  }
-  log(`Installed: ${claudeVersion()}`);
-}
-
 function installClaudeCodeNative() {
   if (which('claude')) {
     log(`claude found: ${claudeVersion()}`);
@@ -89,12 +46,7 @@ function installClaudeCodeNative() {
 }
 
 function installClaudeCode() {
-  const method = process.env.CLAUDE_INSTALL_METHOD || 'npm';
-  if (method === 'native') {
-    installClaudeCodeNative();
-  } else {
-    installClaudeCodeNpm();
-  }
+  installClaudeCodeNative();
 }
 
 // -- Chrome bridge setup -----------------------------------------------------
