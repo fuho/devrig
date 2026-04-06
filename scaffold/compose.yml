@@ -14,6 +14,8 @@ services:
       - .:/workspace
       - node_modules:/workspace/node_modules
       - ./.devrig/home:/home/dev
+      - ./.devrig/CLAUDE.md:/workspace/CLAUDE.md:ro
+      - devrig-mask:/workspace/.devrig
     environment:
       - CLAUDE_CONFIG_DIR=/home/dev/.claude
       - BRIDGE_PORT=9229
@@ -41,3 +43,4 @@ volumes:
   node_modules:
     labels:
       devrig.project: ${DEVRIG_PROJECT:-my-project}
+  devrig-mask:

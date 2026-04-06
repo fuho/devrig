@@ -62,5 +62,18 @@ describe('scaffold content', () => {
       assert.ok(compose.includes('tmpfs:'));
       assert.ok(compose.includes('- /tmp'));
     });
+
+    it('shadow-mounts container CLAUDE.md over host version', () => {
+      assert.ok(compose.includes('./.devrig/CLAUDE.md:/workspace/CLAUDE.md:ro'));
+    });
+
+    it('masks .devrig/ with named volume', () => {
+      assert.ok(compose.includes('devrig-mask:/workspace/.devrig'));
+    });
+
+    it('defines devrig-mask volume', () => {
+      const volumesSection = compose.slice(compose.lastIndexOf('volumes:'));
+      assert.ok(volumesSection.includes('devrig-mask:'));
+    });
   });
 });
