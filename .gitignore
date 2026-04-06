@@ -16,5 +16,8 @@ node_modules/
 # IDE
 .idea/
 
+# Claude Code local data
+.claude/
+
 # Internal docs (specs, plans, reviews)
 docs/
