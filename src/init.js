@@ -195,7 +195,8 @@ export async function init(projectDir) {
   console.log(
     '  .gitignore         Updated with .devrig/',
   );
-  console.log('  CLAUDE.md          Instructions for Claude Code (auto-loaded on session start)');
+  console.log('  CLAUDE.md          Instructions for host Claude Code');
+  console.log('  .devrig/CLAUDE.md  Instructions for container Claude Code (shadow-mounted)');
   console.log('');
 
   // Show config files
