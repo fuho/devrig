@@ -139,7 +139,9 @@ function disableAutoUpdater() {
 // -- Main --------------------------------------------------------------------
 
 installClaudeCode();
-setupChromeBridge();
+if (process.env.BRIDGE_ENABLED === '1') {
+  setupChromeBridge();
+}
 disableAutoUpdater();
 
 const sentinel = join(process.env.HOME || '/home/dev', '.claude', 'logs', '.setup-ready');

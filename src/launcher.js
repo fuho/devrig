@@ -28,6 +28,7 @@ import { openBrowser } from './browser.js';
 import {
   registerProcess,
   setComposeArgs,
+  setProjectDir,
   cleanup,
   setupSignalHandlers,
   disableSignalHandlers,
@@ -112,21 +113,24 @@ export async function launch(argv) {
 
   // -- Step 6: Change to project directory and set host UID ----------------
   process.chdir(projectDir);
+  setProjectDir(projectDir);
   process.env.HOST_UID = String(userInfo().uid);
+  process.env.HOST_GID = String(userInfo().gid);
   process.env.CLAUDE_VERSION = cfg.claude_version;
+  process.env.BRIDGE_ENABLED = cfg.bridge_enabled ? '1' : '0';
 
   // -- Step 7: Preflight checks (launcher.py: preflight) --------------------
 
   // Check docker binary
   try {
-    execFileSync('which', ['docker'], { stdio: 'ignore' });
+    execFileSync('sh', ['-c', 'command -v docker'], { stdio: 'ignore' });
   } catch {
     die('Docker is not installed or not in PATH.');
   }
 
   // Check node binary
   try {
-    execFileSync('which', ['node'], { stdio: 'ignore' });
+    execFileSync('sh', ['-c', 'command -v node'], { stdio: 'ignore' });
   } catch {
     die('Node.js is not installed or not in PATH.');
   }
@@ -142,7 +146,7 @@ export async function launch(argv) {
   if (cfg.dev_server_cmd && !args['no-dev-server']) {
     const devBin = cfg.dev_server_cmd.split(/\s+/)[0];
     try {
-      execFileSync('which', [devBin], { stdio: 'ignore' });
+      execFileSync('sh', ['-c', `command -v ${devBin}`], { stdio: 'ignore' });
     } catch {
       die(`Dev server command '${devBin}' not found in PATH.`);
     }
@@ -200,6 +204,9 @@ export async function launch(argv) {
     };
     writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n');
   }
+
+  // -- Step 9c: Ensure container home dirs exist (host-created so ownership matches) --
+  mkdirSync(join(projectDir, '.devrig', 'home', '.claude', 'logs'), { recursive: true });
 
   // -- Step 10: Start container (launcher.py: start container) --------------
   startContainer(ctx);
@@ -326,9 +333,13 @@ export async function launch(argv) {
   log('Connecting to Claude Code in container...');
   log(`CLAUDE_PARAMS: ${claudeParams.join(' ') || '<none>'}`);
 
-  const child = spawn('docker', ['exec', '-it', containerId, 'claude', ...claudeParams], {
-    stdio: 'inherit',
-  });
+  const child = spawn(
+    'docker',
+    ['exec', '-it', '--user', 'dev', containerId, 'claude', ...claudeParams],
+    {
+      stdio: 'inherit',
+    },
+  );
 
   // Let the child process own the terminal — disable our signal handlers
   disableSignalHandlers(child);

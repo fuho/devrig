@@ -1,6 +1,7 @@
 FROM node:25-slim
 
-ARG USER_UID=501
+ARG USER_UID=1000
+ARG USER_GID=1000
 ARG BUILD_HASH=unknown
 
 # Install system packages + GitHub CLI in a single layer
@@ -11,14 +12,16 @@ RUN apt-get update && \
     echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
       > /etc/apt/sources.list.d/github-cli.list && \
     apt-get update && \
-    apt-get install -y git socat ripgrep jq vim tree gh && \
+    apt-get install -y git socat ripgrep jq vim tree gh gosu && \
     rm -rf /var/lib/apt/lists/*
 
 # Remove built-in node user (UID 1000) to avoid collision on Linux
 RUN userdel -r node 2>/dev/null || true
 
-# Create dev user with host-matching UID
-RUN useradd -m -s /bin/bash -u ${USER_UID} dev
+# Create dev user with host-matching UID/GID
+# --non-unique allows duplicate GIDs (e.g. macOS GID 20 = dialout in Debian)
+RUN groupadd --non-unique -g ${USER_GID} dev && \
+    useradd -m -s /bin/bash -u ${USER_UID} -g dev dev
 
 WORKDIR /workspace
 RUN chown dev:dev /workspace
