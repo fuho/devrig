@@ -69,7 +69,7 @@ ENV PATH="/home/dev/.local/bin:/home/dev/.npm-global/bin:$PATH"
 RUN git config --global --add safe.directory /workspace
 
 # Install pnpm globally so Claude Code can run project scripts
-RUN npm install -g pnpm@latest
+RUN npm install -g pnpm@9
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD ["bash"]
