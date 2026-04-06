@@ -33,6 +33,7 @@ import {
   disableSignalHandlers,
 } from './cleanup.js';
 import { acquireSession, checkScaffoldStaleness } from './session.js';
+import { generateClaudeMd } from './init.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -83,6 +84,13 @@ export async function launch(argv) {
 
   // -- Step 2b: Scaffold staleness check -------------------------------------
   checkScaffoldStaleness(projectDir);
+
+  // -- Step 2c: Regenerate container CLAUDE.md before compose up ---------------
+  try {
+    generateClaudeMd(projectDir, cfg);
+  } catch {
+    log('WARNING: Could not regenerate container CLAUDE.md');
+  }
 
   // -- Step 3: Parse CLI flags (launcher.py: parse arguments) ---------------
   const { values: args } = parseArgs({
