@@ -62,7 +62,7 @@ describe('init scaffold', () => {
 
 describe('gitignore update', () => {
   let tmp;
-  const entries = ['.devrig/logs/', '.devrig/home/'];
+  const entries = ['.devrig/'];
   afterEach(() => {
     if (tmp) rmSync(tmp, { recursive: true, force: true });
   });
@@ -81,8 +81,7 @@ describe('gitignore update', () => {
     tmp = mkdtempSync(join(tmpdir(), 'cdev-gi-'));
     applyGitignore(tmp);
     const content = readFileSync(join(tmp, '.gitignore'), 'utf8');
-    assert.ok(content.includes('.devrig/logs/'));
-    assert.ok(content.includes('.devrig/home/'));
+    assert.ok(content.includes('.devrig/'));
   });
 
   it('appends entries to existing .gitignore', () => {
@@ -91,17 +90,15 @@ describe('gitignore update', () => {
     applyGitignore(tmp);
     const content = readFileSync(join(tmp, '.gitignore'), 'utf8');
     assert.ok(content.startsWith('node_modules/\n'));
-    assert.ok(content.includes('.devrig/logs/'));
-    assert.ok(content.includes('.devrig/home/'));
+    assert.ok(content.includes('.devrig/'));
   });
 
   it('does not duplicate existing entries', () => {
     tmp = mkdtempSync(join(tmpdir(), 'cdev-gi-'));
-    writeFileSync(join(tmp, '.gitignore'), '.devrig/logs/\n.devrig/home/\n');
+    writeFileSync(join(tmp, '.gitignore'), '.devrig/\n');
     applyGitignore(tmp);
     const content = readFileSync(join(tmp, '.gitignore'), 'utf8');
-    assert.equal(content.split('.devrig/logs/').length - 1, 1);
-    assert.equal(content.split('.devrig/home/').length - 1, 1);
+    assert.equal(content.split('.devrig/').length - 1, 1);
   });
 });
 

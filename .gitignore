@@ -11,6 +11,4 @@
 node_modules/
 
 # Runtime artifacts
-.devrig/logs/
-.devrig/home/
-.devrig/session.json
+.devrig/

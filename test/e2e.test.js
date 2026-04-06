@@ -101,8 +101,7 @@ describe('e2e: devrig init', () => {
 
       // Verify .gitignore updated
       const gitignore = readFileSync(join(tmpDir, '.gitignore'), 'utf8');
-      assert.ok(gitignore.includes('.devrig/logs/'), 'logs in gitignore');
-      assert.ok(gitignore.includes('.devrig/home/'), 'home in gitignore');
+      assert.ok(gitignore.includes('.devrig/'), '.devrig/ in gitignore');
 
       // Verify template files copied (we said yes)
       assert.ok(existsSync(join(tmpDir, 'package.json')), 'template package.json copied');

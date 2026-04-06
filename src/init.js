@@ -102,7 +102,7 @@ export async function init(projectDir) {
 
   // Append .gitignore entries if not already present
   const gitignorePath = join(projectDir, '.gitignore');
-  const gitignoreEntries = ['.devrig/logs/', '.devrig/home/', '.devrig/session.json'];
+  const gitignoreEntries = ['.devrig/'];
   let existing = existsSync(gitignorePath) ? readFileSync(gitignorePath, 'utf8') : '';
 
   const missing = gitignoreEntries.filter((entry) => !existing.includes(entry));
@@ -146,7 +146,7 @@ export async function init(projectDir) {
   console.log('  devrig.toml        Project configuration');
   console.log('  .env               Environment variables (git author, Claude params)');
   console.log(
-    '  .gitignore         Updated with .devrig/logs/, .devrig/home/, .devrig/session.json',
+    '  .gitignore         Updated with .devrig/',
   );
   console.log('  CLAUDE.md          Instructions for Claude Code (auto-loaded on session start)');
   console.log('');

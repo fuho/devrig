@@ -13,7 +13,6 @@ Claude Code is powerful — it installs packages, modifies system files, and run
 - **Browser control** — Claude Code inside Docker can't access a browser on its own. devrig bridges that gap by relaying Chrome's debugging protocol into the container, letting Claude see and interact with your running app.
 - **Zero config** — `npx devrig init` scaffolds everything. No Dockerfiles to write, no compose files to maintain.
 - **Clean host** — no global packages, no Claude Code installation on your machine, no leftover processes after sessions end.
-- **Reproducible** — commit `.devrig/` to your repo and your whole team gets the same containerized setup.
 
 > [!NOTE]
 > **What devrig does and doesn't isolate:** The container provides filesystem and git credential isolation — Claude cannot access your host files or push to your repos. The container does have internet access, same as running on your host, because Claude Code needs it to install packages and function normally. devrig protects your machine and your repos, not your network.
