@@ -125,6 +125,32 @@ describe('compose runtime verification', { timeout: 120_000 }, () => {
     tmpDir = mkdtempSync(join(tmpdir(), 'devrig-compose-'));
     const devrigDir = join(tmpDir, '.devrig');
     cpSync(scaffoldDir, devrigDir, { recursive: true });
+
+    // Generate container CLAUDE.md for shadow mount test
+    writeFileSync(join(devrigDir, 'CLAUDE.md'), [
+      '<!-- devrig:start -->',
+      '## devrig',
+      '',
+      'You are running inside a devrig Docker container.',
+      '',
+      '- **Workspace:** /workspace',
+      '- **Dev server:** http://localhost:3000',
+      '- **Chrome bridge:** disabled',
+      '',
+      'Git push is blocked inside this container. Make commits freely — the user will',
+      'review and push from the host.',
+      '<!-- devrig:end -->',
+    ].join('\n') + '\n');
+
+    // Create host CLAUDE.md (will be shadowed by container version)
+    writeFileSync(join(tmpDir, 'CLAUDE.md'), [
+      '<!-- devrig:start -->',
+      '## devrig',
+      '',
+      'This project uses devrig for containerized AI development.',
+      '<!-- devrig:end -->',
+    ].join('\n') + '\n');
+
     // Start container in background using compose
     execFileSync('docker', [
       'compose', '--project-directory', tmpDir,
@@ -167,5 +193,22 @@ describe('compose runtime verification', { timeout: 120_000 }, () => {
     const tmpMount = output.split('\n').find((l) => l.includes(' /tmp '));
     assert.ok(tmpMount, '/tmp mount not found');
     assert.ok(tmpMount.includes('tmpfs'), `/tmp should be tmpfs, got: ${tmpMount}`);
+  });
+
+  it('.devrig/ is hidden from container workspace', () => {
+    // The devrig-mask volume should hide .devrig/ contents
+    const output = composeExec('ls', '/workspace/.devrig/');
+    // Should be empty or only contain the volume's initial empty state
+    assert.ok(!output.includes('Dockerfile'), '.devrig/Dockerfile should not be visible');
+    assert.ok(!output.includes('entrypoint.sh'), '.devrig/entrypoint.sh should not be visible');
+    assert.ok(!output.includes('home'), '.devrig/home should not be visible');
+  });
+
+  it('container sees container version of CLAUDE.md', () => {
+    const output = composeExec('cat', '/workspace/CLAUDE.md');
+    assert.ok(output.includes('You are running inside a devrig Docker container'),
+      'container should see container CLAUDE.md');
+    assert.ok(!output.includes('containerized AI development'),
+      'container should not see host CLAUDE.md content');
   });
 });
