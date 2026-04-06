@@ -163,7 +163,9 @@ For compose-level changes (volumes, ports, resource limits), create a `docker-co
 | **User**        | `dev` with UID matching your host (no permission issues on Linux)        |
 | **Git safety**  | `git push` blocked, `git pull` on master blocked, no SSH keys            |
 | **Resources**   | 8 GB memory, 4 CPUs (edit compose files to change)                       |
-| **Claude Code** | Installed automatically on first start                                   |
+| **PID 1**       | tini (`init: true`) for proper zombie process reaping                    |
+| **tmpfs**       | `/tmp` mounted in-memory for faster temp operations                      |
+| **Claude Code** | Installed automatically on first start, version configurable via `devrig.toml` |
 | **Volumes**     | Project at `/workspace`, node_modules persisted, home dir at `/home/dev` |
 
 </details>
@@ -177,14 +179,15 @@ For compose-level changes (volumes, ports, resource limits), create a `docker-co
 
 ## Development
 
-| Command                 | What it does                   |
-| ----------------------- | ------------------------------ |
-| `npm test`              | Unit + integration tests       |
-| `npm run test:coverage` | Tests with V8 coverage report  |
-| `npm run lint`          | ESLint                         |
-| `npm run format:check`  | Prettier check                 |
-| `npm run typecheck`     | TypeScript JSDoc type checking |
-| `npm run check`         | All of the above, sequentially |
+| Command                 | What it does                                |
+| ----------------------- | ------------------------------------------- |
+| `npm test`              | Unit + integration tests (including scaffold verification) |
+| `npm run test:docker`   | Docker integration tests (build + runtime)  |
+| `npm run test:coverage` | Tests with V8 coverage report               |
+| `npm run lint`          | ESLint                                      |
+| `npm run format:check`  | Prettier check                              |
+| `npm run typecheck`     | TypeScript JSDoc type checking              |
+| `npm run check`         | All of the above, sequentially              |
 
 <details>
 <summary>Project structure</summary>
@@ -209,12 +212,14 @@ src/
   update.js          Scaffold file updater
 scaffold/
   Dockerfile         Container image
+  .dockerignore      Excludes runtime artifacts from Docker build context
   compose.yml        Docker Compose configuration
   entrypoint.sh      Container entrypoint
   container-setup.js Runs inside container — installs Claude Code, sets up bridge
   template/          Starter files for new projects
 test/
   *.test.js          Node built-in test runner, no external deps
+                     (includes scaffold content + Docker integration tests)
 ```
 
 </details>

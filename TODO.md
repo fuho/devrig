@@ -2,17 +2,16 @@
 
 ## High priority
 
-- [ ] `devrig update` — refresh scaffold files from newer package version while preserving config
+- [ ] CLAUDE.md host/container isolation — shadow mount so each side gets its own instructions (spec: `docs/superpowers/specs/2026-04-06-claudemd-isolation-design.md`)
 
 ## Medium priority
 
 - [ ] Multi-tool support — implement adapters for Codex, open-code (config `tool` field is parsed but only Claude is wired up)
-- [ ] `devrig logs` — tail container/bridge/dev-server logs
+- [ ] Document `.devrig/logs/` for TTY and bridge debugging
 
 ## Low priority
 
-- [ ] `devrig doctor` — diagnose setup issues (Docker, Node, ports, config)
-- [ ] Document `.devrig/logs/` for TTY and bridge debugging
+_(none)_
 
 ## Done
 
@@ -32,6 +31,18 @@
 - [x] Dev server timeout warning
 - [x] Config-missing error suggests `devrig init`
 - [x] Remove stale launcher.py reference from devrig.toml.example
+- [x] `devrig update` — refresh scaffold files from newer package version while preserving config
+- [x] `devrig logs` — view container and dev server logs (with `--container`, `--dev-server`, `--follow`)
+- [x] `devrig doctor` — pre-flight health checks (Node, Docker, ports, config, version staleness)
+- [x] `devrig exec` — re-attach to a running container
+- [x] Claude Code version pinning via `[claude] version` in devrig.toml
+- [x] `.dockerignore` in scaffold to reduce build context
+- [x] Combined GitHub CLI into single apt layer in Dockerfile
+- [x] Pinned pnpm to major version 9
+- [x] `init: true` in compose for proper zombie process reaping
+- [x] `tmpfs /tmp` in compose for faster temp operations
+- [x] Scaffold verification tests (no npm variant, Dockerfile structure, compose config)
+- [x] Docker integration tests (image build, package verification, tini, tmpfs)
 
 ## Known rough edges
 

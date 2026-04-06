@@ -1,5 +1,26 @@
 # Changelog
 
+## Unreleased
+
+### Docker
+
+- `.dockerignore` added to scaffold — reduces build context by excluding runtime artifacts (`home/`, `logs/`, `session.json`, `*.log`, `.devrig-version`, `template/`)
+- Combined GitHub CLI setup into single apt layer in Dockerfile — saves one cache layer and one `apt-get update`
+- Pinned pnpm to major version 9 (was `@latest`)
+- `init: true` added to compose — uses tini for proper zombie process reaping
+- `tmpfs /tmp` added to compose — faster temp file operations in-memory
+
+### Fixes
+
+- Fixed Dockerfile: install `curl` before GitHub CLI repo setup (node:25-slim doesn't include curl)
+
+### Development
+
+- New `test/scaffold.test.js` — verifies scaffold content (no npm variant files, .dockerignore, Dockerfile structure, pnpm pin, compose config)
+- Docker integration tests in `test/docker.test.js` — builds scaffold image and verifies gh, pnpm 9.x, all system packages; compose runtime tests for tini PID 1 and tmpfs /tmp
+- New e2e assertions: `--npm` flag removed from help, `.dockerignore` copied during init
+- `.dockerignore` added to init test expected files list
+
 ## 0.3.0 — 2026-04-04
 
 ### Features
