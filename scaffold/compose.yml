@@ -22,6 +22,7 @@ services:
       - NODE_OPTIONS=--max-old-space-size=4096
     stdin_open: true
     tty: true
+    init: true
     healthcheck:
       test: ["CMD", "bash", "-c", "command -v claude"]
       interval: 5s
