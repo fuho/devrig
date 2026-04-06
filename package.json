@@ -15,7 +15,7 @@
     "node": ">=18.3.0"
   },
   "scripts": {
-    "test": "node --test test/unit.test.js test/init.test.js test/cleanup.test.js test/configure.test.js test/session.test.js test/logs.test.js test/exec.test.js test/doctor.test.js test/update.test.js test/scaffold.test.js",
+    "test": "node --test test/unit.test.js test/init.test.js test/cleanup.test.js test/clean.test.js test/configure.test.js test/session.test.js test/logs.test.js test/exec.test.js test/doctor.test.js test/update.test.js test/scaffold.test.js",
     "test:server": "node --test test/server.test.js",
     "test:docker": "node --test test/docker.test.js",
     "test:e2e": "node --test test/e2e.test.js",

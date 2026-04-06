@@ -40,11 +40,13 @@ function discoverByLabel(project) {
   try {
     const out = execFileSync(
       'docker',
-      ['images', '--filter', filter, '--format', '{{.Repository}}:{{.Tag}}\t{{.Size}}'],
+      ['images', '--filter', filter, '--format', '{{.Repository}}:{{.Tag}}\t{{.ID}}\t{{.Size}}'],
       { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] },
     ).trim();
     for (const line of out.split('\n').filter(Boolean)) {
-      const [name, size] = line.split('\t');
+      const [tag, id, size] = line.split('\t');
+      // Use image ID for dangling images (<none>:<none>), tag otherwise
+      const name = tag === '<none>:<none>' ? id : tag;
       found.push({ type: 'Image', name, detail: size || '' });
     }
   } catch {
@@ -109,10 +111,74 @@ function removeResources(items) {
   }
 }
 
-/** Discovers and removes Docker artifacts. Supports --all for label-based global cleanup. */
+/**
+ * Lists all distinct devrig project names from Docker labels.
+ * @returns {string[]}
+ */
+function listProjects() {
+  const projects = new Set();
+  // Query containers for label values
+  try {
+    const out = execFileSync(
+      'docker',
+      ['ps', '-a', '--filter', `label=${LABEL}`, '--format', `{{index .Labels "${LABEL}"}}`],
+      { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] },
+    ).trim();
+    for (const p of out.split('\n').filter(Boolean)) projects.add(p);
+  } catch {
+    /* ignore */
+  }
+  // Query volumes
+  try {
+    const out = execFileSync(
+      'docker',
+      ['volume', 'ls', '--filter', `label=${LABEL}`, '--format', `{{index .Labels "${LABEL}"}}`],
+      { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] },
+    ).trim();
+    for (const p of out.split('\n').filter(Boolean)) projects.add(p);
+  } catch {
+    /* ignore */
+  }
+  // Query images
+  try {
+    const out = execFileSync(
+      'docker',
+      ['images', '--filter', `label=${LABEL}`, '--format', `{{index .Labels "${LABEL}"}}`],
+      { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] },
+    ).trim();
+    for (const p of out.split('\n').filter(Boolean)) projects.add(p);
+  } catch {
+    /* ignore */
+  }
+  return [...projects].sort();
+}
+
+/**
+ * Discovers and removes Docker artifacts.
+ * Supports --all (all projects), --project <name> (specific project),
+ * --list (show project names), and -y/--yes (skip confirmation).
+ * @param {string[]} argv
+ */
 export async function clean(argv) {
   const skipConfirm = argv.includes('-y') || argv.includes('--yes');
   const cleanAll = argv.includes('--all');
+  const listOnly = argv.includes('--list');
+
+  // --list: show all known devrig projects
+  if (listOnly) {
+    const projects = listProjects();
+    if (projects.length === 0) {
+      log('No devrig projects found.');
+    } else {
+      log(`Found ${projects.length} devrig project(s):`);
+      for (const p of projects) console.log(`  ${p}`);
+    }
+    return;
+  }
+
+  // --project <name>: target a specific project by name
+  const projIdx = argv.indexOf('--project');
+  const explicitProject = projIdx !== -1 ? argv[projIdx + 1] : null;
 
   let found;
   let label;
@@ -121,6 +187,10 @@ export async function clean(argv) {
     // Find ALL devrig resources across all projects
     found = discoverByLabel();
     label = 'all devrig projects';
+  } else if (explicitProject) {
+    // Find resources for a named project (no need to be in its directory)
+    found = discoverByLabel(explicitProject);
+    label = `"${explicitProject}"`;
   } else {
     // Find resources for the current project
     const projectDir = resolveProjectDir();

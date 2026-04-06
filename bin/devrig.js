@@ -91,20 +91,25 @@ See also: devrig init`,
   clean: `Remove Docker images, volumes, containers, and networks created by devrig.
 
 By default, cleans resources for the current project (requires devrig.toml).
-With --all, finds ALL devrig resources across all projects using Docker labels —
-no project directory needed. Useful when you've already deleted your project files.
+With --project, targets a specific project by name without needing to be in its directory.
+With --all, finds ALL devrig resources across all projects using Docker labels.
+With --list, shows all known devrig project names.
 
 Does NOT touch .devrig/, devrig.toml, .env, or any project files.
-Refuses to run (without --all) if a session is active — use devrig stop first.
+Refuses to run (without --all/--project) if a session is active — use devrig stop first.
 
 Flags:
+  --project <name> Clean resources for a specific project by name
   --all            Find and remove devrig resources across ALL projects
+  --list           List all known devrig project names
   -y, --yes        Skip the confirmation prompt
 
 Examples:
-  devrig clean          Clean current project's Docker resources
-  devrig clean --all    Find all devrig resources system-wide
-  devrig clean --all -y Remove everything without asking
+  devrig clean                     Clean current project's Docker resources
+  devrig clean --project my-app    Clean a specific project's resources
+  devrig clean --list              Show all devrig projects
+  devrig clean --all               Find all devrig resources system-wide
+  devrig clean --all -y            Remove everything without asking
 
 See also: devrig stop`,
 

@@ -100,15 +100,14 @@ describe('configure', () => {
     const tmpDir = mkdtempSync(join(tmpdir(), 'devrig-cfg-'));
 
     try {
-      // Write existing .env with a managed block bracketed by two markers
-      const marker = '# Added by devrig config';
+      // Write existing .env with a sentinel-based managed block
       const existingEnv = [
         'EXISTING_VAR=hello',
-        marker,
+        '# devrig:start',
         'CLAUDE_PARAMS=--dangerously-skip-permissions',
         'GIT_AUTHOR_NAME=Old',
         'GIT_AUTHOR_EMAIL=old@old.com',
-        marker,
+        '# devrig:end',
         '',
       ].join('\n');
       writeFileSync(join(tmpDir, '.env'), existingEnv);
@@ -123,6 +122,9 @@ describe('configure', () => {
       assert.ok(env.includes('GIT_AUTHOR_NAME=New User'));
       // Should NOT contain old values
       assert.ok(!env.includes('GIT_AUTHOR_NAME=Old'));
+      // Should have exactly one start and one end sentinel
+      assert.equal((env.match(/# devrig:start/g) || []).length, 1, 'one start sentinel');
+      assert.equal((env.match(/# devrig:end/g) || []).length, 1, 'one end sentinel');
     } finally {
       rmSync(tmpDir, { recursive: true, force: true });
     }

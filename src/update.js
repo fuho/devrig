@@ -1,52 +1,28 @@
 // @ts-check
-import { readFileSync, writeFileSync, existsSync, cpSync, readdirSync } from 'node:fs';
-import { join, relative, dirname } from 'node:path';
+import { readFileSync, writeFileSync, existsSync, cpSync } from 'node:fs';
+import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createInterface } from 'node:readline/promises';
 import { log, die } from './log.js';
 import { resolveProjectDir, getPackageVersion, loadConfig } from './config.js';
-import { generateClaudeMd } from './init.js';
-
-const SKIP = new Set(['home', 'logs', 'session.json', '.devrig-version', 'template']);
-
-/**
- * Recursively lists files in a directory, relative to base.
- * @param {string} dir
- * @param {string} base
- * @returns {string[]}
- */
-function listFiles(dir, base) {
-  const results = [];
-  for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    const relPath = relative(base, join(dir, entry.name));
-    const topLevel = relPath.split('/')[0];
-    if (SKIP.has(topLevel)) continue;
-    if (entry.isDirectory()) {
-      results.push(...listFiles(join(dir, entry.name), base));
-    } else {
-      results.push(relPath);
-    }
-  }
-  return results;
-}
+import { generateClaudeMd, SCAFFOLD_FILES } from './init.js';
 
 /**
  * Compares scaffold files against the user's .devrig/ directory.
+ * Only checks files in the SCAFFOLD_FILES whitelist.
  * @param {string} projectDir
  * @param {string} scaffoldDir
  * @returns {{ name: string }[]}
  */
 export function findChangedFiles(projectDir, scaffoldDir) {
   const devrigDir = join(projectDir, '.devrig');
-  const scaffoldFiles = listFiles(scaffoldDir, scaffoldDir);
   const changed = [];
 
-  for (const file of scaffoldFiles) {
-    const topLevel = file.split('/')[0];
-    if (SKIP.has(topLevel)) continue;
-
+  for (const file of SCAFFOLD_FILES) {
     const srcPath = join(scaffoldDir, file);
     const destPath = join(devrigDir, file);
+
+    if (!existsSync(srcPath)) continue;
 
     if (!existsSync(destPath)) {
       changed.push({ name: file });
