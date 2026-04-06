@@ -3,16 +3,14 @@ FROM node:25-slim
 ARG USER_UID=501
 ARG BUILD_HASH=unknown
 
-RUN apt-get update && \
-    apt-get install -y git socat ripgrep curl jq ca-certificates vim tree && \
-    rm -rf /var/lib/apt/lists/*
-
-# GitHub CLI (needs its own apt repo)
+# Add GitHub CLI apt repo
 RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
       -o /usr/share/keyrings/githubcli-archive-keyring.gpg && \
     echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
-      > /etc/apt/sources.list.d/github-cli.list && \
-    apt-get update && apt-get install -y gh && \
+      > /etc/apt/sources.list.d/github-cli.list
+
+RUN apt-get update && \
+    apt-get install -y git socat ripgrep curl jq ca-certificates vim tree gh && \
     rm -rf /var/lib/apt/lists/*
 
 # Remove built-in node user (UID 1000) to avoid collision on Linux
