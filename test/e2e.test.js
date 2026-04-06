@@ -103,6 +103,19 @@ describe('e2e: devrig init', () => {
       const gitignore = readFileSync(join(tmpDir, '.gitignore'), 'utf8');
       assert.ok(gitignore.includes('.devrig/'), '.devrig/ in gitignore');
 
+      // Verify container CLAUDE.md generated
+      assert.ok(existsSync(join(tmpDir, '.devrig', 'CLAUDE.md')), 'container CLAUDE.md exists');
+      const containerClaudeMd = readFileSync(join(tmpDir, '.devrig', 'CLAUDE.md'), 'utf8');
+      assert.ok(containerClaudeMd.includes('You are running inside'),
+        'container CLAUDE.md has container instructions');
+
+      // Verify host CLAUDE.md has host instructions
+      const hostClaudeMd = readFileSync(join(tmpDir, 'CLAUDE.md'), 'utf8');
+      assert.ok(hostClaudeMd.includes('containerized AI development'),
+        'host CLAUDE.md has host instructions');
+      assert.ok(!hostClaudeMd.includes('You are running inside'),
+        'host CLAUDE.md should not have container instructions');
+
       // Verify template files copied (we said yes)
       assert.ok(existsSync(join(tmpDir, 'package.json')), 'template package.json copied');
       assert.ok(existsSync(join(tmpDir, 'index.html')), 'template index.html copied');
