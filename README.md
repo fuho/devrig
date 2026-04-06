@@ -61,6 +61,10 @@ From here you're inside [Claude Code](https://docs.anthropic.com/en/docs/claude-
 | `devrig status`             | Show whether container, bridge, and dev server are running                    |
 | `devrig config`             | Re-run the configuration wizard                                               |
 | `devrig clean [--all] [-y]` | Remove Docker artifacts for this project (or `--all` for all devrig projects) |
+| `devrig logs [flags]`       | Show logs from a devrig session                                              |
+| `devrig exec`               | Re-attach to a running container                                             |
+| `devrig doctor`             | Run pre-flight health checks                                                 |
+| `devrig update [--force]`   | Update scaffold files to current devrig version                              |
 
 All commands support `--help` for usage details.
 
@@ -87,6 +91,10 @@ ready_timeout = 10       # Seconds to wait for the server to respond
 
 [chrome_bridge]
 port = 9229              # Chrome debugging protocol port
+
+[claude]
+version = "latest"       # "latest", "stable", or a specific version like "2.1.89"
+# ready_timeout = 120    # Seconds to wait for Claude Code setup
 ```
 
 To disable the Chrome bridge or dev server, delete its entire section (including the `[section_name]` header) from `devrig.toml`.
@@ -102,6 +110,7 @@ To disable the Chrome bridge or dev server, delete its entire section (including
 | `port`          | `[dev_server]`    | `3000`             | Port the dev server listens on            |
 | `ready_timeout` | `[dev_server]`    | `10`               | Seconds to wait for dev server readiness  |
 | `port`          | `[chrome_bridge]` | `9229`             | Chrome debugging protocol port            |
+| `version`       | `[claude]`        | `"latest"`         | Claude Code version: "latest", "stable", or "2.1.89" |
 | `ready_timeout` | `[claude]`        | `120`              | Seconds to wait for Claude Code setup     |
 
 </details>
@@ -127,6 +136,21 @@ GIT_AUTHOR_EMAIL=you@example.com
 - `devrig stop` tears down a running session from another terminal — stops the container, bridge, and dev server.
 - `devrig status` shows the current state of each component.
 - If a session crashes, the next `devrig start` detects the stale lock and recovers automatically.
+
+## Customization
+
+### Dockerfile
+
+Edit `.devrig/Dockerfile` directly to add system packages, change the base image, or modify the container setup. Your changes survive `devrig start` and `--rebuild` — the image is always built from your local Dockerfile.
+
+> [!WARNING]
+> Running `devrig init` again will prompt to overwrite `.devrig/`. Use `devrig update` to selectively update scaffold files without losing your Dockerfile changes.
+
+For compose-level changes (volumes, ports, resource limits), create a `docker-compose.override.yml` in your project root.
+
+### Package persistence
+
+`node_modules` is a named Docker volume — it persists across container restarts and even `--rebuild`. Running `devrig clean` removes the volume, triggering a fresh `npm install` on the next start. For large projects, the first start may be slow while packages install inside the container.
 
 ## What's Inside the Container
 
@@ -180,6 +204,10 @@ src/
   bridge-host.cjs    TCP-to-Unix relay for Chrome bridge
   init.js            Scaffold copying, gitignore management
   log.js             Logging helpers
+  logs.js            Log viewer (dev server + container)
+  exec.js            Container re-attach
+  doctor.js          Pre-flight health checks
+  update.js          Scaffold file updater
 scaffold/
   Dockerfile         Container image
   compose.yml        Docker Compose configuration

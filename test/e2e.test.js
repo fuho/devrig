@@ -76,9 +76,7 @@ describe('e2e: devrig init', () => {
 
       // Verify scaffold files
       assert.ok(existsSync(join(tmpDir, '.devrig', 'Dockerfile')), 'Dockerfile exists');
-      assert.ok(existsSync(join(tmpDir, '.devrig', 'Dockerfile.npm')), 'Dockerfile.npm exists');
       assert.ok(existsSync(join(tmpDir, '.devrig', 'compose.yml')), 'compose.yml exists');
-      assert.ok(existsSync(join(tmpDir, '.devrig', 'compose.npm.yml')), 'compose.npm.yml exists');
       assert.ok(existsSync(join(tmpDir, '.devrig', 'entrypoint.sh')), 'entrypoint.sh exists');
       assert.ok(
         existsSync(join(tmpDir, '.devrig', 'container-setup.js')),

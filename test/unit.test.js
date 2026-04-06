@@ -57,6 +57,13 @@ describe('parseTOML', () => {
   it('handles single-quoted strings', () => {
     assert.deepStrictEqual(parseTOML("name = 'hello'"), { name: 'hello' });
   });
+
+  it('parses claude version from toml', () => {
+    const toml = 'project = "test"\n\n[claude]\nversion = "2.1.89"\nready_timeout = 120\n';
+    const result = parseTOML(toml);
+    assert.equal(result.claude.version, '2.1.89');
+    assert.equal(result.claude.ready_timeout, 120);
+  });
 });
 
 // ---------------------------------------------------------------------------

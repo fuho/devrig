@@ -32,16 +32,40 @@ function which(cmd) {
 // -- Claude Code installation ------------------------------------------------
 
 function installClaudeCodeNative() {
-  if (which('claude')) {
-    log(`claude found: ${claudeVersion()}`);
-    log('Checking for updates...');
-    execFileSync('claude', ['update'], { stdio: 'ignore' });
-    log(`claude after update: ${claudeVersion()}`);
-    return;
+  const version = process.env.CLAUDE_VERSION || 'latest';
+  const versionMarker = join(process.env.HOME || '/home/dev', '.claude-version');
+
+  // Skip install if already installed and version matches
+  if (which('claude') && existsSync(versionMarker)) {
+    const installed = readFileSync(versionMarker, 'utf8').trim();
+    if (installed === version || (version === 'latest' && installed)) {
+      log(`claude already installed: ${claudeVersion()} (pinned: ${installed})`);
+      return;
+    }
   }
 
-  log('claude not found — installing via native installer');
-  execFileSync('bash', ['-c', `curl -fsSL ${NATIVE_INSTALLER_URL} | bash`], { stdio: 'inherit' });
+  if (which('claude')) {
+    log(`claude found: ${claudeVersion()}`);
+    if (version === 'latest' || version === 'stable') {
+      log(`Re-installing (channel: ${version})...`);
+    } else {
+      log(`Re-installing (version: ${version})...`);
+    }
+  } else {
+    log('claude not found — installing via native installer');
+  }
+
+  // Install with version argument
+  const installArgs =
+    version === 'latest'
+      ? `curl -fsSL ${NATIVE_INSTALLER_URL} | bash`
+      : `curl -fsSL ${NATIVE_INSTALLER_URL} | bash -s ${version}`;
+
+  execFileSync('bash', ['-c', installArgs], { stdio: 'inherit' });
+
+  // Write version marker
+  writeFileSync(versionMarker, version + '\n');
+
   log(`Installed: ${claudeVersion()}`);
 }
 
@@ -93,10 +117,30 @@ function setupChromeBridge() {
   log('Wrote MCP config for claude-in-chrome');
 }
 
+// -- Auto-updater disable ----------------------------------------------------
+
+function disableAutoUpdater() {
+  const home = process.env.HOME || '/home/dev';
+  const settingsPath = join(home, '.claude', 'settings.json');
+  let settings = {};
+  if (existsSync(settingsPath)) {
+    try {
+      settings = JSON.parse(readFileSync(settingsPath, 'utf8'));
+    } catch {
+      /* start fresh */
+    }
+  }
+  settings.env = settings.env || {};
+  settings.env.DISABLE_AUTOUPDATER = '1';
+  writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n');
+  log('Auto-updater disabled (updates via --rebuild)');
+}
+
 // -- Main --------------------------------------------------------------------
 
 installClaudeCode();
 setupChromeBridge();
+disableAutoUpdater();
 
 const sentinel = join(process.env.HOME || '/home/dev', '.claude', 'logs', '.setup-ready');
 writeFileSync(sentinel, `ready ${Date.now() / 1000}\n`);

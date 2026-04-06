@@ -17,6 +17,7 @@ services:
     environment:
       - CLAUDE_CONFIG_DIR=/home/dev/.claude
       - BRIDGE_PORT=9229
+      - CLAUDE_VERSION=${CLAUDE_VERSION:-latest}
       - TERM=xterm-256color
       - NODE_OPTIONS=--max-old-space-size=4096
     stdin_open: true

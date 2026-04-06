@@ -79,6 +79,7 @@ export function loadConfig(projectDir) {
     dev_server_port: dev.port ?? 3000,
     dev_server_timeout: dev.ready_timeout ?? 10,
     claude_timeout: claude.ready_timeout ?? 120,
+    claude_version: claude.version ?? 'latest',
   };
 }
 

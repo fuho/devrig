@@ -7,6 +7,10 @@ import { init } from '../src/init.js';
 import { clean } from '../src/clean.js';
 import { resolveProjectDir } from '../src/config.js';
 import { stopSession, showStatus } from '../src/session.js';
+import { logs } from '../src/logs.js';
+import { exec } from '../src/exec.js';
+import { runAll as runDoctor } from '../src/doctor.js';
+import { update } from '../src/update.js';
 
 const command = process.argv[2];
 const rest = process.argv.slice(3);
@@ -103,6 +107,59 @@ Examples:
   devrig clean --all -y Remove everything without asking
 
 See also: devrig stop`,
+
+  logs: `Show logs from a devrig session.
+
+By default, shows both dev server and container logs sequentially.
+
+Flags:
+  --dev-server  Show only dev server logs
+  --container   Show only container logs
+  --follow, -f  Stream logs live
+
+Examples:
+  devrig logs                  Show all logs
+  devrig logs --container -f   Stream container logs live
+
+See also: devrig status`,
+
+  exec: `Re-attach to a running devrig container.
+
+Opens an interactive bash shell inside the running container without
+restarting the session. Useful when your terminal disconnects or you
+accidentally Ctrl-C'd out of Claude Code.
+
+If no session is active, suggests running devrig start.
+
+Example:
+  devrig exec
+
+See also: devrig start, devrig stop`,
+
+  doctor: `Run pre-flight health checks for devrig.
+
+Checks Node.js version, Docker daemon, Docker Compose, Chrome browser,
+.devrig/ directory, devrig.toml validity, version staleness, and port
+availability.
+
+Example:
+  devrig doctor
+
+See also: devrig init, devrig start`,
+
+  update: `Update scaffold files from the installed devrig version.
+
+Compares each file in .devrig/ against the current devrig package and
+shows which files differ. Prompts before overwriting. Skips user data
+(.devrig/home/) and runtime state (.devrig/session.json).
+
+Flags:
+  --force  Skip confirmation prompt
+
+Example:
+  devrig update
+
+See also: devrig init, devrig doctor`,
 };
 
 function printUsage() {
@@ -115,13 +172,17 @@ Commands:
   status    Show status of the current session
   config    Re-run the configuration wizard
   clean     Remove Docker artifacts for this project
+  logs      Show logs from a devrig session
+  exec      Re-attach to a running container
+  doctor    Run pre-flight health checks
+  update    Update scaffold files to current version
 
 Run devrig <command> --help for more info.`);
 }
 
 if (wantsHelp && command && command in subcommandHelp) {
   console.log(
-    `Usage: devrig ${command}${command === 'start' || command === 'clean' ? ' [flags]' : ''}\n`,
+    `Usage: devrig ${command}${['start', 'clean', 'logs', 'update'].includes(command) ? ' [flags]' : ''}\n`,
   );
   console.log(subcommandHelp[command]);
   process.exit(0);
@@ -152,6 +213,20 @@ switch (command) {
   }
   case 'clean':
     await clean(rest);
+    break;
+  case 'logs':
+    await logs(rest);
+    break;
+  case 'exec':
+    await exec();
+    break;
+  case 'doctor': {
+    const projectDir = resolveProjectDir();
+    await runDoctor(projectDir);
+    break;
+  }
+  case 'update':
+    await update(rest);
     break;
   case 'help':
   case '--help':

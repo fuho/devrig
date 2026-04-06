@@ -100,10 +100,12 @@ export async function configure(projectDir) {
   }
 
   if (useChrome) {
-    toml += `[chrome_bridge]\nport = ${chromePort}\n`;
+    toml += `[chrome_bridge]\nport = ${chromePort}\n\n`;
   } else {
-    toml += `# [chrome_bridge]\n# port = 9229\n`;
+    toml += `# [chrome_bridge]\n# port = 9229\n\n`;
   }
+
+  toml += `[claude]\nversion = "latest"\n`;
 
   writeFileSync(tomlPath, toml);
   console.log(`\n  Wrote ${tomlPath}`);

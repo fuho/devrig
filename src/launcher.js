@@ -105,6 +105,7 @@ export async function launch(argv) {
   // -- Step 6: Change to project directory and set host UID ----------------
   process.chdir(projectDir);
   process.env.HOST_UID = String(userInfo().uid);
+  process.env.CLAUDE_VERSION = cfg.claude_version;
 
   // -- Step 7: Preflight checks (launcher.py: preflight) --------------------
 
@@ -217,7 +218,7 @@ export async function launch(argv) {
     // Give bridge a moment to start, then verify it's still alive
     await sleep(1000);
     if (bridgeProc.exitCode !== null) {
-      die(`bridge-host failed to start (port ${cfg.bridge_port} may be in use)`);
+      die(`Chrome bridge failed to start — port ${cfg.bridge_port} may be in use.\n  Try: lsof -i :${cfg.bridge_port} to see what's using it`);
     }
     log(`Chrome bridge started on port ${cfg.bridge_port}`);
     sessionInfo.bridgePid = bridgeProc.pid;
@@ -251,7 +252,7 @@ export async function launch(argv) {
     }
     if (!devReady) {
       log(
-        `WARNING: Dev server did not respond within ${cfg.dev_server_timeout}s — continuing anyway`,
+        `WARNING: Dev server not reachable at localhost:${cfg.dev_server_port} after ${cfg.dev_server_timeout}s — Claude can still work but won't see your app in the browser`,
       );
     }
 
