@@ -78,7 +78,7 @@ describe('loadConfig', () => {
   });
 
   it('loads and normalizes a devrig.toml', () => {
-    tmpDir = mkdtempSync(join(tmpdir(), 'cdev-test-'));
+    tmpDir = mkdtempSync(join(tmpdir(), 'devrig-test-'));
     const toml = [
       'project = "test-proj"',
       'tool = "cursor"',
@@ -100,7 +100,7 @@ describe('loadConfig', () => {
   });
 
   it('applies defaults when sections are missing', () => {
-    tmpDir = mkdtempSync(join(tmpdir(), 'cdev-test-'));
+    tmpDir = mkdtempSync(join(tmpdir(), 'devrig-test-'));
     writeFileSync(join(tmpDir, 'devrig.toml'), 'project = "bare"');
 
     const cfg = loadConfig(tmpDir);
@@ -111,7 +111,7 @@ describe('loadConfig', () => {
   });
 
   it('sets bridge_enabled true when [chrome_bridge] present', () => {
-    tmpDir = mkdtempSync(join(tmpdir(), 'cdev-test-'));
+    tmpDir = mkdtempSync(join(tmpdir(), 'devrig-test-'));
     writeFileSync(join(tmpDir, 'devrig.toml'), 'project = "x"\n[chrome_bridge]');
 
     const cfg = loadConfig(tmpDir);
@@ -134,7 +134,7 @@ describe('loadDotenv', () => {
   });
 
   it('loads key=value pairs into process.env', () => {
-    tmpDir = mkdtempSync(join(tmpdir(), 'cdev-env-'));
+    tmpDir = mkdtempSync(join(tmpdir(), 'devrig-env-'));
     const content = [
       'SIMPLE=hello',
       'DOUBLE="quoted value"',
@@ -155,7 +155,7 @@ describe('loadDotenv', () => {
   });
 
   it('does not throw when .env is missing', () => {
-    tmpDir = mkdtempSync(join(tmpdir(), 'cdev-env-'));
+    tmpDir = mkdtempSync(join(tmpdir(), 'devrig-env-'));
     assert.doesNotThrow(() => loadDotenv(tmpDir));
   });
 });

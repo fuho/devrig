@@ -12,3 +12,9 @@ node_modules/
 
 # Runtime artifacts
 .devrig/
+
+# IDE
+.idea/
+
+# Internal docs (specs, plans, reviews)
+docs/

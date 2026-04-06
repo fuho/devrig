@@ -26,7 +26,7 @@ describe('init scaffold', () => {
   });
 
   it('copies scaffold files and sets executable permissions', () => {
-    tmp = mkdtempSync(join(tmpdir(), 'cdev-init-'));
+    tmp = mkdtempSync(join(tmpdir(), 'devrig-init-'));
     const target = join(tmp, '.devrig');
     cpSync(scaffoldDir, target, { recursive: true });
     chmodSync(join(target, 'entrypoint.sh'), 0o755);
@@ -51,7 +51,7 @@ describe('init scaffold', () => {
   });
 
   it('writes version marker', () => {
-    tmp = mkdtempSync(join(tmpdir(), 'cdev-ver-'));
+    tmp = mkdtempSync(join(tmpdir(), 'devrig-ver-'));
     const target = join(tmp, '.devrig');
     mkdirSync(target);
     const version = getPackageVersion();
@@ -79,14 +79,14 @@ describe('gitignore update', () => {
   }
 
   it('creates .gitignore when none exists', () => {
-    tmp = mkdtempSync(join(tmpdir(), 'cdev-gi-'));
+    tmp = mkdtempSync(join(tmpdir(), 'devrig-gi-'));
     applyGitignore(tmp);
     const content = readFileSync(join(tmp, '.gitignore'), 'utf8');
     assert.ok(content.includes('.devrig/'));
   });
 
   it('appends entries to existing .gitignore', () => {
-    tmp = mkdtempSync(join(tmpdir(), 'cdev-gi-'));
+    tmp = mkdtempSync(join(tmpdir(), 'devrig-gi-'));
     writeFileSync(join(tmp, '.gitignore'), 'node_modules/\n');
     applyGitignore(tmp);
     const content = readFileSync(join(tmp, '.gitignore'), 'utf8');
@@ -95,7 +95,7 @@ describe('gitignore update', () => {
   });
 
   it('does not duplicate existing entries', () => {
-    tmp = mkdtempSync(join(tmpdir(), 'cdev-gi-'));
+    tmp = mkdtempSync(join(tmpdir(), 'devrig-gi-'));
     writeFileSync(join(tmp, '.gitignore'), '.devrig/\n');
     applyGitignore(tmp);
     const content = readFileSync(join(tmp, '.gitignore'), 'utf8');
@@ -110,7 +110,7 @@ describe('devrig.toml.example copy', () => {
   });
 
   it('copies devrig.toml.example to project root', () => {
-    tmp = mkdtempSync(join(tmpdir(), 'cdev-toml-'));
+    tmp = mkdtempSync(join(tmpdir(), 'devrig-toml-'));
     const src = join(scaffoldDir, 'devrig.toml.example');
     const dest = join(tmp, 'devrig.toml.example');
     if (existsSync(src) && !existsSync(dest)) cpSync(src, dest);
