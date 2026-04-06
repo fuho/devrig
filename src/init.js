@@ -13,13 +13,63 @@ const DEVRIG_START = '<!-- devrig:start -->';
 const DEVRIG_END = '<!-- devrig:end -->';
 
 /**
- * Generates or updates the devrig section in CLAUDE.md.
+ * Replaces or appends a devrig sentinel block into user content.
+ * @param {string} userContent - Content outside sentinels (may be empty)
+ * @param {string} block - Full block including sentinels
+ * @returns {string}
+ */
+function spliceBlock(userContent, block) {
+  const startIdx = userContent.indexOf(DEVRIG_START);
+  const endIdx = userContent.indexOf(DEVRIG_END);
+  if (startIdx !== -1 && endIdx !== -1) {
+    return userContent.slice(0, startIdx) + block + userContent.slice(endIdx + DEVRIG_END.length);
+  }
+  const sep = userContent.endsWith('\n') ? '\n' : '\n\n';
+  return userContent + (userContent ? sep : '') + block + '\n';
+}
+
+/**
+ * Extracts user content from a file, stripping the devrig sentinel block.
+ * Returns empty string if the file doesn't exist.
+ * @param {string} filePath
+ * @returns {string}
+ */
+function readUserContent(filePath) {
+  if (!existsSync(filePath)) return '';
+  const content = readFileSync(filePath, 'utf8');
+  const startIdx = content.indexOf(DEVRIG_START);
+  const endIdx = content.indexOf(DEVRIG_END);
+  if (startIdx !== -1 && endIdx !== -1) {
+    const before = content.slice(0, startIdx);
+    const after = content.slice(endIdx + DEVRIG_END.length);
+    return (before + after).replace(/\n{3,}/g, '\n\n').trimEnd();
+  }
+  return content.trimEnd();
+}
+
+/**
+ * Generates or updates CLAUDE.md (host instructions) and .devrig/CLAUDE.md (container instructions).
  * @param {string} projectDir
  * @param {{ tool: string, dev_server_port: number, bridge_enabled: boolean, bridge_port: number }} cfg
  */
 export function generateClaudeMd(projectDir, cfg) {
-  const claudeMdPath = join(projectDir, 'CLAUDE.md');
-  const block = [
+  const hostBlock = [
+    DEVRIG_START,
+    '## devrig',
+    '',
+    'This project uses devrig for containerized AI development.',
+    '',
+    'Available commands:',
+    '- `devrig start` — start the dev container with Claude Code',
+    '- `devrig stop` — stop the container',
+    '- `devrig status` — show container status',
+    '- `devrig logs` — tail container logs',
+    '',
+    'Do not modify .devrig/ directly — it is managed by devrig.',
+    DEVRIG_END,
+  ].join('\n');
+
+  const containerBlock = [
     DEVRIG_START,
     '## devrig',
     '',
@@ -41,21 +91,18 @@ export function generateClaudeMd(projectDir, cfg) {
     DEVRIG_END,
   ].join('\n');
 
-  if (existsSync(claudeMdPath)) {
-    let content = readFileSync(claudeMdPath, 'utf8');
-    const startIdx = content.indexOf(DEVRIG_START);
-    const endIdx = content.indexOf(DEVRIG_END);
-    if (startIdx !== -1 && endIdx !== -1) {
-      content = content.slice(0, startIdx) + block + content.slice(endIdx + DEVRIG_END.length);
-    } else {
-      const sep = content.endsWith('\n') ? '\n' : '\n\n';
-      content = content + sep + block + '\n';
-    }
-    writeFileSync(claudeMdPath, content);
-  } else {
-    writeFileSync(claudeMdPath, block + '\n');
-  }
-  log('Generated CLAUDE.md');
+  // Read user content from host CLAUDE.md (source of truth for user content)
+  const hostPath = join(projectDir, 'CLAUDE.md');
+  const userContent = readUserContent(hostPath);
+
+  // Write host CLAUDE.md
+  writeFileSync(hostPath, spliceBlock(userContent, hostBlock));
+
+  // Write .devrig/CLAUDE.md
+  const containerPath = join(projectDir, '.devrig', 'CLAUDE.md');
+  writeFileSync(containerPath, spliceBlock(userContent, containerBlock));
+
+  log('Generated CLAUDE.md (host + container)');
 }
 
 /** Scaffolds .devrig/ directory, sets permissions, and runs configuration wizard. */

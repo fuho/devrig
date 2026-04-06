@@ -127,27 +127,47 @@ describe('CLAUDE.md generation', () => {
     if (tmp) rmSync(tmp, { recursive: true, force: true });
   });
 
-  it('creates CLAUDE.md when none exists', () => {
+  it('host CLAUDE.md contains host block and NOT container text', () => {
     tmp = mkdtempSync(join(tmpdir(), 'devrig-agents-'));
+    mkdirSync(join(tmp, '.devrig'), { recursive: true });
     generateClaudeMd(tmp, cfg);
     const content = readFileSync(join(tmp, 'CLAUDE.md'), 'utf8');
     assert.ok(content.includes('<!-- devrig:start -->'));
     assert.ok(content.includes('<!-- devrig:end -->'));
-    assert.ok(content.includes('http://localhost:3000'));
-    assert.ok(content.includes('enabled (port 9229)'));
+    assert.ok(content.includes('containerized AI development'));
+    assert.ok(content.includes('devrig start'));
+    assert.ok(!content.includes('Git push is blocked'));
+    assert.ok(!content.includes('/workspace'));
   });
 
-  it('appends to existing CLAUDE.md', () => {
+  it('container .devrig/CLAUDE.md contains container block', () => {
     tmp = mkdtempSync(join(tmpdir(), 'devrig-agents-'));
+    mkdirSync(join(tmp, '.devrig'), { recursive: true });
+    generateClaudeMd(tmp, cfg);
+    const content = readFileSync(join(tmp, '.devrig', 'CLAUDE.md'), 'utf8');
+    assert.ok(content.includes('<!-- devrig:start -->'));
+    assert.ok(content.includes('<!-- devrig:end -->'));
+    assert.ok(content.includes('/workspace'));
+    assert.ok(content.includes('http://localhost:3000'));
+    assert.ok(content.includes('Git push is blocked'));
+  });
+
+  it('user content outside sentinels preserved in both files', () => {
+    tmp = mkdtempSync(join(tmpdir(), 'devrig-agents-'));
+    mkdirSync(join(tmp, '.devrig'), { recursive: true });
     writeFileSync(join(tmp, 'CLAUDE.md'), '# My Project\n\nExisting content.\n');
     generateClaudeMd(tmp, cfg);
-    const content = readFileSync(join(tmp, 'CLAUDE.md'), 'utf8');
-    assert.ok(content.startsWith('# My Project'));
-    assert.ok(content.includes('<!-- devrig:start -->'));
+    const hostContent = readFileSync(join(tmp, 'CLAUDE.md'), 'utf8');
+    assert.ok(hostContent.includes('# My Project'));
+    assert.ok(hostContent.includes('Existing content.'));
+    const containerContent = readFileSync(join(tmp, '.devrig', 'CLAUDE.md'), 'utf8');
+    assert.ok(containerContent.includes('# My Project'));
+    assert.ok(containerContent.includes('Existing content.'));
   });
 
-  it('replaces devrig section on re-run', () => {
+  it('re-run replaces devrig section in both files reflecting config changes', () => {
     tmp = mkdtempSync(join(tmpdir(), 'devrig-agents-'));
+    mkdirSync(join(tmp, '.devrig'), { recursive: true });
     generateClaudeMd(tmp, cfg);
     generateClaudeMd(tmp, {
       tool: 'claude',
@@ -155,10 +175,25 @@ describe('CLAUDE.md generation', () => {
       bridge_enabled: false,
       bridge_port: 9229,
     });
-    const content = readFileSync(join(tmp, 'CLAUDE.md'), 'utf8');
-    assert.ok(content.includes('http://localhost:8080'));
-    assert.ok(!content.includes('http://localhost:3000'));
-    assert.ok(content.includes('disabled'));
-    assert.equal(content.split('<!-- devrig:start -->').length - 1, 1);
+    const hostContent = readFileSync(join(tmp, 'CLAUDE.md'), 'utf8');
+    assert.equal(hostContent.split('<!-- devrig:start -->').length - 1, 1);
+    const containerContent = readFileSync(join(tmp, '.devrig', 'CLAUDE.md'), 'utf8');
+    assert.ok(containerContent.includes('http://localhost:8080'));
+    assert.ok(!containerContent.includes('http://localhost:3000'));
+    assert.ok(containerContent.includes('disabled'));
+    assert.equal(containerContent.split('<!-- devrig:start -->').length - 1, 1);
+  });
+
+  it('user edits to host CLAUDE.md are picked up in container version on re-generation', () => {
+    tmp = mkdtempSync(join(tmpdir(), 'devrig-agents-'));
+    mkdirSync(join(tmp, '.devrig'), { recursive: true });
+    generateClaudeMd(tmp, cfg);
+    // User adds new content to host CLAUDE.md outside sentinels
+    const hostPath = join(tmp, 'CLAUDE.md');
+    const afterFirst = readFileSync(hostPath, 'utf8');
+    writeFileSync(hostPath, '# My Project\n\nUser added this.\n' + afterFirst);
+    generateClaudeMd(tmp, cfg);
+    const containerContent = readFileSync(join(tmp, '.devrig', 'CLAUDE.md'), 'utf8');
+    assert.ok(containerContent.includes('User added this.'));
   });
 });
