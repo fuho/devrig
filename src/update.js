@@ -65,6 +65,7 @@ export function findChangedFiles(projectDir, scaffoldDir) {
 /**
  * Main update command handler.
  * @param {string[]} argv
+ * @returns {Promise<void>}
  */
 export async function update(argv) {
   const force = argv.includes('--force');

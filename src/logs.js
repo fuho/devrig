@@ -33,6 +33,7 @@ export function buildDockerLogsArgs(session, opts) {
 /**
  * Main logs command handler.
  * @param {string[]} argv
+ * @returns {Promise<void>}
  */
 export async function logs(argv) {
   const devServer = argv.includes('--dev-server');

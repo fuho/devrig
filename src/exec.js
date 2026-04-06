@@ -31,6 +31,7 @@ export function buildExecArgs(session) {
 
 /**
  * Main exec command handler.
+ * @returns {Promise<void>}
  */
 export async function exec() {
   const projectDir = resolveProjectDir();
