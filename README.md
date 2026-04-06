@@ -4,7 +4,7 @@
 
 **Run [Claude Code](https://docs.anthropic.com/en/docs/claude-code) in Docker so it can't break your machine.**
 
-Claude Code is powerful — it installs packages, modifies system files, and runs arbitrary commands on your behalf. devrig gives it a containerized playground with your project mounted, optional Chrome browser control, and git safety rails. Two commands to start, zero runtime dependencies. Support for other CLI AI tools may be added in the future.
+Claude Code is powerful — it installs packages, modifies system files, and runs arbitrary commands on your behalf. Devrig gives it a containerized playground with your project mounted, optional Chrome browser control, and git safety rails. Two commands to start, zero runtime dependencies. Support for other CLI AI tools may be added in the future.
 
 ## Why devrig?
 
@@ -15,7 +15,7 @@ Claude Code is powerful — it installs packages, modifies system files, and run
 - **Clean host** — no global packages, no Claude Code installation on your machine, no leftover processes after sessions end.
 
 > [!NOTE]
-> **What devrig does and doesn't isolate:** The container provides filesystem and git credential isolation — Claude cannot access your host files or push to your repos. The container does have internet access, same as running on your host, because Claude Code needs it to install packages and function normally. devrig protects your machine and your repos, not your network.
+> **What devrig does and doesn't isolate:** The container provides filesystem and git credential isolation — Claude cannot access your host files or push to your repos. The container does have internet access, the same as running on your host, because Claude Code needs it to install packages and function normally. Devrig protects your machine and your repos, not your network.
 
 ## Quick Start
 
