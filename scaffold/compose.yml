@@ -23,6 +23,8 @@ services:
     stdin_open: true
     tty: true
     init: true
+    tmpfs:
+      - /tmp
     healthcheck:
       test: ["CMD", "bash", "-c", "command -v claude"]
       interval: 5s
