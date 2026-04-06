@@ -182,17 +182,10 @@ describe('composeCmd', () => {
 
 describe('initVariant', () => {
   it('returns native variant config', () => {
-    const v = initVariant({ project: 'myproj' }, 'native');
+    const v = initVariant({ project: 'myproj' });
     assert.ok(v.composeFile.includes('compose.yml'));
     assert.equal(v.image, 'myproj-dev:latest');
     assert.equal(v.dockerfile, 'Dockerfile');
-  });
-
-  it('returns npm variant config', () => {
-    const v = initVariant({ project: 'myproj' }, 'npm');
-    assert.ok(v.composeFile.includes('compose.npm.yml'));
-    assert.ok(v.image.includes('npm'));
-    assert.equal(v.dockerfile, 'Dockerfile.npm');
   });
 });
 

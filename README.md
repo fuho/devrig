@@ -66,12 +66,11 @@ All commands support `--help` for usage details.
 
 ### Flags for `start`
 
-| Flag              | Effect                                                |
-| ----------------- | ----------------------------------------------------- |
-| `--rebuild`       | Force rebuild the Docker image                        |
-| `--no-chrome`     | Skip Chrome bridge and browser                        |
-| `--no-dev-server` | Skip the dev server                                   |
-| `--npm`           | Use npm-based Claude Code installer instead of native |
+| Flag              | Effect                         |
+| ----------------- | ------------------------------ |
+| `--rebuild`       | Force rebuild the Docker image |
+| `--no-chrome`     | Skip Chrome bridge and browser |
+| `--no-dev-server` | Skip the dev server            |
 
 ## Configuration
 
@@ -141,7 +140,7 @@ GIT_AUTHOR_EMAIL=you@example.com
 | **User**        | `dev` with UID matching your host (no permission issues on Linux)        |
 | **Git safety**  | `git push` blocked, `git pull` on master blocked, no SSH keys            |
 | **Resources**   | 8 GB memory, 4 CPUs (edit compose files to change)                       |
-| **Claude Code** | Installed automatically on first start (native or npm)                   |
+| **Claude Code** | Installed automatically on first start                                   |
 | **Volumes**     | Project at `/workspace`, node_modules persisted, home dir at `/home/dev` |
 
 </details>
@@ -182,10 +181,8 @@ src/
   init.js            Scaffold copying, gitignore management
   log.js             Logging helpers
 scaffold/
-  Dockerfile         Container image (native installer)
-  Dockerfile.npm     Container image (npm installer)
-  compose.yml        Docker Compose for native variant
-  compose.npm.yml    Docker Compose for npm variant
+  Dockerfile         Container image
+  compose.yml        Docker Compose configuration
   entrypoint.sh      Container entrypoint
   container-setup.js Runs inside container — installs Claude Code, sets up bridge
   template/          Starter files for new projects

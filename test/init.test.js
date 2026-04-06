@@ -34,9 +34,7 @@ describe('init scaffold', () => {
 
     const expected = [
       'Dockerfile',
-      'Dockerfile.npm',
       'compose.yml',
-      'compose.npm.yml',
       'entrypoint.sh',
       'container-setup.js',
       'devrig.toml.example',

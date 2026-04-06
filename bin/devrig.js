@@ -36,7 +36,6 @@ Flags:
   --rebuild        Force rebuild the Docker image
   --no-chrome      Skip Chrome bridge and browser
   --no-dev-server  Skip the dev server
-  --npm            Use npm-based Claude Code installer instead of native
 
 Requires devrig.toml in the current directory (or a parent). Run devrig init
 first if you haven't already. Claude Code runs with --dangerously-skip-permissions
@@ -45,7 +44,6 @@ inside the container for an uninterrupted workflow.
 Examples:
   devrig start                  Start with all features
   devrig start --no-chrome      Start without Chrome bridge
-  devrig start --rebuild --npm  Force rebuild using npm installer
 
 See also: devrig stop, devrig status, devrig clean`,
 

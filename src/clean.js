@@ -136,22 +136,19 @@ export async function clean(argv) {
     found = discoverByLabel(cfg.project);
 
     // Also check by image name for pre-label resources
-    const ctx = initVariant(cfg, 'native');
-    const ctxNpm = initVariant(cfg, 'npm');
+    const ctx = initVariant(cfg);
     const imageNames = new Set(found.map((f) => f.name));
-    for (const image of [ctx.image, ctxNpm.image]) {
-      if (!imageNames.has(image)) {
-        try {
-          const info = execFileSync(
-            'docker',
-            ['image', 'inspect', image, '--format', '{{.Size}}'],
-            { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] },
-          ).trim();
-          const sizeMB = (parseInt(info, 10) / 1024 / 1024).toFixed(0);
-          found.push({ type: 'Image', name: image, detail: `${sizeMB} MB` });
-        } catch {
-          /* doesn't exist */
-        }
+    if (!imageNames.has(ctx.image)) {
+      try {
+        const info = execFileSync(
+          'docker',
+          ['image', 'inspect', ctx.image, '--format', '{{.Size}}'],
+          { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] },
+        ).trim();
+        const sizeMB = (parseInt(info, 10) / 1024 / 1024).toFixed(0);
+        found.push({ type: 'Image', name: ctx.image, detail: `${sizeMB} MB` });
+      } catch {
+        /* doesn't exist */
       }
     }
 
