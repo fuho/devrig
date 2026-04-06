@@ -60,10 +60,10 @@ From here you're inside [Claude Code](https://docs.anthropic.com/en/docs/claude-
 | `devrig status`             | Show whether container, bridge, and dev server are running                    |
 | `devrig config`             | Re-run the configuration wizard                                               |
 | `devrig clean [--all] [-y]` | Remove Docker artifacts for this project (or `--all` for all devrig projects) |
-| `devrig logs [flags]`       | Show logs from a devrig session                                              |
-| `devrig exec`               | Re-attach to a running container                                             |
-| `devrig doctor`             | Run pre-flight health checks                                                 |
-| `devrig update [--force]`   | Update scaffold files to current devrig version                              |
+| `devrig logs [flags]`       | Show logs from a devrig session                                               |
+| `devrig exec`               | Re-attach to a running container                                              |
+| `devrig doctor`             | Run pre-flight health checks                                                  |
+| `devrig update [--force]`   | Update scaffold files to current devrig version                               |
 
 All commands support `--help` for usage details.
 
@@ -101,16 +101,16 @@ To disable the Chrome bridge or dev server, delete its entire section (including
 <details>
 <summary>Full configuration reference</summary>
 
-| Field           | Section           | Default            | Description                               |
-| --------------- | ----------------- | ------------------ | ----------------------------------------- |
-| `tool`          | top-level         | `"claude"`         | AI tool to use (future: codex, open-code) |
-| `project`       | top-level         | `"claude-project"` | Docker image/container name               |
-| `command`       | `[dev_server]`    | _(none)_           | Shell command to start your dev server    |
-| `port`          | `[dev_server]`    | `3000`             | Port the dev server listens on            |
-| `ready_timeout` | `[dev_server]`    | `10`               | Seconds to wait for dev server readiness  |
-| `port`          | `[chrome_bridge]` | `9229`             | Chrome debugging protocol port            |
+| Field           | Section           | Default            | Description                                          |
+| --------------- | ----------------- | ------------------ | ---------------------------------------------------- |
+| `tool`          | top-level         | `"claude"`         | AI tool to use (future: codex, open-code)            |
+| `project`       | top-level         | `"claude-project"` | Docker image/container name                          |
+| `command`       | `[dev_server]`    | _(none)_           | Shell command to start your dev server               |
+| `port`          | `[dev_server]`    | `3000`             | Port the dev server listens on                       |
+| `ready_timeout` | `[dev_server]`    | `10`               | Seconds to wait for dev server readiness             |
+| `port`          | `[chrome_bridge]` | `9229`             | Chrome debugging protocol port                       |
 | `version`       | `[claude]`        | `"latest"`         | Claude Code version: "latest", "stable", or "2.1.89" |
-| `ready_timeout` | `[claude]`        | `120`              | Seconds to wait for Claude Code setup     |
+| `ready_timeout` | `[claude]`        | `120`              | Seconds to wait for Claude Code setup                |
 
 </details>
 
@@ -156,18 +156,18 @@ For compose-level changes (volumes, ports, resource limits), create a `docker-co
 <details>
 <summary>Container details</summary>
 
-| Aspect          | Details                                                                  |
-| --------------- | ------------------------------------------------------------------------ |
-| **Base image**  | `node:25-slim`                                                           |
-| **Tools**       | git, ripgrep, gh, socat, vim, tree, pnpm, curl, jq                       |
-| **User**        | `dev` with UID matching your host (no permission issues on Linux)        |
-| **Git safety**  | `git push` blocked, `git pull` on master blocked, no SSH keys            |
-| **Resources**   | 8 GB memory, 4 CPUs (edit compose files to change)                       |
-| **PID 1**       | tini (`init: true`) for proper zombie process reaping                    |
-| **tmpfs**       | `/tmp` mounted in-memory for faster temp operations                      |
+| Aspect          | Details                                                                        |
+| --------------- | ------------------------------------------------------------------------------ |
+| **Base image**  | `node:25-slim`                                                                 |
+| **Tools**       | git, ripgrep, gh, socat, vim, tree, pnpm, curl, jq                             |
+| **User**        | `dev` with UID matching your host (no permission issues on Linux)              |
+| **Git safety**  | `git push` blocked, `git pull` on master blocked, no SSH keys                  |
+| **Resources**   | 8 GB memory, 4 CPUs (edit compose files to change)                             |
+| **PID 1**       | tini (`init: true`) for proper zombie process reaping                          |
+| **tmpfs**       | `/tmp` mounted in-memory for faster temp operations                            |
 | **Claude Code** | Installed automatically on first start, version configurable via `devrig.toml` |
-| **Volumes**     | Project at `/workspace`, node_modules persisted, home dir at `/home/dev` |
-| **Isolation**   | `.devrig/` masked inside container; `CLAUDE.md` shadow-mounted read-only |
+| **Volumes**     | Project at `/workspace`, node_modules persisted, home dir at `/home/dev`       |
+| **Isolation**   | `.devrig/` masked inside container; `CLAUDE.md` shadow-mounted read-only       |
 
 </details>
 
@@ -180,15 +180,15 @@ For compose-level changes (volumes, ports, resource limits), create a `docker-co
 
 ## Development
 
-| Command                 | What it does                                |
-| ----------------------- | ------------------------------------------- |
+| Command                 | What it does                                               |
+| ----------------------- | ---------------------------------------------------------- |
 | `npm test`              | Unit + integration tests (including scaffold verification) |
-| `npm run test:docker`   | Docker integration tests (build + runtime)  |
-| `npm run test:coverage` | Tests with V8 coverage report               |
-| `npm run lint`          | ESLint                                      |
-| `npm run format:check`  | Prettier check                              |
-| `npm run typecheck`     | TypeScript JSDoc type checking              |
-| `npm run check`         | All of the above, sequentially              |
+| `npm run test:docker`   | Docker integration tests (build + runtime)                 |
+| `npm run test:coverage` | Tests with V8 coverage report                              |
+| `npm run lint`          | ESLint                                                     |
+| `npm run format:check`  | Prettier check                                             |
+| `npm run typecheck`     | TypeScript JSDoc type checking                             |
+| `npm run check`         | All of the above, sequentially                             |
 
 <details>
 <summary>Project structure</summary>

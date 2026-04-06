@@ -13,7 +13,15 @@ describe('exec', () => {
 
   it('builds docker exec args from session', () => {
     const session = {
-      composeArgs: ['compose', '--project-directory', '.', '--project-name', 'test', '-f', '.devrig/compose.yml'],
+      composeArgs: [
+        'compose',
+        '--project-directory',
+        '.',
+        '--project-name',
+        'test',
+        '-f',
+        '.devrig/compose.yml',
+      ],
     };
     const args = buildExecArgs(session);
     assert.ok(args.includes('exec'));
@@ -33,10 +41,13 @@ describe('exec', () => {
     tmp = mkdtempSync(join(tmpdir(), 'devrig-exec-'));
     const devrigDir = join(tmp, '.devrig');
     mkdirSync(devrigDir, { recursive: true });
-    writeFileSync(join(devrigDir, 'session.json'), JSON.stringify({
-      pid: 999999999,
-      composeArgs: ['compose', '-f', '.devrig/compose.yml'],
-    }));
+    writeFileSync(
+      join(devrigDir, 'session.json'),
+      JSON.stringify({
+        pid: 999999999,
+        composeArgs: ['compose', '-f', '.devrig/compose.yml'],
+      }),
+    );
     const result = validateSession(tmp);
     assert.equal(result.ok, false);
     assert.ok(result.error.includes('not running') || result.error.includes('stopped'));

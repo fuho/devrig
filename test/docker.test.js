@@ -88,7 +88,9 @@ describe('scaffold image verification', { timeout: 120_000 }, () => {
   });
 
   after(() => {
-    try { execFileSync('docker', ['rmi', '-f', testImage], { stdio: 'ignore' }); } catch {}
+    try {
+      execFileSync('docker', ['rmi', '-f', testImage], { stdio: 'ignore' });
+    } catch {}
     rmSync(tmpDir, { recursive: true, force: true });
   });
 
@@ -127,65 +129,117 @@ describe('compose runtime verification', { timeout: 120_000 }, () => {
     cpSync(scaffoldDir, devrigDir, { recursive: true });
 
     // Generate container CLAUDE.md for shadow mount test
-    writeFileSync(join(devrigDir, 'CLAUDE.md'), [
-      '<!-- devrig:start -->',
-      '## devrig',
-      '',
-      'You are running inside a devrig Docker container.',
-      '',
-      '- **Workspace:** /workspace',
-      '- **Dev server:** http://localhost:3000',
-      '- **Chrome bridge:** disabled',
-      '',
-      'Git push is blocked inside this container. Make commits freely — the user will',
-      'review and push from the host.',
-      '<!-- devrig:end -->',
-    ].join('\n') + '\n');
+    writeFileSync(
+      join(devrigDir, 'CLAUDE.md'),
+      [
+        '<!-- devrig:start -->',
+        '## devrig',
+        '',
+        'You are running inside a devrig Docker container.',
+        '',
+        '- **Workspace:** /workspace',
+        '- **Dev server:** http://localhost:3000',
+        '- **Chrome bridge:** disabled',
+        '',
+        'Git push is blocked inside this container. Make commits freely — the user will',
+        'review and push from the host.',
+        '<!-- devrig:end -->',
+      ].join('\n') + '\n',
+    );
 
     // Create host CLAUDE.md (will be shadowed by container version)
-    writeFileSync(join(tmpDir, 'CLAUDE.md'), [
-      '<!-- devrig:start -->',
-      '## devrig',
-      '',
-      'This project uses devrig for containerized AI development.',
-      '<!-- devrig:end -->',
-    ].join('\n') + '\n');
+    writeFileSync(
+      join(tmpDir, 'CLAUDE.md'),
+      [
+        '<!-- devrig:start -->',
+        '## devrig',
+        '',
+        'This project uses devrig for containerized AI development.',
+        '<!-- devrig:end -->',
+      ].join('\n') + '\n',
+    );
 
     // Start container in background using compose
-    execFileSync('docker', [
-      'compose', '--project-directory', tmpDir,
-      '-f', join(devrigDir, 'compose.yml'),
-      '--project-name', projectName,
-      'up', '-d', '--build',
-    ], { stdio: 'pipe', timeout: 90_000, env: { ...process.env, DEVRIG_PROJECT: projectName, HOST_UID: String(process.getuid()) } });
+    execFileSync(
+      'docker',
+      [
+        'compose',
+        '--project-directory',
+        tmpDir,
+        '-f',
+        join(devrigDir, 'compose.yml'),
+        '--project-name',
+        projectName,
+        'up',
+        '-d',
+        '--build',
+      ],
+      {
+        stdio: 'pipe',
+        timeout: 90_000,
+        env: { ...process.env, DEVRIG_PROJECT: projectName, HOST_UID: String(process.getuid()) },
+      },
+    );
   });
 
   after(() => {
     try {
-      execFileSync('docker', [
-        'compose', '--project-directory', tmpDir,
-        '-f', join(tmpDir, '.devrig', 'compose.yml'),
-        '--project-name', projectName,
-        'down', '--rmi', 'local', '-v',
-      ], { stdio: 'ignore', timeout: 30_000, env: { ...process.env, DEVRIG_PROJECT: projectName, HOST_UID: String(process.getuid()) } });
+      execFileSync(
+        'docker',
+        [
+          'compose',
+          '--project-directory',
+          tmpDir,
+          '-f',
+          join(tmpDir, '.devrig', 'compose.yml'),
+          '--project-name',
+          projectName,
+          'down',
+          '--rmi',
+          'local',
+          '-v',
+        ],
+        {
+          stdio: 'ignore',
+          timeout: 30_000,
+          env: { ...process.env, DEVRIG_PROJECT: projectName, HOST_UID: String(process.getuid()) },
+        },
+      );
     } catch {}
     rmSync(tmpDir, { recursive: true, force: true });
   });
 
   function composeExec(...cmd) {
-    return execFileSync('docker', [
-      'compose', '--project-directory', tmpDir,
-      '-f', join(tmpDir, '.devrig', 'compose.yml'),
-      '--project-name', projectName,
-      'exec', '-T', 'dev', ...cmd,
-    ], { encoding: 'utf8', timeout: 15_000, env: { ...process.env, DEVRIG_PROJECT: projectName, HOST_UID: String(process.getuid()) } }).trim();
+    return execFileSync(
+      'docker',
+      [
+        'compose',
+        '--project-directory',
+        tmpDir,
+        '-f',
+        join(tmpDir, '.devrig', 'compose.yml'),
+        '--project-name',
+        projectName,
+        'exec',
+        '-T',
+        'dev',
+        ...cmd,
+      ],
+      {
+        encoding: 'utf8',
+        timeout: 15_000,
+        env: { ...process.env, DEVRIG_PROJECT: projectName, HOST_UID: String(process.getuid()) },
+      },
+    ).trim();
   }
 
   it('PID 1 is tini (init: true)', () => {
     const output = composeExec('cat', '/proc/1/cmdline');
     // Docker uses tini or docker-init depending on runtime
-    assert.ok(output.includes('tini') || output.includes('docker-init'),
-      `expected tini or docker-init as PID 1, got: ${output}`);
+    assert.ok(
+      output.includes('tini') || output.includes('docker-init'),
+      `expected tini or docker-init as PID 1, got: ${output}`,
+    );
   });
 
   it('/tmp is mounted as tmpfs', () => {
@@ -206,9 +260,13 @@ describe('compose runtime verification', { timeout: 120_000 }, () => {
 
   it('container sees container version of CLAUDE.md', () => {
     const output = composeExec('cat', '/workspace/CLAUDE.md');
-    assert.ok(output.includes('You are running inside a devrig Docker container'),
-      'container should see container CLAUDE.md');
-    assert.ok(!output.includes('containerized AI development'),
-      'container should not see host CLAUDE.md content');
+    assert.ok(
+      output.includes('You are running inside a devrig Docker container'),
+      'container should see container CLAUDE.md',
+    );
+    assert.ok(
+      !output.includes('containerized AI development'),
+      'container should not see host CLAUDE.md content',
+    );
   });
 });

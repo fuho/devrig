@@ -30,14 +30,34 @@ describe('logs', () => {
   });
 
   it('builds docker logs args from session', () => {
-    const session = { composeArgs: ['compose', '--project-directory', '.', '--project-name', 'test', '-f', '.devrig/compose.yml'] };
+    const session = {
+      composeArgs: [
+        'compose',
+        '--project-directory',
+        '.',
+        '--project-name',
+        'test',
+        '-f',
+        '.devrig/compose.yml',
+      ],
+    };
     const args = buildDockerLogsArgs(session, { follow: false });
     assert.ok(args.includes('logs'));
     assert.ok(args.includes('dev'));
   });
 
   it('builds docker logs args with follow flag', () => {
-    const session = { composeArgs: ['compose', '--project-directory', '.', '--project-name', 'test', '-f', '.devrig/compose.yml'] };
+    const session = {
+      composeArgs: [
+        'compose',
+        '--project-directory',
+        '.',
+        '--project-name',
+        'test',
+        '-f',
+        '.devrig/compose.yml',
+      ],
+    };
     const args = buildDockerLogsArgs(session, { follow: true });
     assert.ok(args.includes('--follow'));
   });

@@ -194,9 +194,7 @@ export async function init(projectDir) {
   console.log('  .devrig/           Docker infrastructure (Dockerfile, compose, entrypoint)');
   console.log('  devrig.toml        Project configuration');
   console.log('  .env               Environment variables (git author, Claude params)');
-  console.log(
-    '  .gitignore         Updated with .devrig/',
-  );
+  console.log('  .gitignore         Updated with .devrig/');
   console.log('  CLAUDE.md          Instructions for host Claude Code');
   console.log('  .devrig/CLAUDE.md  Instructions for container Claude Code (shadow-mounted)');
   console.log('');

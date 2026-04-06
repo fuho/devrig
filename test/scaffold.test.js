@@ -24,7 +24,14 @@ describe('scaffold content', () => {
 
     it('excludes runtime artifacts', () => {
       const content = readFileSync(join(scaffoldDir, '.dockerignore'), 'utf8');
-      for (const entry of ['home/', 'logs/', 'session.json', '*.log', '.devrig-version', 'template/']) {
+      for (const entry of [
+        'home/',
+        'logs/',
+        'session.json',
+        '*.log',
+        '.devrig-version',
+        'template/',
+      ]) {
         assert.ok(content.includes(entry), `missing ${entry}`);
       }
     });
@@ -35,8 +42,14 @@ describe('scaffold content', () => {
 
     it('installs all packages including gh in a single RUN layer', () => {
       // The RUN block should contain gh in the install list
-      assert.ok(dockerfile.includes('apt-get install -y git socat ripgrep'), 'missing base packages');
-      assert.ok(dockerfile.includes('install -y git socat ripgrep jq vim tree gh'), 'gh should be in the main install');
+      assert.ok(
+        dockerfile.includes('apt-get install -y git socat ripgrep'),
+        'missing base packages',
+      );
+      assert.ok(
+        dockerfile.includes('install -y git socat ripgrep jq vim tree gh'),
+        'gh should be in the main install',
+      );
     });
 
     it('adds GitHub CLI repo before installing gh', () => {

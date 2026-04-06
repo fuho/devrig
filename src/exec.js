@@ -7,7 +7,7 @@ import { readSession, isSessionAlive } from './session.js';
 /**
  * Validates that a session exists and is running.
  * @param {string} projectDir
- * @returns {{ ok: true, session: object } | { ok: false, error: string }}
+ * @returns {{ ok: boolean, session?: object, error?: string }}
  */
 export function validateSession(projectDir) {
   const session = readSession(projectDir);
@@ -15,7 +15,10 @@ export function validateSession(projectDir) {
     return { ok: false, error: 'No active session. Run "devrig start" first.' };
   }
   if (!isSessionAlive(session)) {
-    return { ok: false, error: 'Session is not running (PID stopped). Run "devrig stop" then "devrig start".' };
+    return {
+      ok: false,
+      error: 'Session is not running (PID stopped). Run "devrig stop" then "devrig start".',
+    };
   }
   return { ok: true, session };
 }
@@ -38,11 +41,12 @@ export async function exec() {
   const result = validateSession(projectDir);
 
   if (!result.ok) {
-    die(result.error);
+    return die(result.error);
   }
 
   log('Re-attaching to running container...');
-  const args = buildExecArgs(result.session);
+  const { session } = result;
+  const args = buildExecArgs(session);
   const child = spawn('docker', args, { stdio: 'inherit' });
 
   const exitCode = await new Promise((resolve) => {

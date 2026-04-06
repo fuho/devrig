@@ -103,7 +103,10 @@ export function checkVersionStaleness(projectDir) {
   const scaffoldVersion = readFileSync(versionFile, 'utf8').trim();
   const currentVersion = getPackageVersion();
   if (scaffoldVersion !== currentVersion) {
-    return { status: 'warn', message: `Scaffold v${scaffoldVersion}, devrig v${currentVersion} — run "devrig update"` };
+    return {
+      status: 'warn',
+      message: `Scaffold v${scaffoldVersion}, devrig v${currentVersion} — run "devrig update"`,
+    };
   }
   return { status: 'pass', message: `Version ${currentVersion}` };
 }

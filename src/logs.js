@@ -2,7 +2,7 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawn } from 'node:child_process';
-import { log, die } from './log.js';
+import { log } from './log.js';
 import { resolveProjectDir } from './config.js';
 import { readSession } from './session.js';
 

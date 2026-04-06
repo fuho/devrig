@@ -226,7 +226,9 @@ export async function launch(argv) {
     // Give bridge a moment to start, then verify it's still alive
     await sleep(1000);
     if (bridgeProc.exitCode !== null) {
-      die(`Chrome bridge failed to start — port ${cfg.bridge_port} may be in use.\n  Try: lsof -i :${cfg.bridge_port} to see what's using it`);
+      die(
+        `Chrome bridge failed to start — port ${cfg.bridge_port} may be in use.\n  Try: lsof -i :${cfg.bridge_port} to see what's using it`,
+      );
     }
     log(`Chrome bridge started on port ${cfg.bridge_port}`);
     sessionInfo.bridgePid = bridgeProc.pid;

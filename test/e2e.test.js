@@ -106,15 +106,21 @@ describe('e2e: devrig init', () => {
       // Verify container CLAUDE.md generated
       assert.ok(existsSync(join(tmpDir, '.devrig', 'CLAUDE.md')), 'container CLAUDE.md exists');
       const containerClaudeMd = readFileSync(join(tmpDir, '.devrig', 'CLAUDE.md'), 'utf8');
-      assert.ok(containerClaudeMd.includes('You are running inside'),
-        'container CLAUDE.md has container instructions');
+      assert.ok(
+        containerClaudeMd.includes('You are running inside'),
+        'container CLAUDE.md has container instructions',
+      );
 
       // Verify host CLAUDE.md has host instructions
       const hostClaudeMd = readFileSync(join(tmpDir, 'CLAUDE.md'), 'utf8');
-      assert.ok(hostClaudeMd.includes('containerized AI development'),
-        'host CLAUDE.md has host instructions');
-      assert.ok(!hostClaudeMd.includes('You are running inside'),
-        'host CLAUDE.md should not have container instructions');
+      assert.ok(
+        hostClaudeMd.includes('containerized AI development'),
+        'host CLAUDE.md has host instructions',
+      );
+      assert.ok(
+        !hostClaudeMd.includes('You are running inside'),
+        'host CLAUDE.md should not have container instructions',
+      );
 
       // Verify template files copied (we said yes)
       assert.ok(existsSync(join(tmpDir, 'package.json')), 'template package.json copied');
@@ -140,9 +146,23 @@ describe('e2e: devrig init', () => {
   it('init copies .dockerignore to .devrig/', async () => {
     const tmpDir = mkdtempSync(join(tmpdir(), 'devrig-e2e-dockerignore-'));
     try {
-      const answers = ['di-test', 'claude', 'y', 'npm run dev', '3000', '10', 'n', 'Test', 'test@test.com', 'y'];
+      const answers = [
+        'di-test',
+        'claude',
+        'y',
+        'npm run dev',
+        '3000',
+        '10',
+        'n',
+        'Test',
+        'test@test.com',
+        'y',
+      ];
       await runInit(tmpDir, answers);
-      assert.ok(existsSync(join(tmpDir, '.devrig', '.dockerignore')), '.dockerignore should be copied');
+      assert.ok(
+        existsSync(join(tmpDir, '.devrig', '.dockerignore')),
+        '.dockerignore should be copied',
+      );
     } finally {
       rmSync(tmpDir, { recursive: true, force: true });
     }

@@ -134,15 +134,24 @@ describe('configure', () => {
     try {
       // Feed invalid port "banana" for dev server
       const answers = [
-        'test-project', 'claude',
-        'y', 'npm run dev', 'banana', '10',
-        'y', '9229',
-        'Test User', 'test@example.com', 'n',
+        'test-project',
+        'claude',
+        'y',
+        'npm run dev',
+        'banana',
+        '10',
+        'y',
+        '9229',
+        'Test User',
+        'test@example.com',
+        'n',
       ];
 
       const { stderr } = await runConfigure(tmpDir, answers);
-      assert.ok(stderr.includes('Invalid port') || stderr.includes('invalid port'),
-        'should warn about invalid port in stderr');
+      assert.ok(
+        stderr.includes('Invalid port') || stderr.includes('invalid port'),
+        'should warn about invalid port in stderr',
+      );
     } finally {
       rmSync(tmpDir, { recursive: true, force: true });
     }
