@@ -1,0 +1,6 @@
+home/
+logs/
+session.json
+*.log
+.devrig-version
+template/
