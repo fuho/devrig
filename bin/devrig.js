@@ -5,7 +5,7 @@ import { launch } from '../src/launcher.js';
 import { configure } from '../src/configure.js';
 import { init } from '../src/init.js';
 import { clean } from '../src/clean.js';
-import { resolveProjectDir } from '../src/config.js';
+import { resolveProjectDir, getPackageVersion } from '../src/config.js';
 import { stopSession, showStatus } from '../src/session.js';
 import { logs } from '../src/logs.js';
 import { exec } from '../src/exec.js';
@@ -176,7 +176,7 @@ Commands:
   stop      Stop a running devrig session
   status    Show status of the current session
   config    Re-run the configuration wizard
-  clean     Remove Docker artifacts for this project
+  clean     Remove Docker artifacts (current project, --project, or --all)
   logs      Show logs from a devrig session
   exec      Re-attach to a running container
   doctor    Run pre-flight health checks
@@ -233,10 +233,15 @@ switch (command) {
   case 'update':
     await update(rest);
     break;
+  case '--version':
+  case '-v':
+    console.log(getPackageVersion());
+    break;
   case 'help':
   case '--help':
   case '-h':
   case undefined:
+    console.log(`devrig ${getPackageVersion()}\n`);
     printUsage();
     break;
   default:
