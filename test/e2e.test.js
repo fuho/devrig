@@ -118,4 +118,20 @@ describe('e2e: devrig init', () => {
     assert.ok(result.includes('start'));
     assert.ok(result.includes('config'));
   });
+
+  it('help output does not mention --npm flag', () => {
+    const result = execFileSync('node', [CLI, 'help'], { encoding: 'utf8' });
+    assert.ok(!result.includes('--npm'), 'help should not mention removed --npm flag');
+  });
+
+  it('init copies .dockerignore to .devrig/', async () => {
+    const tmpDir = mkdtempSync(join(tmpdir(), 'devrig-e2e-dockerignore-'));
+    try {
+      const answers = ['di-test', 'claude', 'y', 'npm run dev', '3000', '10', 'n', 'Test', 'test@test.com', 'y'];
+      await runInit(tmpDir, answers);
+      assert.ok(existsSync(join(tmpDir, '.devrig', '.dockerignore')), '.dockerignore should be copied');
+    } finally {
+      rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
 });

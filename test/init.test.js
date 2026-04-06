@@ -38,6 +38,7 @@ describe('init scaffold', () => {
       'entrypoint.sh',
       'container-setup.js',
       'devrig.toml.example',
+      '.dockerignore',
       'template/index.html',
       'template/package.json',
     ];
