@@ -20,7 +20,11 @@ async function askYN(rl, prompt, defaultVal = true) {
 
 function parsePort(value, fallback) {
   const n = parseInt(value, 10);
-  return Number.isInteger(n) && n >= 1 && n <= 65535 ? n : fallback;
+  if (Number.isInteger(n) && n >= 1 && n <= 65535) return n;
+  if (value && value !== String(fallback)) {
+    console.warn(`[devrig] Invalid port '${value}' — using ${fallback}`);
+  }
+  return fallback;
 }
 
 function gitConfig(key) {

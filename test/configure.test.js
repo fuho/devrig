@@ -128,6 +128,26 @@ describe('configure', () => {
     }
   });
 
+  it('warns when port falls back to default', async () => {
+    const tmpDir = mkdtempSync(join(tmpdir(), 'devrig-cfg-'));
+
+    try {
+      // Feed invalid port "banana" for dev server
+      const answers = [
+        'test-project', 'claude',
+        'y', 'npm run dev', 'banana', '10',
+        'y', '9229',
+        'Test User', 'test@example.com', 'n',
+      ];
+
+      const { stderr } = await runConfigure(tmpDir, answers);
+      assert.ok(stderr.includes('Invalid port') || stderr.includes('invalid port'),
+        'should warn about invalid port in stderr');
+    } finally {
+      rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
   it('sanitizes project name and validates ports', async () => {
     const tmpDir = mkdtempSync(join(tmpdir(), 'devrig-cfg-'));
 
