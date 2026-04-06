@@ -103,7 +103,7 @@ Tests: update/remove npm-related test cases
 New command that tails devrig logs from a running or recent session.
 
 Behavior:
-- No flags: tails all logs (dev server + container) interleaved, most recent first
+- No flags: shows dev server logs then container logs sequentially (interleaving by timestamp is complex and fragile)
 - `--dev-server`: only dev server logs (from `.devrig/logs/dev-server.log`)
 - `--container`: only container logs (shells out to `docker logs <container-name>`)
 - `--follow` / `-f`: stream live (tail -f for file logs, `docker logs -f` for container)
@@ -188,7 +188,7 @@ version = "latest"        # default written by devrig init
 `scaffold/container-setup.js` changes:
 - Read `CLAUDE_VERSION` env var (passed from compose, sourced from TOML)
 - If `"latest"`: install via native installer (current behavior), but do NOT run `claude update` on every start. Only install if `claude` binary is missing.
-- If specific version (e.g., `"1.0.48"`): install that exact version via native installer with version flag, or error if not available.
+- If specific version (e.g., `"1.0.48"`): install that exact version. Note: the native installer (`install.sh`) may not support a version flag — the implementation should check what's available (versioned URL, post-install downgrade via `claude update --version`, or npm fallback for pinned versions only). The exact mechanism is an implementation detail to resolve during Plan IN Phase 3.
 - After install, write the resolved version to a marker file (`.claude-version`) so subsequent starts skip installation entirely.
 - On `--rebuild`: image is rebuilt, which re-runs the install from scratch.
 
@@ -278,7 +278,7 @@ After Plan IN removes the npm code:
 
 **12. `.dockerignore`**
 
-Create `.devrig/.dockerignore` (or include in scaffold):
+Build context is `.devrig/` (per `compose.yml` line 7: `context: .devrig`). Create `.devrig/.dockerignore` (included in scaffold):
 ```
 home/
 logs/
