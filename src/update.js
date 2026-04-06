@@ -4,7 +4,8 @@ import { join, relative, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createInterface } from 'node:readline/promises';
 import { log, die } from './log.js';
-import { resolveProjectDir, getPackageVersion } from './config.js';
+import { resolveProjectDir, getPackageVersion, loadConfig } from './config.js';
+import { generateClaudeMd } from './init.js';
 
 const SKIP = new Set(['home', 'logs', 'session.json', '.devrig-version', 'template']);
 
@@ -108,5 +109,14 @@ export async function update(argv) {
 
   // Update version marker
   writeFileSync(join(devrigDir, '.devrig-version'), getPackageVersion() + '\n');
+
+  // Regenerate container CLAUDE.md with updated scaffold
+  try {
+    const cfg = loadConfig(projectDir);
+    generateClaudeMd(projectDir, cfg);
+  } catch {
+    log('WARNING: Could not regenerate container CLAUDE.md');
+  }
+
   log('Version marker updated.');
 }
