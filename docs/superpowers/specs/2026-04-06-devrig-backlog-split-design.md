@@ -179,16 +179,19 @@ Add version control for Claude Code installations inside the container.
 Config change — `devrig.toml` gains a version field:
 ```toml
 [claude]
-version = "latest"        # default written by devrig init
+version = "latest"        # default written by devrig init. Also accepts "stable" or a specific version like "2.1.89"
 # ready_timeout = 120
 ```
+
+Additionally, the container should set `DISABLE_AUTOUPDATER=1` in Claude Code's settings.json to prevent background auto-updates from overriding the pinned version. Updates should only happen on `--rebuild`.
 
 `devrig init` / `devrig config`: write `version = "latest"` as the default. No network call, no querying installed versions (Claude isn't installed on the host).
 
 `scaffold/container-setup.js` changes:
 - Read `CLAUDE_VERSION` env var (passed from compose, sourced from TOML)
 - If `"latest"`: install via native installer (current behavior), but do NOT run `claude update` on every start. Only install if `claude` binary is missing.
-- If specific version (e.g., `"1.0.48"`): install that exact version. Note: the native installer (`install.sh`) may not support a version flag — the implementation should check what's available (versioned URL, post-install downgrade via `claude update --version`, or npm fallback for pinned versions only). The exact mechanism is an implementation detail to resolve during Plan IN Phase 3.
+- If specific version (e.g., `"2.1.89"`): install that exact version via `curl -fsSL https://claude.ai/install.sh | bash -s 2.1.89`
+- If `"stable"`: install the stable channel via `bash -s stable` (typically ~1 week behind latest)
 - After install, write the resolved version to a marker file (`.claude-version`) so subsequent starts skip installation entirely.
 - On `--rebuild`: image is rebuilt, which re-runs the install from scratch.
 
@@ -317,7 +320,8 @@ Verify: container starts, `mount | grep /tmp` shows tmpfs.
 
 After Plan IN implements the JS side:
 - Test `version = "latest"` in devrig.toml → container installs latest Claude Code
-- Test `version = "1.0.48"` (or a known version) → container installs exactly that version
+- Test `version = "2.1.89"` (or a known version) → container installs exactly that version
+- Test `version = "stable"` → container installs stable channel
 - Test that subsequent `devrig start` (without `--rebuild`) skips installation
 - Test that `--rebuild` re-evaluates the version field
 - Verify `CLAUDE_VERSION` env var reaches the container
