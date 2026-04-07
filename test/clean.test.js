@@ -38,4 +38,28 @@ describe('clean', () => {
       'should complete without error',
     );
   });
+
+  it('-l works like --list', () => {
+    const out = run('-l');
+    assert.ok(
+      out.includes('devrig project') || out.includes('No devrig'),
+      'should report project list or empty',
+    );
+  });
+
+  it('-a -y works like --all -y', () => {
+    const out = run('-a', '-y');
+    assert.ok(
+      out.includes('No Docker resources') || out.includes('Cleaned up'),
+      'should complete without error',
+    );
+  });
+
+  it('rejects unknown flags', () => {
+    assert.throws(() => run('--bogus'), { status: 1 });
+  });
+
+  it('rejects --project without a value', () => {
+    assert.throws(() => run('--project'), { status: 1 });
+  });
 });

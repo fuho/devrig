@@ -4,8 +4,9 @@
  */
 
 import { execFileSync } from 'node:child_process';
+import { parseArgs } from 'node:util';
 import { createInterface } from 'node:readline/promises';
-import { log } from './log.js';
+import { log, verbose } from './log.js';
 import { loadConfig, resolveProjectDir } from './config.js';
 import { initVariant } from './docker.js';
 import { readSession, isSessionAlive } from './session.js';
@@ -19,6 +20,7 @@ const LABEL = 'devrig.project';
  */
 function discoverByLabel(project) {
   const filter = project ? `label=${LABEL}=${project}` : `label=${LABEL}`;
+  verbose('discovering resources' + (project ? ` for "${project}"` : ' (all)'));
   const found = [];
 
   // Containers (including stopped)
@@ -154,15 +156,64 @@ function listProjects() {
 }
 
 /**
+ * Finds and kills orphaned devrig processes (PPID 1).
+ */
+function killOrphans() {
+  try {
+    const out = execFileSync('sh', ['-c', 'ps ax -o pid,ppid,command'], {
+      encoding: 'utf8',
+      stdio: ['pipe', 'pipe', 'ignore'],
+    });
+    let killed = 0;
+    for (const line of out.split('\n')) {
+      if (line.includes('bridge-host.cjs') || line.includes('container-setup.js')) {
+        const parts = line.trim().split(/\s+/);
+        const pid = parseInt(parts[0], 10);
+        const ppid = parts[1];
+        if (ppid === '1' && pid !== process.pid) {
+          try {
+            process.kill(pid, 'SIGTERM');
+            log(`Killed orphaned process PID ${pid}`);
+            killed++;
+          } catch {
+            /* already dead */
+          }
+        }
+      }
+    }
+    if (killed === 0) log('No orphaned devrig processes found.');
+  } catch {
+    log('Could not check for orphaned processes.');
+  }
+}
+
+/**
  * Discovers and removes Docker artifacts.
- * Supports --all (all projects), --project <name> (specific project),
- * --list (show project names), and -y/--yes (skip confirmation).
+ * Supports -a/--all, --project <name>, -l/--list, --orphans, -y/--yes.
  * @param {string[]} argv
  */
 export async function clean(argv) {
-  const skipConfirm = argv.includes('-y') || argv.includes('--yes');
-  const cleanAll = argv.includes('--all');
-  const listOnly = argv.includes('--list');
+  const { values } = parseArgs({
+    args: argv,
+    options: {
+      yes:     { type: 'boolean', short: 'y', default: false },
+      all:     { type: 'boolean', short: 'a', default: false },
+      list:    { type: 'boolean', short: 'l', default: false },
+      orphans: { type: 'boolean', default: false },
+      project: { type: 'string' },
+    },
+    strict: true,
+  });
+  const skipConfirm = values.yes;
+  const cleanAll = values.all;
+  const listOnly = values.list;
+  const orphansOnly = values.orphans;
+
+  // --orphans: kill orphaned devrig processes
+  if (orphansOnly) {
+    killOrphans();
+    return;
+  }
 
   // --list: show all known devrig projects
   if (listOnly) {
@@ -177,8 +228,7 @@ export async function clean(argv) {
   }
 
   // --project <name>: target a specific project by name
-  const projIdx = argv.indexOf('--project');
-  const explicitProject = projIdx !== -1 ? argv[projIdx + 1] : null;
+  const explicitProject = values.project ?? null;
 
   let found;
   let label;
@@ -249,5 +299,6 @@ export async function clean(argv) {
   }
 
   removeResources(found);
+  if (cleanAll) killOrphans();
   log('Cleaned up.');
 }

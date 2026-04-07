@@ -11,10 +11,29 @@ import { logs } from '../src/logs.js';
 import { exec } from '../src/exec.js';
 import { runAll as runDoctor } from '../src/doctor.js';
 import { update } from '../src/update.js';
+import { setVerbose, die } from '../src/log.js';
+
+// Catch parseArgs errors (unknown flags, missing values) and show clean messages
+process.on('uncaughtException', (err) => {
+  if (
+    err.code === 'ERR_PARSE_ARGS_UNKNOWN_OPTION' ||
+    err.code === 'ERR_PARSE_ARGS_INVALID_OPTION_VALUE' ||
+    err.code === 'ERR_PARSE_ARGS_UNEXPECTED_POSITIONAL'
+  ) {
+    die(err.message);
+  }
+  throw err;
+});
 
 const command = process.argv[2];
 const rest = process.argv.slice(3);
-const wantsHelp = rest.includes('--help') || rest.includes('-h');
+
+// Parse global flags, forward the rest to subcommands
+const GLOBAL_FLAGS = new Set(['--verbose']);
+const subArgs = rest.filter((a) => !GLOBAL_FLAGS.has(a));
+if (rest.includes('--verbose')) setVerbose(true);
+
+const wantsHelp = subArgs.includes('--help') || subArgs.includes('-h');
 
 const subcommandHelp = {
   init: `Scaffold a .devrig/ directory and run the interactive configuration wizard.
@@ -99,15 +118,17 @@ Does NOT touch .devrig/, devrig.toml, .env, or any project files.
 Refuses to run (without --all/--project) if a session is active — use devrig stop first.
 
 Flags:
-  --project <name> Clean resources for a specific project by name
-  --all            Find and remove devrig resources across ALL projects
-  --list           List all known devrig project names
-  -y, --yes        Skip the confirmation prompt
+  --project <name>   Clean resources for a specific project by name
+  -a, --all          Find and remove devrig resources across ALL projects
+  -l, --list         List all known devrig project names
+  --orphans          Kill orphaned devrig processes (bridge, setup)
+  -y, --yes          Skip the confirmation prompt
 
 Examples:
   devrig clean                     Clean current project's Docker resources
   devrig clean --project my-app    Clean a specific project's resources
   devrig clean --list              Show all devrig projects
+  devrig clean --orphans           Kill orphaned devrig processes
   devrig clean --all               Find all devrig resources system-wide
   devrig clean --all -y            Remove everything without asking
 
@@ -167,12 +188,21 @@ Example:
 See also: devrig init, devrig doctor`,
 };
 
+function printSubcommandHelp(cmd) {
+  if (!(cmd in subcommandHelp)) return false;
+  const text = subcommandHelp[cmd];
+  const hasFlags = /^Flags:/m.test(text);
+  console.log(`Usage: devrig ${cmd}${hasFlags ? ' [flags]' : ''}\n`);
+  console.log(text);
+  return true;
+}
+
 function printUsage() {
   console.log(`Usage: devrig <command> [flags]
 
 Commands:
   init      Initialize devrig in the current directory
-  start     Start a coding session (alias: claude)
+  start     Start a coding session
   stop      Stop a running devrig session
   status    Show status of the current session
   config    Re-run the configuration wizard
@@ -182,14 +212,13 @@ Commands:
   doctor    Run pre-flight health checks
   update    Update scaffold files to current version
 
+Global flags:
+  --verbose  Show detailed diagnostic output
+
 Run devrig <command> --help for more info.`);
 }
 
-if (wantsHelp && command && command in subcommandHelp) {
-  console.log(
-    `Usage: devrig ${command}${['start', 'clean', 'logs', 'update'].includes(command) ? ' [flags]' : ''}\n`,
-  );
-  console.log(subcommandHelp[command]);
+if (wantsHelp && command && printSubcommandHelp(command)) {
   process.exit(0);
 }
 
@@ -198,8 +227,7 @@ switch (command) {
     await init(process.cwd());
     break;
   case 'start':
-  case 'claude':
-    await launch(rest);
+    await launch(subArgs);
     break;
   case 'config': {
     const projectDir = resolveProjectDir();
@@ -217,10 +245,10 @@ switch (command) {
     break;
   }
   case 'clean':
-    await clean(rest);
+    await clean(subArgs);
     break;
   case 'logs':
-    await logs(rest);
+    await logs(subArgs);
     break;
   case 'exec':
     await exec();
@@ -231,13 +259,15 @@ switch (command) {
     break;
   }
   case 'update':
-    await update(rest);
+    await update(subArgs);
     break;
   case '--version':
   case '-v':
     console.log(getPackageVersion());
     break;
   case 'help':
+    if (printSubcommandHelp(subArgs[0])) process.exit(0);
+    // fall through
   case '--help':
   case '-h':
   case undefined:

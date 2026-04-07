@@ -2,6 +2,7 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawn } from 'node:child_process';
+import { parseArgs } from 'node:util';
 import { log } from './log.js';
 import { resolveProjectDir } from './config.js';
 import { readSession } from './session.js';
@@ -36,9 +37,18 @@ export function buildDockerLogsArgs(session, opts) {
  * @returns {Promise<void>}
  */
 export async function logs(argv) {
-  const devServer = argv.includes('--dev-server');
-  const container = argv.includes('--container');
-  const follow = argv.includes('--follow') || argv.includes('-f');
+  const { values } = parseArgs({
+    args: argv,
+    options: {
+      'dev-server': { type: 'boolean', default: false },
+      container:    { type: 'boolean', default: false },
+      follow:       { type: 'boolean', short: 'f', default: false },
+    },
+    strict: true,
+  });
+  const devServer = values['dev-server'];
+  const container = values.container;
+  const follow = values.follow;
 
   const projectDir = resolveProjectDir();
 

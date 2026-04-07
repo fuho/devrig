@@ -3,6 +3,7 @@ import { readFileSync, writeFileSync, existsSync, cpSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createInterface } from 'node:readline/promises';
+import { parseArgs } from 'node:util';
 import { log, die } from './log.js';
 import { resolveProjectDir, getPackageVersion, loadConfig } from './config.js';
 import { generateClaudeMd, SCAFFOLD_FILES } from './init.js';
@@ -45,7 +46,14 @@ export function findChangedFiles(projectDir, scaffoldDir) {
  * @returns {Promise<void>}
  */
 export async function update(argv) {
-  const force = argv.includes('--force');
+  const { values } = parseArgs({
+    args: argv,
+    options: {
+      force: { type: 'boolean', default: false },
+    },
+    strict: true,
+  });
+  const force = values.force;
   const projectDir = resolveProjectDir();
   const devrigDir = join(projectDir, '.devrig');
 
