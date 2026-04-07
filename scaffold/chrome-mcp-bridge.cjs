@@ -28,19 +28,27 @@ const CALL_TIMEOUT = parseInt(process.env.BRIDGE_TIMEOUT || '30000', 10);
 const VERBOSE = process.env.BRIDGE_VERBOSE === '1';
 
 // ── Logging ────────────────────────────────────────────────────────────────
+
+/** @returns {string} ISO timestamp */
 function ts() { return new Date().toISOString(); }
 
+/** Append a log line to the bridge log file (best-effort). */
 function logMsg(msg) {
   try { fs.appendFileSync(LOG_FILE, `${ts()} ${msg}\n`); } catch { /* best-effort */ }
 }
 
+/** Log only when BRIDGE_VERBOSE=1 is set. */
 function logVerbose(msg) {
   if (VERBOSE) logMsg(`[verbose] ${msg}`);
 }
 
 // ── NMH frame helpers (4-byte LE length + JSON) ────────────────────────────
 
-/** Encode an object as a length-prefixed NMH frame. */
+/**
+ * Encode an object as a 4-byte LE length-prefixed NMH frame.
+ * @param {object} obj
+ * @returns {Buffer}
+ */
 function encodeNmhFrame(obj) {
   const json = JSON.stringify(obj);
   const buf = Buffer.alloc(4 + Buffer.byteLength(json, 'utf8'));
@@ -51,7 +59,8 @@ function encodeNmhFrame(obj) {
 
 /**
  * Parse one or more NMH frames from a buffer.
- * Returns { messages: object[], remainder: Buffer }.
+ * @param {Buffer} buf
+ * @returns {{ messages: object[], remainder: Buffer }}
  */
 function parseNmhFrames(buf) {
   const messages = [];
@@ -72,15 +81,18 @@ function parseNmhFrames(buf) {
 
 // ── MCP JSON-RPC helpers ───────────────────────────────────────────────────
 
+/** Write a JSON-RPC message to stdout (newline-delimited). */
 function sendMcp(obj) {
   const line = JSON.stringify(obj) + '\n';
   try { process.stdout.write(line); } catch { /* stdout closed */ }
 }
 
+/** Send a successful JSON-RPC result. */
 function mcpResult(id, result) {
   sendMcp({ jsonrpc: '2.0', id, result });
 }
 
+/** Send a JSON-RPC error response. */
 function mcpError(id, code, message) {
   sendMcp({ jsonrpc: '2.0', id, error: { code, message } });
 }
@@ -93,6 +105,7 @@ let connected = false;
 let nextNmhId = 1;
 const pending = new Map(); // nmhId → { mcpId, timer }
 
+/** Connect to the NMH relay socket (socat). Sets up bidirectional data handling. */
 function connectToNmh() {
   if (sock) return;
   logMsg('[bridge] Connecting to NMH relay at ' + SOCK_PATH);
@@ -138,6 +151,7 @@ function connectToNmh() {
   });
 }
 
+/** Match an NMH response to the oldest pending MCP request and send the result. */
 function handleNmhResponse(msg) {
   // NMH responses don't have explicit IDs — they arrive in order.
   // Match to the oldest pending request.
@@ -168,6 +182,12 @@ function handleNmhResponse(msg) {
   }
 }
 
+/**
+ * Forward an MCP tools/call as an NMH tool_request. Manages timeouts and correlation.
+ * @param {number|string} mcpId - JSON-RPC request ID from Claude
+ * @param {string} toolName - Chrome tool name
+ * @param {object} [args] - Tool arguments
+ */
 function sendToolRequest(mcpId, toolName, args) {
   if (!connected) {
     // Try to connect on demand
@@ -223,6 +243,7 @@ const TOOLS = [
 
 // ── MCP message handler ────────────────────────────────────────────────────
 
+/** Route an incoming MCP JSON-RPC message to the appropriate handler. */
 function handleMcpMessage(msg) {
   logVerbose('[mcp→bridge] ' + JSON.stringify(msg).substring(0, 500));
 
@@ -271,6 +292,7 @@ function handleMcpMessage(msg) {
 
 // ── Main ───────────────────────────────────────────────────────────────────
 
+/** Entry point — sets up stdin reader, signal handlers, and starts the bridge. */
 function main() {
   logMsg(`[bridge] Starting chrome-mcp-bridge v${BRIDGE_VERSION} (MCP ${MCP_PROTOCOL_VERSION})`);
   logMsg(`[bridge] Socket: ${SOCK_PATH}, timeout: ${CALL_TIMEOUT}ms, verbose: ${VERBOSE}`);

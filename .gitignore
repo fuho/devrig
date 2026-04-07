@@ -19,5 +19,5 @@ node_modules/
 # Claude Code local data
 .claude/
 
-# Internal docs (specs, plans, reviews)
-docs/
+# Internal working docs (specs, plans, reviews)
+# Note: docs/ is NOT ignored — it contains project documentation

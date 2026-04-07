@@ -55,17 +55,23 @@ From here you're inside [Claude Code](https://docs.anthropic.com/en/docs/claude-
 | Command                   | Description                                                           |
 | ------------------------- | --------------------------------------------------------------------- |
 | `devrig init`             | Scaffold `.devrig/` directory and run configuration wizard            |
-| `devrig start [flags]`    | Start a coding session (alias: `devrig claude`)                       |
+| `devrig start [flags]`    | Start a coding session                                                |
 | `devrig stop`             | Stop a running session from another terminal                          |
 | `devrig status`           | Show whether container, bridge, and dev server are running            |
 | `devrig config`           | Re-run the configuration wizard                                       |
-| `devrig clean [flags]`    | Remove Docker artifacts (`--project <name>`, `--all`, `--list`, `-y`) |
+| `devrig clean [flags]`    | Remove Docker artifacts (`--project`, `-a/--all`, `-l/--list`, `--orphans`, `-y`) |
 | `devrig logs [flags]`     | Show logs from a devrig session                                       |
 | `devrig exec`             | Re-attach to a running container                                      |
 | `devrig doctor`           | Run pre-flight health checks                                          |
 | `devrig update [--force]` | Update scaffold files to current devrig version                       |
 
-All commands support `--help` for usage details.
+All commands support `--help` for usage details. Use `devrig help <command>` as an alternative.
+
+### Global Flags
+
+| Flag        | Effect                           |
+| ----------- | -------------------------------- |
+| `--verbose` | Show detailed diagnostic output  |
 
 ### Flags for `start`
 
@@ -204,20 +210,23 @@ src/
   docker.js          Compose commands, build hash, rebuild detection
   configure.js       Interactive configuration wizard
   browser.js         Platform-aware Chrome launcher
-  bridge-host.cjs    TCP-to-Unix relay for Chrome bridge
+  bridge-host.cjs    TCP-to-Unix relay for Chrome bridge (host side)
   init.js            Scaffold copying, gitignore management
-  log.js             Logging helpers
+  log.js             Logging helpers (log, die, verbose, setVerbose)
   logs.js            Log viewer (dev server + container)
   exec.js            Container re-attach
   doctor.js          Pre-flight health checks
   update.js          Scaffold file updater
 scaffold/
-  Dockerfile         Container image
-  .dockerignore      Excludes runtime artifacts from Docker build context
-  compose.yml        Docker Compose configuration
-  entrypoint.sh      Container entrypoint
-  container-setup.js Runs inside container — installs Claude Code, sets up bridge
-  template/          Starter files for new projects
+  Dockerfile            Container image
+  .dockerignore         Excludes runtime artifacts from Docker build context
+  chrome-mcp-bridge.cjs MCP↔NMH protocol translator for Chrome bridge
+  compose.yml           Docker Compose configuration
+  entrypoint.sh         Container entrypoint
+  container-setup.js    Runs inside container — installs Claude Code, sets up bridge
+  template/             Starter files for new projects
+docs/
+  chrome-bridge.md    Chrome bridge architecture documentation
 test/
   *.test.js          Node built-in test runner, no external deps
                      (includes scaffold content + Docker integration tests)
