@@ -13,6 +13,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 export const SCAFFOLD_FILES = [
   '.dockerignore',
   'Dockerfile',
+  'chrome-mcp-bridge.cjs',
   'compose.yml',
   'container-setup.js',
   'entrypoint.sh',

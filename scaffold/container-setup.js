@@ -87,33 +87,11 @@ function setupChromeBridge() {
   const chromeDir = join(home, '.claude', 'chrome');
   mkdirSync(chromeDir, { recursive: true });
 
-  // Write our relay as chrome-native-host with logging.
+  // Write chrome-native-host as a shim that execs the MCP↔NMH bridge.
   // Make it read-only so Claude Code's --chrome flag cannot overwrite it.
   const hostScript = join(chromeDir, 'chrome-native-host');
-  const logFile = join(home, '.claude', 'logs', 'chrome-bridge.log');
-  // Remove read-only flag if left over from a previous run
   try { chmodSync(hostScript, 0o755); } catch { /* doesn't exist yet */ }
-  writeFileSync(hostScript, `#!/usr/bin/env node
-const net = require('net');
-const fs = require('fs');
-const LOG = '${logFile}';
-function ts() { return new Date().toISOString(); }
-function append(msg) { try { fs.appendFileSync(LOG, msg + '\\n'); } catch {} }
-append(ts() + ' [bridge] started, connecting to ${sockPath}');
-const sock = net.connect('${sockPath}');
-sock.on('connect', () => append(ts() + ' [bridge] connected to socat'));
-sock.on('error', e => append(ts() + ' [bridge] sock error: ' + e.message));
-process.stdin.on('data', d => {
-  append(ts() + ' [bridge] stdin→sock ' + d.length + 'B: ' + d.toString().substring(0, 500));
-  sock.write(d);
-});
-sock.on('data', d => {
-  append(ts() + ' [bridge] sock→stdout ' + d.length + 'B: ' + d.toString().substring(0, 500));
-  process.stdout.write(d);
-});
-sock.on('close', () => { append(ts() + ' [bridge] sock closed'); process.exit(0); });
-process.stdin.on('end', () => { append(ts() + ' [bridge] stdin EOF'); sock.end(); });
-`);
+  writeFileSync(hostScript, `#!/bin/sh\nexec node /usr/local/bin/chrome-mcp-bridge.cjs\n`);
   chmodSync(hostScript, 0o555);
 
   spawn('socat', [

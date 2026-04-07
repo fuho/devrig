@@ -62,6 +62,9 @@ RUN chmod +x /usr/local/bin/entrypoint.sh
 # Container setup script (called by entrypoint)
 COPY container-setup.js /usr/local/bin/container-setup.js
 
+# Chrome MCP bridge (protocol translator for containerized Chrome access)
+COPY chrome-mcp-bridge.cjs /usr/local/bin/chrome-mcp-bridge.cjs
+
 LABEL devrig.build.hash="${BUILD_HASH}"
 
 # ── Everything below runs as dev ─────────────────────────────────────────

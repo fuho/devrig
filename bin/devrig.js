@@ -31,7 +31,10 @@ const rest = process.argv.slice(3);
 // Parse global flags, forward the rest to subcommands
 const GLOBAL_FLAGS = new Set(['--verbose']);
 const subArgs = rest.filter((a) => !GLOBAL_FLAGS.has(a));
-if (rest.includes('--verbose')) setVerbose(true);
+if (rest.includes('--verbose')) {
+  setVerbose(true);
+  process.env.BRIDGE_VERBOSE = '1';
+}
 
 const wantsHelp = subArgs.includes('--help') || subArgs.includes('-h');
 
