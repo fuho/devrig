@@ -26,6 +26,7 @@ describe('exec', () => {
     const args = buildExecArgs(session);
     assert.ok(args.includes('exec'));
     assert.ok(args.includes('-it'));
+    assert.ok(args.includes('--user'));
     assert.ok(args.includes('dev'));
     assert.ok(args.includes('bash'));
   });

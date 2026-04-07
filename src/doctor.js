@@ -1,8 +1,9 @@
 // @ts-check
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { createServer } from 'node:net';
+import { createServer, createConnection } from 'node:net';
+import { userInfo } from 'node:os';
 import { parseTOML, getPackageVersion } from './config.js';
 import { log } from './log.js';
 
@@ -130,6 +131,115 @@ export function checkPortAvailable(port, label) {
   });
 }
 
+/**
+ * Tests the Chrome NMH bridge chain: socket dir → socket alive → NMH responds.
+ * @returns {Promise<CheckResult>}
+ */
+export async function checkChromeBridge() {
+  const sockDir = `/tmp/claude-mcp-browser-bridge-${userInfo().username}`;
+
+  // Check 1: socket directory and files
+  let socks;
+  try {
+    socks = readdirSync(sockDir).filter((f) => f.endsWith('.sock'));
+  } catch {
+    return {
+      status: 'warn',
+      message: 'Chrome NMH socket dir not found — is the Claude Chrome extension enabled?',
+    };
+  }
+  if (socks.length === 0) {
+    return { status: 'warn', message: 'No NMH socket files — restart Chrome' };
+  }
+
+  // Check 2: newest socket accepts connections
+  socks.sort();
+  const sockName = socks[socks.length - 1];
+  const sockPath = join(sockDir, sockName);
+
+  const alive = await new Promise((resolve) => {
+    const conn = createConnection(sockPath, () => {
+      conn.destroy();
+      resolve(true);
+    });
+    conn.on('error', () => resolve(false));
+    conn.setTimeout(1000, () => {
+      conn.destroy();
+      resolve(false);
+    });
+  });
+
+  if (!alive) {
+    return { status: 'warn', message: `NMH socket ${sockName} is stale — restart Chrome` };
+  }
+
+  // Check 3: NMH responds to a message (length-prefixed JSON)
+  const responded = await new Promise((resolve) => {
+    const conn = createConnection(sockPath, () => {
+      const msg = JSON.stringify({ jsonrpc: '2.0', method: 'initialize', params: {}, id: 1 });
+      const buf = Buffer.alloc(4 + msg.length);
+      buf.writeUInt32LE(msg.length, 0);
+      buf.write(msg, 4);
+      conn.write(buf);
+    });
+    let got = false;
+    conn.on('data', () => {
+      got = true;
+      conn.destroy();
+    });
+    conn.on('error', () => resolve(false));
+    conn.on('close', () => resolve(got));
+    setTimeout(() => {
+      conn.destroy();
+      resolve(got);
+    }, 3000);
+  });
+
+  if (!responded) {
+    return {
+      status: 'warn',
+      message: `NMH socket ${sockName} accepts connections but not responding — toggle Claude extension off/on in chrome://extensions`,
+    };
+  }
+
+  return { status: 'pass', message: `Chrome NMH responding (${sockName})` };
+}
+
+/**
+ * Checks for orphaned devrig processes (bridge, dev server) not tied to an active session.
+ * @returns {CheckResult}
+ */
+export function checkOrphanedProcesses() {
+  try {
+    const out = execFileSync('sh', ['-c', 'ps ax -o pid,ppid,command'], {
+      encoding: 'utf8',
+      stdio: ['pipe', 'pipe', 'ignore'],
+    });
+    const orphans = [];
+    for (const line of out.split('\n')) {
+      if (line.includes('bridge-host.cjs') || line.includes('container-setup.js')) {
+        const parts = line.trim().split(/\s+/);
+        const pid = parts[0];
+        const ppid = parts[1];
+        // PPID 1 means the parent died — this is an orphan
+        if (ppid === '1') {
+          orphans.push({ pid, cmd: parts.slice(2).join(' ') });
+        }
+      }
+    }
+    if (orphans.length > 0) {
+      const pids = orphans.map((o) => o.pid).join(', ');
+      return {
+        status: 'warn',
+        message: `Orphaned devrig process(es): PID ${pids} — run devrig clean --orphans to kill`,
+      };
+    }
+    return { status: 'pass', message: 'No orphaned devrig processes' };
+  } catch {
+    return { status: 'pass', message: 'No orphaned devrig processes' };
+  }
+}
+
 const COLORS = { pass: '\x1b[32m', fail: '\x1b[31m', warn: '\x1b[33m' };
 const RESET = '\x1b[0m';
 const ICONS = { pass: 'OK', fail: 'FAIL', warn: 'WARN' };
@@ -171,6 +281,18 @@ export async function runAll(projectDir) {
     printResult(await checkPortAvailable(bridgePort, 'Chrome bridge'));
   } catch {
     /* toml missing/invalid — skip port checks */
+  }
+
+  printResult(checkOrphanedProcesses());
+
+  // Chrome bridge check — only if config has bridge enabled
+  try {
+    const raw = parseTOML(readFileSync(join(projectDir, 'devrig.toml'), 'utf8'));
+    if (raw.chrome_bridge) {
+      printResult(await checkChromeBridge());
+    }
+  } catch {
+    /* toml missing/invalid — skip bridge check */
   }
 
   const failed = checks.filter((c) => c.status === 'fail');

@@ -29,7 +29,7 @@ export function validateSession(projectDir) {
  * @returns {string[]}
  */
 export function buildExecArgs(session) {
-  return [...session.composeArgs, 'exec', '-it', 'dev', 'bash'];
+  return [...session.composeArgs, 'exec', '-it', '--user', 'dev', 'dev', 'bash'];
 }
 
 /**

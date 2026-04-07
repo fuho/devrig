@@ -30,6 +30,7 @@ export function buildFiles(ctx) {
     `${ctx.devrigDir}/${ctx.dockerfile}`,
     `${ctx.devrigDir}/entrypoint.sh`,
     `${ctx.devrigDir}/container-setup.js`,
+    `${ctx.devrigDir}/chrome-mcp-bridge.cjs`,
     ctx.composeFile,
   ];
 }

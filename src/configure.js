@@ -114,20 +114,28 @@ export async function configure(projectDir) {
   const gitName = await ask(rl, 'Git author name', gitConfig('user.name'));
   const gitEmail = await ask(rl, 'Git author email', gitConfig('user.email'));
 
-  const marker = '# Added by devrig config';
+  const ENV_START = '# devrig:start';
+  const ENV_END = '# devrig:end';
   const block = [
-    marker,
+    ENV_START,
     'CLAUDE_PARAMS=--dangerously-skip-permissions',
     `GIT_AUTHOR_NAME=${gitName}`,
     `GIT_AUTHOR_EMAIL=${gitEmail}`,
+    ENV_END,
   ].join('\n');
 
   const envPath = join(projectDir, '.env');
   if (existsSync(envPath)) {
     let content = readFileSync(envPath, 'utf8');
-    const re = new RegExp(`${marker}[\\s\\S]*?${marker}\\n?`, 'g');
-    content = content.replace(re, '').trimEnd();
-    writeFileSync(envPath, content + '\n\n' + block + '\n');
+    // Remove old sentinel-based block
+    const startIdx = content.indexOf(ENV_START);
+    const endIdx = content.indexOf(ENV_END);
+    if (startIdx !== -1 && endIdx !== -1) {
+      content = (content.slice(0, startIdx) + content.slice(endIdx + ENV_END.length)).trim();
+    }
+    // Also strip legacy marker blocks (pre-sentinel format)
+    content = content.replace(/# Added by devrig config\n(?:[A-Z_]+=.*\n)*/g, '').trim();
+    writeFileSync(envPath, (content ? content + '\n\n' : '') + block + '\n');
   } else {
     writeFileSync(envPath, block + '\n');
   }

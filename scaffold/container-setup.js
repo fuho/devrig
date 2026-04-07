@@ -87,11 +87,12 @@ function setupChromeBridge() {
   const chromeDir = join(home, '.claude', 'chrome');
   mkdirSync(chromeDir, { recursive: true });
 
+  // Write chrome-native-host as a shim that execs the MCP↔NMH bridge.
+  // Make it read-only so Claude Code's --chrome flag cannot overwrite it.
   const hostScript = join(chromeDir, 'chrome-native-host');
-  writeFileSync(hostScript,
-    `#!/bin/bash\nexec node -e "process.stdin.pipe(require('net').connect('${sockPath}')).pipe(process.stdout)"\n`
-  );
-  chmodSync(hostScript, 0o755);
+  try { chmodSync(hostScript, 0o755); } catch { /* doesn't exist yet */ }
+  writeFileSync(hostScript, `#!/bin/sh\nexec node /usr/local/bin/chrome-mcp-bridge.cjs\n`);
+  chmodSync(hostScript, 0o555);
 
   spawn('socat', [
     `UNIX-LISTEN:${sockPath},fork,reuseaddr`,
@@ -111,7 +112,7 @@ function setupChromeBridge() {
   settings.mcpServers = settings.mcpServers || {};
   settings.mcpServers['claude-in-chrome'] = {
     type: 'stdio',
-    command: hostScript,
+    command: '/home/dev/.claude/chrome/chrome-native-host',
   };
   writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n');
   log('Wrote MCP config for claude-in-chrome');
@@ -139,7 +140,9 @@ function disableAutoUpdater() {
 // -- Main --------------------------------------------------------------------
 
 installClaudeCode();
-setupChromeBridge();
+if (process.env.BRIDGE_ENABLED === '1') {
+  setupChromeBridge();
+}
 disableAutoUpdater();
 
 const sentinel = join(process.env.HOME || '/home/dev', '.claude', 'logs', '.setup-ready');

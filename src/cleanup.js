@@ -5,6 +5,7 @@ import { releaseSession } from './session.js';
 
 const procs = new Map();
 let composeArgs = [];
+let projectDir = '';
 let cleanupDone = false;
 
 /** Registers a spawned process for cleanup on exit. */
@@ -15,6 +16,11 @@ export function registerProcess(name, proc) {
 /** Stores docker compose arguments for container teardown. */
 export function setComposeArgs(args) {
   composeArgs = args;
+}
+
+/** Stores the project directory for session release. */
+export function setProjectDir(dir) {
+  projectDir = dir;
 }
 
 /** Terminates all registered processes and stops the Docker container. */
@@ -56,7 +62,7 @@ export async function cleanup() {
   }
 
   try {
-    releaseSession(process.cwd());
+    releaseSession(projectDir || process.cwd());
   } catch {
     /* ignore */
   }

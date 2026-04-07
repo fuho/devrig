@@ -4,8 +4,9 @@
  */
 
 import { execFileSync } from 'node:child_process';
+import { parseArgs } from 'node:util';
 import { createInterface } from 'node:readline/promises';
-import { log } from './log.js';
+import { log, verbose } from './log.js';
 import { loadConfig, resolveProjectDir } from './config.js';
 import { initVariant } from './docker.js';
 import { readSession, isSessionAlive } from './session.js';
@@ -19,6 +20,7 @@ const LABEL = 'devrig.project';
  */
 function discoverByLabel(project) {
   const filter = project ? `label=${LABEL}=${project}` : `label=${LABEL}`;
+  verbose('discovering resources' + (project ? ` for "${project}"` : ' (all)'));
   const found = [];
 
   // Containers (including stopped)
@@ -40,11 +42,13 @@ function discoverByLabel(project) {
   try {
     const out = execFileSync(
       'docker',
-      ['images', '--filter', filter, '--format', '{{.Repository}}:{{.Tag}}\t{{.Size}}'],
+      ['images', '--filter', filter, '--format', '{{.Repository}}:{{.Tag}}\t{{.ID}}\t{{.Size}}'],
       { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] },
     ).trim();
     for (const line of out.split('\n').filter(Boolean)) {
-      const [name, size] = line.split('\t');
+      const [tag, id, size] = line.split('\t');
+      // Use image ID for dangling images (<none>:<none>), tag otherwise
+      const name = tag === '<none>:<none>' ? id : tag;
       found.push({ type: 'Image', name, detail: size || '' });
     }
   } catch {
@@ -109,10 +113,122 @@ function removeResources(items) {
   }
 }
 
-/** Discovers and removes Docker artifacts. Supports --all for label-based global cleanup. */
+/**
+ * Lists all distinct devrig project names from Docker labels.
+ * @returns {string[]}
+ */
+function listProjects() {
+  const projects = new Set();
+  // Query containers for label values
+  try {
+    const out = execFileSync(
+      'docker',
+      ['ps', '-a', '--filter', `label=${LABEL}`, '--format', `{{index .Labels "${LABEL}"}}`],
+      { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] },
+    ).trim();
+    for (const p of out.split('\n').filter(Boolean)) projects.add(p);
+  } catch {
+    /* ignore */
+  }
+  // Query volumes
+  try {
+    const out = execFileSync(
+      'docker',
+      ['volume', 'ls', '--filter', `label=${LABEL}`, '--format', `{{index .Labels "${LABEL}"}}`],
+      { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] },
+    ).trim();
+    for (const p of out.split('\n').filter(Boolean)) projects.add(p);
+  } catch {
+    /* ignore */
+  }
+  // Query images
+  try {
+    const out = execFileSync(
+      'docker',
+      ['images', '--filter', `label=${LABEL}`, '--format', `{{index .Labels "${LABEL}"}}`],
+      { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] },
+    ).trim();
+    for (const p of out.split('\n').filter(Boolean)) projects.add(p);
+  } catch {
+    /* ignore */
+  }
+  return [...projects].sort();
+}
+
+/**
+ * Finds and kills orphaned devrig processes (PPID 1).
+ */
+function killOrphans() {
+  try {
+    const out = execFileSync('sh', ['-c', 'ps ax -o pid,ppid,command'], {
+      encoding: 'utf8',
+      stdio: ['pipe', 'pipe', 'ignore'],
+    });
+    let killed = 0;
+    for (const line of out.split('\n')) {
+      if (line.includes('bridge-host.cjs') || line.includes('container-setup.js')) {
+        const parts = line.trim().split(/\s+/);
+        const pid = parseInt(parts[0], 10);
+        const ppid = parts[1];
+        if (ppid === '1' && pid !== process.pid) {
+          try {
+            process.kill(pid, 'SIGTERM');
+            log(`Killed orphaned process PID ${pid}`);
+            killed++;
+          } catch {
+            /* already dead */
+          }
+        }
+      }
+    }
+    if (killed === 0) log('No orphaned devrig processes found.');
+  } catch {
+    log('Could not check for orphaned processes.');
+  }
+}
+
+/**
+ * Discovers and removes Docker artifacts.
+ * Supports -a/--all, --project <name>, -l/--list, --orphans, -y/--yes.
+ * @param {string[]} argv
+ */
 export async function clean(argv) {
-  const skipConfirm = argv.includes('-y') || argv.includes('--yes');
-  const cleanAll = argv.includes('--all');
+  const { values } = parseArgs({
+    args: argv,
+    options: {
+      yes:     { type: 'boolean', short: 'y', default: false },
+      all:     { type: 'boolean', short: 'a', default: false },
+      list:    { type: 'boolean', short: 'l', default: false },
+      orphans: { type: 'boolean', default: false },
+      project: { type: 'string' },
+    },
+    strict: true,
+  });
+  const skipConfirm = values.yes;
+  const cleanAll = values.all;
+  const listOnly = values.list;
+  const orphansOnly = values.orphans;
+
+  // --orphans: kill orphaned devrig processes
+  if (orphansOnly) {
+    killOrphans();
+    return;
+  }
+
+  // --list: show all known devrig projects
+  if (listOnly) {
+    const projects = listProjects();
+    if (projects.length === 0) {
+      log('No devrig projects found.');
+    } else {
+      log(`Found ${projects.length} devrig project(s):`);
+      for (const p of projects) console.log(`  ${p}`);
+    }
+    return;
+  }
+
+  // --project <name>: target a specific project by name
+  const explicitProject = values.project ?? null;
 
   let found;
   let label;
@@ -121,6 +237,10 @@ export async function clean(argv) {
     // Find ALL devrig resources across all projects
     found = discoverByLabel();
     label = 'all devrig projects';
+  } else if (explicitProject) {
+    // Find resources for a named project (no need to be in its directory)
+    found = discoverByLabel(explicitProject);
+    label = `"${explicitProject}"`;
   } else {
     // Find resources for the current project
     const projectDir = resolveProjectDir();
@@ -179,5 +299,6 @@ export async function clean(argv) {
   }
 
   removeResources(found);
+  if (cleanAll) killOrphans();
   log('Cleaned up.');
 }

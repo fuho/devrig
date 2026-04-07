@@ -278,6 +278,7 @@ describe('buildFiles', () => {
       '.devrig/Dockerfile',
       '.devrig/entrypoint.sh',
       '.devrig/container-setup.js',
+      '.devrig/chrome-mcp-bridge.cjs',
       '.devrig/compose.yml',
     ]);
   });
@@ -301,6 +302,7 @@ describe('buildHash', () => {
     writeFileSync(join(devrigDir, 'entrypoint.sh'), contents.entrypoint ?? '#!/bin/sh');
     writeFileSync(join(devrigDir, 'container-setup.js'), contents.setup ?? 'console.log("setup")');
     writeFileSync(join(devrigDir, 'compose.yml'), contents.compose ?? 'version: "3"');
+    writeFileSync(join(devrigDir, 'chrome-mcp-bridge.cjs'), contents.bridge ?? '// bridge');
     return {
       devrigDir: join(tmpDir, '.devrig'),
       dockerfile: 'Dockerfile',

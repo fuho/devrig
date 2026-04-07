@@ -9,6 +9,17 @@ import { log, die } from './log.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
+/** Scaffold files that belong in .devrig/ (whitelist). */
+export const SCAFFOLD_FILES = [
+  '.dockerignore',
+  'Dockerfile',
+  'chrome-mcp-bridge.cjs',
+  'compose.yml',
+  'container-setup.js',
+  'entrypoint.sh',
+  'setup.html',
+];
+
 const DEVRIG_START = '<!-- devrig:start -->';
 const DEVRIG_END = '<!-- devrig:end -->';
 
@@ -125,12 +136,14 @@ export async function init(projectDir) {
     }
   }
 
-  // Copy scaffold files into .devrig/
+  // Copy scaffold files into .devrig/ (whitelist only)
   log('Copying scaffold files to .devrig/...');
-  try {
-    cpSync(scaffoldDir, targetDir, { recursive: true });
-  } catch (err) {
-    die(`Failed to copy scaffold files: ${err.message}`);
+  for (const file of SCAFFOLD_FILES) {
+    try {
+      cpSync(join(scaffoldDir, file), join(targetDir, file));
+    } catch (err) {
+      die(`Failed to copy ${file}: ${err.message}`);
+    }
   }
 
   // Set executable permissions on key files
