@@ -6,9 +6,11 @@
  */
 
 import { execFileSync, spawn } from 'node:child_process';
+import net from 'node:net';
 import {
   existsSync,
   readFileSync,
+  readdirSync,
   writeFileSync,
   openSync,
   closeSync,
@@ -21,7 +23,7 @@ import { join, dirname } from 'node:path';
 import { parseArgs } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { userInfo } from 'node:os';
-import { log, die } from './log.js';
+import { log, die, verbose } from './log.js';
 import { loadConfig, loadDotenv, resolveProjectDir } from './config.js';
 import { composeCmd, buildHash, needsRebuild, startContainer, initVariant } from './docker.js';
 import { openBrowser } from './browser.js';
@@ -101,8 +103,9 @@ export async function launch(argv) {
       'no-chrome': { type: 'boolean', default: false },
       'no-dev-server': { type: 'boolean', default: false },
     },
-    strict: false,
+    strict: true,
   });
+  verbose('start flags: ' + JSON.stringify(args));
 
   // -- Step 4: Initialize variant (launcher.py: init variant) ---------------
   const ctx = initVariant(cfg);
@@ -307,6 +310,52 @@ export async function launch(argv) {
     die(`Claude Code not ready after ${timeout}s`);
   }
 
+  // -- Step 14b: Wait for a live Chrome NMH socket before connecting ---------
+  if (cfg.bridge_enabled && !args['no-chrome']) {
+    const sockDir = `/tmp/claude-mcp-browser-bridge-${userInfo().username}`;
+    const sockTimeout = 15; // seconds
+    let sockFound = false;
+    verbose(`Waiting up to ${sockTimeout}s for live NMH socket in ${sockDir}`);
+
+    /** Try to connect to a socket; resolve true if it accepts, false otherwise. */
+    const isSocketAlive = (sockPath) =>
+      new Promise((resolve) => {
+        const conn = net.createConnection(sockPath, () => {
+          conn.destroy();
+          resolve(true);
+        });
+        conn.on('error', () => resolve(false));
+        conn.setTimeout(500, () => {
+          conn.destroy();
+          resolve(false);
+        });
+      });
+
+    for (let i = 0; i < sockTimeout; i++) {
+      try {
+        const socks = readdirSync(sockDir).filter((f) => f.endsWith('.sock'));
+        // Check newest socket first
+        for (let j = socks.length - 1; j >= 0; j--) {
+          const sockPath = join(sockDir, socks[j]);
+          if (await isSocketAlive(sockPath)) {
+            verbose(`Live NMH socket: ${socks[j]}`);
+            sockFound = true;
+            break;
+          } else {
+            verbose(`Stale socket: ${socks[j]}`);
+          }
+        }
+      } catch {
+        /* dir doesn't exist yet */
+      }
+      if (sockFound) break;
+      await sleep(1000);
+    }
+    if (!sockFound) {
+      log('WARNING: No live Chrome NMH socket found — Chrome MCP may not work. Is the Chrome extension enabled?');
+    }
+  }
+
   // -- Step 15: Exec into container (launcher.py: exec into container) ------
   const containerId = execFileSync('docker', composeCmd(ctx, 'ps', '-q', ctx.service).slice(1), {
     encoding: 'utf8',
@@ -316,7 +365,9 @@ export async function launch(argv) {
 
   const claudeParams = process.env.CLAUDE_PARAMS ? process.env.CLAUDE_PARAMS.split(/\s+/) : [];
 
-  // Inject --chrome if bridge is running; strip it if --no-chrome was passed
+  // Inject --chrome if bridge is running; strip it if --no-chrome was passed.
+  // Claude's --chrome flag will try to overwrite chrome-native-host but our
+  // container-setup.js makes it read-only (0555) so our socat relay persists.
   const bridgeRunning = cfg.bridge_enabled && !args['no-chrome'];
   if (bridgeRunning && !claudeParams.includes('--chrome')) {
     claudeParams.push('--chrome');
@@ -326,9 +377,11 @@ export async function launch(argv) {
   }
 
   // Add initial prompt so Claude acts immediately on launch
-  claudeParams.push(
-    'Check if you have the Chrome MCP tool. If yes, open the dev server URL from CLAUDE.md. If no, tell the user to /exit and devrig start again.',
-  );
+  if (bridgeRunning) {
+    claudeParams.push(
+      'You have Chrome MCP tools. Open the dev server URL from CLAUDE.md using the Chrome tools.',
+    );
+  }
 
   log('Connecting to Claude Code in container...');
   log(`CLAUDE_PARAMS: ${claudeParams.join(' ') || '<none>'}`);

@@ -87,11 +87,34 @@ function setupChromeBridge() {
   const chromeDir = join(home, '.claude', 'chrome');
   mkdirSync(chromeDir, { recursive: true });
 
+  // Write our relay as chrome-native-host with logging.
+  // Make it read-only so Claude Code's --chrome flag cannot overwrite it.
   const hostScript = join(chromeDir, 'chrome-native-host');
-  writeFileSync(hostScript,
-    `#!/bin/bash\nexec node -e "process.stdin.pipe(require('net').connect('${sockPath}')).pipe(process.stdout)"\n`
-  );
-  chmodSync(hostScript, 0o755);
+  const logFile = join(home, '.claude', 'logs', 'chrome-bridge.log');
+  // Remove read-only flag if left over from a previous run
+  try { chmodSync(hostScript, 0o755); } catch { /* doesn't exist yet */ }
+  writeFileSync(hostScript, `#!/usr/bin/env node
+const net = require('net');
+const fs = require('fs');
+const LOG = '${logFile}';
+function ts() { return new Date().toISOString(); }
+function append(msg) { try { fs.appendFileSync(LOG, msg + '\\n'); } catch {} }
+append(ts() + ' [bridge] started, connecting to ${sockPath}');
+const sock = net.connect('${sockPath}');
+sock.on('connect', () => append(ts() + ' [bridge] connected to socat'));
+sock.on('error', e => append(ts() + ' [bridge] sock error: ' + e.message));
+process.stdin.on('data', d => {
+  append(ts() + ' [bridge] stdin→sock ' + d.length + 'B: ' + d.toString().substring(0, 500));
+  sock.write(d);
+});
+sock.on('data', d => {
+  append(ts() + ' [bridge] sock→stdout ' + d.length + 'B: ' + d.toString().substring(0, 500));
+  process.stdout.write(d);
+});
+sock.on('close', () => { append(ts() + ' [bridge] sock closed'); process.exit(0); });
+process.stdin.on('end', () => { append(ts() + ' [bridge] stdin EOF'); sock.end(); });
+`);
+  chmodSync(hostScript, 0o555);
 
   spawn('socat', [
     `UNIX-LISTEN:${sockPath},fork,reuseaddr`,
@@ -111,7 +134,7 @@ function setupChromeBridge() {
   settings.mcpServers = settings.mcpServers || {};
   settings.mcpServers['claude-in-chrome'] = {
     type: 'stdio',
-    command: hostScript,
+    command: '/home/dev/.claude/chrome/chrome-native-host',
   };
   writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n');
   log('Wrote MCP config for claude-in-chrome');
