@@ -15,10 +15,11 @@ import { setVerbose, die } from '../src/log.js';
 
 // Catch parseArgs errors (unknown flags, missing values) and show clean messages
 process.on('uncaughtException', (err) => {
+  const code = /** @type {any} */ (err).code;
   if (
-    err.code === 'ERR_PARSE_ARGS_UNKNOWN_OPTION' ||
-    err.code === 'ERR_PARSE_ARGS_INVALID_OPTION_VALUE' ||
-    err.code === 'ERR_PARSE_ARGS_UNEXPECTED_POSITIONAL'
+    code === 'ERR_PARSE_ARGS_UNKNOWN_OPTION' ||
+    code === 'ERR_PARSE_ARGS_INVALID_OPTION_VALUE' ||
+    code === 'ERR_PARSE_ARGS_UNEXPECTED_POSITIONAL'
   ) {
     die(err.message);
   }
