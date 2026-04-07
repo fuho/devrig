@@ -52,26 +52,26 @@ From here you're inside [Claude Code](https://docs.anthropic.com/en/docs/claude-
 
 ## CLI
 
-| Command                   | Description                                                           |
-| ------------------------- | --------------------------------------------------------------------- |
-| `devrig init`             | Scaffold `.devrig/` directory and run configuration wizard            |
-| `devrig start [flags]`    | Start a coding session                                                |
-| `devrig stop`             | Stop a running session from another terminal                          |
-| `devrig status`           | Show whether container, bridge, and dev server are running            |
-| `devrig config`           | Re-run the configuration wizard                                       |
+| Command                   | Description                                                                       |
+| ------------------------- | --------------------------------------------------------------------------------- |
+| `devrig init`             | Scaffold `.devrig/` directory and run configuration wizard                        |
+| `devrig start [flags]`    | Start a coding session                                                            |
+| `devrig stop`             | Stop a running session from another terminal                                      |
+| `devrig status`           | Show whether container, bridge, and dev server are running                        |
+| `devrig config`           | Re-run the configuration wizard                                                   |
 | `devrig clean [flags]`    | Remove Docker artifacts (`--project`, `-a/--all`, `-l/--list`, `--orphans`, `-y`) |
-| `devrig logs [flags]`     | Show logs from a devrig session                                       |
-| `devrig exec`             | Re-attach to a running container                                      |
-| `devrig doctor`           | Run pre-flight health checks                                          |
-| `devrig update [--force]` | Update scaffold files to current devrig version                       |
+| `devrig logs [flags]`     | Show logs from a devrig session                                                   |
+| `devrig exec`             | Re-attach to a running container                                                  |
+| `devrig doctor`           | Run pre-flight health checks                                                      |
+| `devrig update [--force]` | Update scaffold files to current devrig version                                   |
 
 All commands support `--help` for usage details. Use `devrig help <command>` as an alternative.
 
 ### Global Flags
 
-| Flag        | Effect                           |
-| ----------- | -------------------------------- |
-| `--verbose` | Show detailed diagnostic output  |
+| Flag        | Effect                          |
+| ----------- | ------------------------------- |
+| `--verbose` | Show detailed diagnostic output |
 
 ### Flags for `start`
 

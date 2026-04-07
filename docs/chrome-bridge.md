@@ -43,13 +43,24 @@ Two wire protocols are involved. The bridge translates between them.
 - **Methods:** `initialize`, `notifications/initialized`, `tools/list`, `tools/call`, `ping`
 
 Request:
+
 ```json
-{"jsonrpc":"2.0", "method":"tools/call", "params":{"name":"navigate", "arguments":{"url":"https://example.com", "tabId":1}}, "id":3}
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": { "name": "navigate", "arguments": { "url": "https://example.com", "tabId": 1 } },
+  "id": 3
+}
 ```
 
 Response:
+
 ```json
-{"jsonrpc":"2.0", "id":3, "result":{"content":[{"type":"text", "text":"Navigated to https://example.com"}]}}
+{
+  "jsonrpc": "2.0",
+  "id": 3,
+  "result": { "content": [{ "type": "text", "text": "Navigated to https://example.com" }] }
+}
 ```
 
 ### NMH wire protocol (socket side, to host)
@@ -57,23 +68,23 @@ Response:
 - **Transport:** 4-byte little-endian length prefix + UTF-8 JSON payload
 - **Frame:** `[uint32_le: payload_length][utf8: json_payload]`
 
-| Direction | Type | Example |
-|-----------|------|---------|
-| Request | `tool_request` | `{"type":"tool_request", "method":"navigate", "params":{"url":"...", "tabId":1}}` |
-| Response | result | `{"result":{"content":[...]}}` |
-| Response | error | `{"error":{"message":"..."}}` |
-| Notification | connected | `{"type":"mcp_connected"}` |
-| Notification | disconnected | `{"type":"mcp_disconnected"}` |
+| Direction    | Type           | Example                                                                           |
+| ------------ | -------------- | --------------------------------------------------------------------------------- |
+| Request      | `tool_request` | `{"type":"tool_request", "method":"navigate", "params":{"url":"...", "tabId":1}}` |
+| Response     | result         | `{"result":{"content":[...]}}`                                                    |
+| Response     | error          | `{"error":{"message":"..."}}`                                                     |
+| Notification | connected      | `{"type":"mcp_connected"}`                                                        |
+| Notification | disconnected   | `{"type":"mcp_disconnected"}`                                                     |
 
 ## Key files
 
-| File | Role |
-|------|------|
-| `scaffold/chrome-mcp-bridge.cjs` | Protocol translator (MCP to NMH). Zero dependencies, ~200 lines. Implements MCP server on stdio, translates `tools/call` to NMH `tool_request`. Exports functions for testing. |
-| `src/bridge-host.cjs` | Host-side TCP-to-NMH relay. Listens on TCP (default 9229), finds the alphabetically last `.sock` in `/tmp/claude-mcp-browser-bridge-{user}/` (newest by NMH naming convention), pipes bidirectionally. |
-| `scaffold/container-setup.js` | Container setup. Writes `chrome-native-host` shim (read-only 0555), starts socat relay, writes MCP server config to `settings.json`. |
-| `src/launcher.js` | Starts `bridge-host.cjs`, waits for live NMH socket (up to 15s), injects `--chrome` flag, writes `mcpServers` config. |
-| `src/doctor.js` | `checkChromeBridge()` tests NMH socket health in three steps: directory exists, socket accepts connections, socket responds to messages. |
+| File                             | Role                                                                                                                                                                                                   |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `scaffold/chrome-mcp-bridge.cjs` | Protocol translator (MCP to NMH). Zero dependencies, ~200 lines. Implements MCP server on stdio, translates `tools/call` to NMH `tool_request`. Exports functions for testing.                         |
+| `src/bridge-host.cjs`            | Host-side TCP-to-NMH relay. Listens on TCP (default 9229), finds the alphabetically last `.sock` in `/tmp/claude-mcp-browser-bridge-{user}/` (newest by NMH naming convention), pipes bidirectionally. |
+| `scaffold/container-setup.js`    | Container setup. Writes `chrome-native-host` shim (read-only 0555), starts socat relay, writes MCP server config to `settings.json`.                                                                   |
+| `src/launcher.js`                | Starts `bridge-host.cjs`, waits for live NMH socket (up to 15s), injects `--chrome` flag, writes `mcpServers` config.                                                                                  |
+| `src/doctor.js`                  | `checkChromeBridge()` tests NMH socket health in three steps: directory exists, socket accepts connections, socket responds to messages.                                                               |
 
 ## How --chrome works
 
@@ -89,37 +100,37 @@ Claude Code's `--chrome` flag starts an **in-process Chrome MCP server** that sp
 
 ## Available Chrome tools (18)
 
-| Tool | Description |
-|------|-------------|
-| `tabs_context_mcp` | List open tabs and states |
-| `tabs_create_mcp` | Create a new tab |
-| `navigate` | Navigate a tab to a URL |
-| `computer` | 13 actions: left_click, right_click, double_click, triple_click, left_click_drag, key, type, scroll, scroll_to, wait, screenshot, zoom, hover |
-| `find` | Find elements by natural language |
-| `form_input` | Fill form fields |
-| `get_page_text` | Extract page text |
-| `gif_creator` | Record screen as GIF |
-| `javascript_tool` | Execute JS in page context |
-| `read_console_messages` | Read console output |
-| `read_network_requests` | Inspect network traffic |
-| `read_page` | Read accessibility tree |
-| `resize_window` | Resize browser window |
-| `shortcuts_list` | List keyboard shortcuts |
-| `shortcuts_execute` | Execute a shortcut |
-| `switch_browser` | Switch browser windows |
-| `update_plan` | Present plan for user approval |
-| `upload_image` | Upload image to file input |
+| Tool                    | Description                                                                                                                                   |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `tabs_context_mcp`      | List open tabs and states                                                                                                                     |
+| `tabs_create_mcp`       | Create a new tab                                                                                                                              |
+| `navigate`              | Navigate a tab to a URL                                                                                                                       |
+| `computer`              | 13 actions: left_click, right_click, double_click, triple_click, left_click_drag, key, type, scroll, scroll_to, wait, screenshot, zoom, hover |
+| `find`                  | Find elements by natural language                                                                                                             |
+| `form_input`            | Fill form fields                                                                                                                              |
+| `get_page_text`         | Extract page text                                                                                                                             |
+| `gif_creator`           | Record screen as GIF                                                                                                                          |
+| `javascript_tool`       | Execute JS in page context                                                                                                                    |
+| `read_console_messages` | Read console output                                                                                                                           |
+| `read_network_requests` | Inspect network traffic                                                                                                                       |
+| `read_page`             | Read accessibility tree                                                                                                                       |
+| `resize_window`         | Resize browser window                                                                                                                         |
+| `shortcuts_list`        | List keyboard shortcuts                                                                                                                       |
+| `shortcuts_execute`     | Execute a shortcut                                                                                                                            |
+| `switch_browser`        | Switch browser windows                                                                                                                        |
+| `update_plan`           | Present plan for user approval                                                                                                                |
+| `upload_image`          | Upload image to file input                                                                                                                    |
 
 Tool definitions are hardcoded in `chrome-mcp-bridge.cjs` for the `tools/list` response, but **all `tools/call` requests are forwarded to Chrome regardless** of tool name. New Chrome tools added by future extension updates work automatically without a bridge update.
 
 ## Update resilience
 
-| Component | Update mechanism |
-|-----------|-----------------|
-| `chrome-mcp-bridge.cjs` | In `SCAFFOLD_FILES` and `buildFiles()`. `devrig update` detects changes, rebuilds on next start. |
-| `bridge-host.cjs` | Lives in `src/`, **not** in `SCAFFOLD_FILES` or `buildFiles()`. Updated only via devrig npm package update (`npm install -g devrig`). |
-| Protocol version | Hardcoded (`2024-11-05`). Mismatches logged as warnings, not errors. |
-| Tool definitions | Hardcoded list for `tools/list`, but all `tools/call` forwarded regardless. |
+| Component               | Update mechanism                                                                                                                      |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `chrome-mcp-bridge.cjs` | In `SCAFFOLD_FILES` and `buildFiles()`. `devrig update` detects changes, rebuilds on next start.                                      |
+| `bridge-host.cjs`       | Lives in `src/`, **not** in `SCAFFOLD_FILES` or `buildFiles()`. Updated only via devrig npm package update (`npm install -g devrig`). |
+| Protocol version        | Hardcoded (`2024-11-05`). Mismatches logged as warnings, not errors.                                                                  |
+| Tool definitions        | Hardcoded list for `tools/list`, but all `tools/call` forwarded regardless.                                                           |
 
 ## Security
 
@@ -145,22 +156,22 @@ The most common error. The NMH binary is running but the Chrome extension is not
 
 ### devrig doctor output
 
-| Message | Meaning | Fix |
-|---------|---------|-----|
-| `Chrome NMH socket dir not found — is the Claude Chrome extension enabled?` | Extension not creating sockets | Enable extension, log in |
-| `No NMH socket files — restart Chrome` | Directory exists, no .sock files | Restart Chrome |
-| `NMH socket 72240.sock is stale — restart Chrome` | Connection refused | Restart Chrome |
-| `NMH socket 72240.sock accepts connections but not responding — toggle Claude extension off/on in chrome://extensions` | NMH alive, Chrome not attached | Toggle extension |
-| `Chrome NMH responding (72240.sock)` | All working | None |
+| Message                                                                                                                | Meaning                          | Fix                      |
+| ---------------------------------------------------------------------------------------------------------------------- | -------------------------------- | ------------------------ |
+| `Chrome NMH socket dir not found — is the Claude Chrome extension enabled?`                                            | Extension not creating sockets   | Enable extension, log in |
+| `No NMH socket files — restart Chrome`                                                                                 | Directory exists, no .sock files | Restart Chrome           |
+| `NMH socket 72240.sock is stale — restart Chrome`                                                                      | Connection refused               | Restart Chrome           |
+| `NMH socket 72240.sock accepts connections but not responding — toggle Claude extension off/on in chrome://extensions` | NMH alive, Chrome not attached   | Toggle extension         |
+| `Chrome NMH responding (72240.sock)`                                                                                   | All working                      | None                     |
 
 ### Log locations
 
-| Log | Path | Notes |
-|-----|------|-------|
-| Container bridge | `.devrig/home/.claude/logs/chrome-bridge.log` | Written by chrome-mcp-bridge.cjs |
-| Host bridge stdout | `.devrig/logs/bridge-host.log` | Written by bridge-host.cjs |
-| Host bridge stderr | `.devrig/logs/bridge-host.err` | Errors from bridge-host.cjs |
-| MCP protocol | `.devrig/home/.cache/claude-cli-nodejs/-workspace/mcp-logs-claude-in-chrome/*.jsonl` | Written by Claude Code's in-process MCP server |
+| Log                | Path                                                                                 | Notes                                          |
+| ------------------ | ------------------------------------------------------------------------------------ | ---------------------------------------------- |
+| Container bridge   | `.devrig/home/.claude/logs/chrome-bridge.log`                                        | Written by chrome-mcp-bridge.cjs               |
+| Host bridge stdout | `.devrig/logs/bridge-host.log`                                                       | Written by bridge-host.cjs                     |
+| Host bridge stderr | `.devrig/logs/bridge-host.err`                                                       | Errors from bridge-host.cjs                    |
+| MCP protocol       | `.devrig/home/.cache/claude-cli-nodejs/-workspace/mcp-logs-claude-in-chrome/*.jsonl` | Written by Claude Code's in-process MCP server |
 
 ### Verbose mode
 

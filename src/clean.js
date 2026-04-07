@@ -196,9 +196,9 @@ export async function clean(argv) {
   const { values } = parseArgs({
     args: argv,
     options: {
-      yes:     { type: 'boolean', short: 'y', default: false },
-      all:     { type: 'boolean', short: 'a', default: false },
-      list:    { type: 'boolean', short: 'l', default: false },
+      yes: { type: 'boolean', short: 'y', default: false },
+      all: { type: 'boolean', short: 'a', default: false },
+      list: { type: 'boolean', short: 'l', default: false },
       orphans: { type: 'boolean', default: false },
       project: { type: 'string' },
     },

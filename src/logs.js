@@ -41,8 +41,8 @@ export async function logs(argv) {
     args: argv,
     options: {
       'dev-server': { type: 'boolean', default: false },
-      container:    { type: 'boolean', default: false },
-      follow:       { type: 'boolean', short: 'f', default: false },
+      container: { type: 'boolean', default: false },
+      follow: { type: 'boolean', short: 'f', default: false },
     },
     strict: true,
   });

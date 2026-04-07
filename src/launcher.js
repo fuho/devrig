@@ -352,7 +352,9 @@ export async function launch(argv) {
       await sleep(1000);
     }
     if (!sockFound) {
-      log('WARNING: No live Chrome NMH socket found — Chrome MCP may not work. Is the Chrome extension enabled?');
+      log(
+        'WARNING: No live Chrome NMH socket found — Chrome MCP may not work. Is the Chrome extension enabled?',
+      );
     }
   }
 

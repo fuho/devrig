@@ -5,8 +5,15 @@ import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
-const bridgePath = join(dirname(fileURLToPath(import.meta.url)), '..', 'scaffold', 'chrome-mcp-bridge.cjs');
-const { encodeNmhFrame, parseNmhFrames, TOOLS, MCP_PROTOCOL_VERSION, BRIDGE_VERSION } = require(bridgePath);
+const bridgePath = join(
+  dirname(fileURLToPath(import.meta.url)),
+  '..',
+  'scaffold',
+  'chrome-mcp-bridge.cjs',
+);
+const { encodeNmhFrame, parseNmhFrames, TOOLS, MCP_PROTOCOL_VERSION, BRIDGE_VERSION } = require(
+  bridgePath,
+);
 
 describe('NMH frame encoding', () => {
   it('encodes a simple object with 4-byte LE length prefix', () => {
@@ -70,7 +77,11 @@ describe('NMH frame parsing', () => {
   });
 
   it('round-trips correctly', () => {
-    const original = { type: 'tool_request', method: 'navigate', params: { url: 'http://localhost:3000' } };
+    const original = {
+      type: 'tool_request',
+      method: 'navigate',
+      params: { url: 'http://localhost:3000' },
+    };
     const frame = encodeNmhFrame(original);
     const { messages } = parseNmhFrames(frame);
     assert.deepEqual(messages[0], original);
@@ -138,17 +149,26 @@ describe('subprocess integration', () => {
     const chunks = [];
     child.stdout.on('data', (d) => chunks.push(d));
 
-    child.stdin.write(JSON.stringify({
-      jsonrpc: '2.0', id: 1, method: 'initialize',
-      params: { protocolVersion: '2024-11-05', capabilities: {} },
-    }) + '\n');
+    child.stdin.write(
+      JSON.stringify({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'initialize',
+        params: { protocolVersion: '2024-11-05', capabilities: {} },
+      }) + '\n',
+    );
 
     // Give it a moment to respond
     await new Promise((r) => setTimeout(r, 200));
 
-    child.stdin.write(JSON.stringify({
-      jsonrpc: '2.0', id: 2, method: 'tools/list', params: {},
-    }) + '\n');
+    child.stdin.write(
+      JSON.stringify({
+        jsonrpc: '2.0',
+        id: 2,
+        method: 'tools/list',
+        params: {},
+      }) + '\n',
+    );
 
     await new Promise((r) => setTimeout(r, 200));
 
@@ -156,7 +176,10 @@ describe('subprocess integration', () => {
     await new Promise((r) => child.on('exit', r));
 
     const output = Buffer.concat(chunks).toString('utf8');
-    const lines = output.trim().split('\n').map((l) => JSON.parse(l));
+    const lines = output
+      .trim()
+      .split('\n')
+      .map((l) => JSON.parse(l));
 
     // First response: initialize
     assert.equal(lines[0].id, 1);
@@ -179,29 +202,43 @@ describe('subprocess integration', () => {
     child.stdout.on('data', (d) => chunks.push(d));
 
     // Initialize first
-    child.stdin.write(JSON.stringify({
-      jsonrpc: '2.0', id: 1, method: 'initialize',
-      params: { protocolVersion: '2024-11-05', capabilities: {} },
-    }) + '\n');
+    child.stdin.write(
+      JSON.stringify({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'initialize',
+        params: { protocolVersion: '2024-11-05', capabilities: {} },
+      }) + '\n',
+    );
     await new Promise((r) => setTimeout(r, 200));
 
     // Try a tool call — should error since no NMH socket
-    child.stdin.write(JSON.stringify({
-      jsonrpc: '2.0', id: 2, method: 'tools/call',
-      params: { name: 'navigate', arguments: { url: 'http://example.com', tabId: 1 } },
-    }) + '\n');
+    child.stdin.write(
+      JSON.stringify({
+        jsonrpc: '2.0',
+        id: 2,
+        method: 'tools/call',
+        params: { name: 'navigate', arguments: { url: 'http://example.com', tabId: 1 } },
+      }) + '\n',
+    );
     await new Promise((r) => setTimeout(r, 500));
 
     child.stdin.end();
     await new Promise((r) => child.on('exit', r));
 
     const output = Buffer.concat(chunks).toString('utf8');
-    const lines = output.trim().split('\n').map((l) => JSON.parse(l));
+    const lines = output
+      .trim()
+      .split('\n')
+      .map((l) => JSON.parse(l));
 
     // Find the tool call response
     const toolResponse = lines.find((l) => l.id === 2);
     assert.ok(toolResponse, 'should have tool call response');
     assert.ok(toolResponse.error, 'should be an error');
-    assert.ok(toolResponse.error.message.includes('not connected'), 'error should mention connection');
+    assert.ok(
+      toolResponse.error.message.includes('not connected'),
+      'error should mention connection',
+    );
   });
 });

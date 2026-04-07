@@ -270,7 +270,7 @@ switch (command) {
     break;
   case 'help':
     if (printSubcommandHelp(subArgs[0])) process.exit(0);
-    // fall through
+  // fall through
   case '--help':
   case '-h':
   case undefined:
