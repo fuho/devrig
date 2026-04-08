@@ -29,7 +29,7 @@ export function showNetworkLogs(projectDir) {
 
   log('Network traffic inspection:');
   console.log('');
-  console.log('  Web UI:     http://localhost:8081');
+  console.log('  Web UI:     http://localhost:8081  (password: devrig)');
   console.log(`  Log dir:    ${mitmLogsDir}`);
   console.log('');
 

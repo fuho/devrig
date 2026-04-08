@@ -400,7 +400,7 @@ export async function launch(argv) {
   if (cfg.dev_server_cmd) {
     log(`Dev server: http://localhost:${cfg.dev_server_port}`);
   }
-  log('Network inspector: http://localhost:8081');
+  log('Network inspector: http://localhost:8081  (password: devrig)');
 
   log('Connecting to Claude Code in container...');
   log(`CLAUDE_PARAMS: ${claudeParams.join(' ') || '<none>'}`);
