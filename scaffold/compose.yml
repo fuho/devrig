@@ -21,7 +21,7 @@ services:
     volumes:
       - ${DEVRIG_ENV_DIR:-.devrig}/mitmproxy/allowlist.py:/addons/allowlist.py:ro
       - ${DEVRIG_ENV_DIR:-.devrig}/firewall.sh:/usr/local/bin/firewall.sh:ro
-      - mitmproxy-logs:/logs
+      - ${DEVRIG_ENV_DIR:-.devrig}/mitmproxy/logs:/logs
       - mitmproxy-certs:/home/mitmproxy/.mitmproxy
     cap_add:
       - NET_ADMIN
@@ -97,9 +97,6 @@ volumes:
     labels:
       devrig.project: ${DEVRIG_PROJECT:-my-project}
   devrig-mask:
-    labels:
-      devrig.project: ${DEVRIG_PROJECT:-my-project}
-  mitmproxy-logs:
     labels:
       devrig.project: ${DEVRIG_PROJECT:-my-project}
   mitmproxy-certs:

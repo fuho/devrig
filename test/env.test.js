@@ -4,7 +4,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, rmSync
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
-import { envDir, ensureEnv, listEnvs, deleteEnv, inspectEnv } from '../src/env.js';
+import { envDir, ensureEnv, listEnvs, deleteEnv, inspectEnv, envCommand } from '../src/env.js';
 import { getPackageVersion } from '../src/config.js';
 
 // ---------------------------------------------------------------------------
@@ -46,6 +46,7 @@ describe('ensureEnv', () => {
 
     // Directory structure
     assert.ok(existsSync(join(dir, 'home', '.claude', 'logs')), 'home/.claude/logs/ missing');
+    assert.ok(existsSync(join(dir, 'mitmproxy', 'logs')), 'mitmproxy/logs/ missing');
 
     // Scaffold files
     for (const f of [
@@ -250,5 +251,59 @@ describe('inspectEnv', () => {
       console.log = origLog;
     }
     assert.ok(messages.some((m) => m.includes('configured') && !m.includes('not configured')));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// envCommand — per-subcommand help
+// ---------------------------------------------------------------------------
+
+describe('envCommand --help', () => {
+  it('prints subcommand-specific help for list', async () => {
+    const messages = [];
+    const origLog = console.log;
+    console.log = (msg) => messages.push(msg);
+    try {
+      await envCommand(['list', '--help']);
+    } finally {
+      console.log = origLog;
+    }
+    assert.ok(messages.some((m) => m.includes('devrig env list')));
+  });
+
+  it('prints subcommand-specific help for create', async () => {
+    const messages = [];
+    const origLog = console.log;
+    console.log = (msg) => messages.push(msg);
+    try {
+      await envCommand(['create', '--help']);
+    } finally {
+      console.log = origLog;
+    }
+    assert.ok(messages.some((m) => m.includes('devrig env create')));
+  });
+
+  it('handles alias ls --help', async () => {
+    const messages = [];
+    const origLog = console.log;
+    console.log = (msg) => messages.push(msg);
+    try {
+      await envCommand(['ls', '-h']);
+    } finally {
+      console.log = origLog;
+    }
+    assert.ok(messages.some((m) => m.includes('devrig env ls')));
+  });
+
+  it('handles alias rm --help', async () => {
+    const messages = [];
+    const origLog = console.log;
+    console.log = (msg) => messages.push(msg);
+    try {
+      await envCommand(['rm', '--help']);
+    } finally {
+      console.log = origLog;
+    }
+    assert.ok(messages.some((m) => m.includes('devrig env rm')));
   });
 });

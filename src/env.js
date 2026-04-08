@@ -84,6 +84,7 @@ export function ensureEnv(name, root = ENVIRONMENTS_ROOT) {
 
   // Create directory structure
   mkdirSync(join(dir, 'home', '.claude', 'logs'), { recursive: true });
+  mkdirSync(join(dir, 'mitmproxy', 'logs'), { recursive: true });
 
   // Copy scaffold files
   for (const file of ENV_SCAFFOLD_FILES) {
@@ -213,12 +214,75 @@ function formatBytes(bytes) {
   return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
 }
 
+const envSubcommandHelp = {
+  list: `List all named environments.
+
+Shows name, version, and path for each environment.
+
+Example:
+  devrig env list`,
+
+  create: `Create a new named environment.
+
+Copies scaffold files and creates the home directory structure.
+
+Usage:
+  devrig env create <name>
+
+Example:
+  devrig env create work`,
+
+  reset: `Re-copy scaffold files while preserving Claude auth and memories.
+
+Useful after upgrading devrig or if scaffold files were corrupted.
+The home/ directory (auth tokens, memories, settings) is untouched.
+
+Usage:
+  devrig env reset [name]    (default: "default")
+
+Example:
+  devrig env reset
+  devrig env reset work`,
+
+  inspect: `Show details about an environment.
+
+Displays path, version, auth status, and disk usage.
+
+Usage:
+  devrig env inspect [name]  (default: "default")
+
+Example:
+  devrig env inspect
+  devrig env inspect work`,
+
+  delete: `Delete a named environment.
+
+Removes the entire environment directory including auth and memories.
+The "default" environment cannot be deleted — use "reset" instead.
+
+Usage:
+  devrig env delete <name>
+
+Example:
+  devrig env delete work`,
+};
+
 /**
  * Dispatches `devrig env` subcommands.
  * @param {string[]} argv
  */
 export async function envCommand(argv) {
   const sub = argv[0];
+
+  // Per-subcommand help
+  if (sub && (argv.includes('--help') || argv.includes('-h'))) {
+    const canonical = sub === 'ls' ? 'list' : sub === 'rm' ? 'delete' : sub;
+    if (canonical in envSubcommandHelp) {
+      console.log(`Usage: devrig env ${sub}\n`);
+      console.log(envSubcommandHelp[canonical]);
+      return;
+    }
+  }
 
   switch (sub) {
     case 'list':
