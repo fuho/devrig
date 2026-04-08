@@ -71,8 +71,9 @@ RUN npm install -g pnpm@9
 # to /usr/local/bin/ so the /home/dev bind mount doesn't hide it
 RUN curl -fsSL https://claude.ai/install.sh | bash
 USER root
-RUN mv /home/dev/.local/bin/claude /usr/local/bin/claude && \
-    chown dev:dev /usr/local/bin/claude
+RUN cp -rL /home/dev/.local/share/claude /opt/claude && \
+    ln -sf /opt/claude/versions/* /usr/local/bin/claude && \
+    chown -R dev:dev /opt/claude /usr/local/bin/claude
 USER dev
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
