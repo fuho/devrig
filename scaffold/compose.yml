@@ -1,22 +1,87 @@
 services:
+  # ── Inbound routing (Traefik) ──────────────────────────────────────────
+  # Routes http://{project}.localhost to the dev container.
+  # Dashboard at http://localhost:8080.
+  traefik:
+    image: traefik:v3.6
+    command:
+      - "--providers.docker=true"
+      - "--providers.docker.exposedByDefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--api.insecure=true"
+    ports:
+      - "80:80"
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    labels:
+      devrig.project: ${DEVRIG_PROJECT:-my-project}
+    restart: unless-stopped
+
+  # ── Outbound traffic proxy (mitmproxy) ─────────────────────────────────
+  # All dev container traffic routes through this sidecar for inspection
+  # and domain allowlisting. Web UI at http://localhost:8081.
+  mitmproxy:
+    image: mitmproxy/mitmproxy:latest
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        # Run firewall rules, then start mitmweb
+        /usr/local/bin/firewall.sh || echo "WARNING: Firewall setup failed"
+        exec mitmweb --mode transparent --web-host 0.0.0.0 --set block_global=false --set connection_strategy=lazy -s /addons/allowlist.py -w /logs/traffic-%Y-%m-%d_%H.mitm
+    ports:
+      - "127.0.0.1:8081:8081"
+    volumes:
+      - ${DEVRIG_ENV_DIR:-.devrig}/mitmproxy/allowlist.py:/addons/allowlist.py:ro
+      - ${DEVRIG_ENV_DIR:-.devrig}/firewall.sh:/usr/local/bin/firewall.sh:ro
+      - mitmproxy-logs:/logs
+      - mitmproxy-certs:/home/mitmproxy/.mitmproxy
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    labels:
+      devrig.project: ${DEVRIG_PROJECT:-my-project}
+      # Traefik routes to the dev server via mitmproxy's network namespace
+      traefik.enable: "true"
+      traefik.http.routers.${DEVRIG_PROJECT:-my-project}.rule: "Host(`${DEVRIG_PROJECT:-my-project}.localhost`)"
+      traefik.http.routers.${DEVRIG_PROJECT:-my-project}.entrypoints: "web"
+      traefik.http.services.${DEVRIG_PROJECT:-my-project}.loadbalancer.server.port: "${DEVRIG_DEV_PORT:-3000}"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8081/"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 45s
+
+  # ── Development container ──────────────────────────────────────────────
   dev:
     image: ${DEVRIG_PROJECT:-my-project}-dev:latest
     labels:
       devrig.project: ${DEVRIG_PROJECT:-my-project}
     build:
-      context: .devrig
+      context: ${DEVRIG_ENV_DIR:-.devrig}
       dockerfile: Dockerfile
       args:
         USER_UID: ${HOST_UID:-1000}
         USER_GID: ${HOST_GID:-1000}
       labels:
         devrig.project: ${DEVRIG_PROJECT:-my-project}
+    # Route all outbound traffic through mitmproxy sidecar
+    network_mode: "service:mitmproxy"
+    depends_on:
+      mitmproxy:
+        condition: service_healthy
     volumes:
       - .:/workspace
       - node_modules:/workspace/node_modules
-      - ./.devrig/home:/home/dev
+      - ${DEVRIG_ENV_DIR:-.devrig}/home:/home/dev
       - ./.devrig/CLAUDE.md:/workspace/CLAUDE.md:ro
       - devrig-mask:/workspace/.devrig
+      - mitmproxy-certs:/usr/local/share/mitmproxy-certs:ro
     environment:
       - CLAUDE_CONFIG_DIR=/home/dev/.claude
       - BRIDGE_PORT=9229
@@ -25,10 +90,10 @@ services:
       - CLAUDE_VERSION=${CLAUDE_VERSION:-latest}
       - TERM=xterm-256color
       - NODE_OPTIONS=--max-old-space-size=4096
+      - NODE_EXTRA_CA_CERTS=/usr/local/share/mitmproxy-certs/mitmproxy-ca-cert.pem
     # Entrypoint runs as root to chown /home/dev, then drops to dev via gosu
     user: "root"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+    # NOTE: extra_hosts goes on mitmproxy service (shared network namespace)
     stdin_open: true
     tty: true
     init: true
@@ -51,5 +116,11 @@ volumes:
     labels:
       devrig.project: ${DEVRIG_PROJECT:-my-project}
   devrig-mask:
+    labels:
+      devrig.project: ${DEVRIG_PROJECT:-my-project}
+  mitmproxy-logs:
+    labels:
+      devrig.project: ${DEVRIG_PROJECT:-my-project}
+  mitmproxy-certs:
     labels:
       devrig.project: ${DEVRIG_PROJECT:-my-project}

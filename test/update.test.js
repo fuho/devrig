@@ -16,31 +16,31 @@ describe('update', () => {
 
   it('detects no changes when files match', () => {
     tmp = mkdtempSync(join(tmpdir(), 'devrig-upd-'));
-    const devrig = join(tmp, '.devrig');
-    cpSync(scaffoldDir, devrig, { recursive: true });
-    const changed = findChangedFiles(tmp, scaffoldDir);
+    const targetDir = join(tmp, '.devrig');
+    cpSync(scaffoldDir, targetDir, { recursive: true });
+    const changed = findChangedFiles(targetDir, scaffoldDir);
     assert.equal(changed.length, 0);
   });
 
   it('detects changed files', () => {
     tmp = mkdtempSync(join(tmpdir(), 'devrig-upd-'));
-    const devrig = join(tmp, '.devrig');
-    cpSync(scaffoldDir, devrig, { recursive: true });
+    const targetDir = join(tmp, '.devrig');
+    cpSync(scaffoldDir, targetDir, { recursive: true });
     // Modify a file
-    writeFileSync(join(devrig, 'entrypoint.sh'), 'modified content');
-    const changed = findChangedFiles(tmp, scaffoldDir);
+    writeFileSync(join(targetDir, 'entrypoint.sh'), 'modified content');
+    const changed = findChangedFiles(targetDir, scaffoldDir);
     assert.ok(changed.length > 0);
     assert.ok(changed.some((f) => f.name === 'entrypoint.sh'));
   });
 
   it('skips home and session.json', () => {
     tmp = mkdtempSync(join(tmpdir(), 'devrig-upd-'));
-    const devrig = join(tmp, '.devrig');
-    cpSync(scaffoldDir, devrig, { recursive: true });
-    mkdirSync(join(devrig, 'home'), { recursive: true });
-    writeFileSync(join(devrig, 'home', 'testfile'), 'data');
-    writeFileSync(join(devrig, 'session.json'), '{}');
-    const changed = findChangedFiles(tmp, scaffoldDir);
+    const targetDir = join(tmp, '.devrig');
+    cpSync(scaffoldDir, targetDir, { recursive: true });
+    mkdirSync(join(targetDir, 'home'), { recursive: true });
+    writeFileSync(join(targetDir, 'home', 'testfile'), 'data');
+    writeFileSync(join(targetDir, 'session.json'), '{}');
+    const changed = findChangedFiles(targetDir, scaffoldDir);
     assert.ok(!changed.some((f) => f.name.includes('home')));
     assert.ok(!changed.some((f) => f.name.includes('session.json')));
   });

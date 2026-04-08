@@ -1,9 +1,10 @@
 // @ts-check
-import { cpSync, chmodSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { cpSync, chmodSync, readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createInterface } from 'node:readline/promises';
 import { getPackageVersion, loadConfig } from './config.js';
+import { ensureEnv } from './env.js';
 import { configure } from './configure.js';
 import { log, die } from './log.js';
 
@@ -17,6 +18,7 @@ export const SCAFFOLD_FILES = [
   'compose.yml',
   'container-setup.js',
   'entrypoint.sh',
+  'firewall.sh',
   'setup.html',
 ];
 
@@ -73,12 +75,14 @@ export function generateClaudeMd(projectDir, cfg) {
     'Available commands:',
     '- `devrig start` — launch a container session',
     '- `devrig stop` — stop the running session',
+    '- `devrig env list` — show named environments',
     '- `devrig doctor` — check system prerequisites',
-    '- `devrig logs` — view container and dev server logs',
+    '- `devrig logs` — view container, dev server, and network logs',
     '- `devrig exec` — open a shell in the running container',
-    '- `devrig update` — update scaffold files to latest version',
     '',
-    'Do not modify files in `.devrig/` directly — use `devrig update` to sync scaffold changes.',
+    'Dashboards (when session is running):',
+    '- Traefik routing: http://localhost:8080',
+    '- Network traffic: http://localhost:8081',
     DEVRIG_END,
   ].join('\n');
 
@@ -91,6 +95,7 @@ export function generateClaudeMd(projectDir, cfg) {
     `- **Workspace:** /workspace`,
     `- **Dev server:** http://localhost:${cfg.dev_server_port}`,
     `- **Chrome bridge:** ${cfg.bridge_enabled ? `enabled (port ${cfg.bridge_port})` : 'disabled'}`,
+    `- **Network:** outbound traffic filtered through mitmproxy (allowlisted domains only)`,
     '',
     'On first message, check if you have the "Claude in Chrome" MCP tool available.',
     'If YES: use it to navigate to the dev server URL below and confirm the connection.',
@@ -99,8 +104,8 @@ export function generateClaudeMd(projectDir, cfg) {
     `Dev server URL: http://localhost:${cfg.dev_server_port}?agent=${cfg.tool}`,
     'Do NOT use WebFetch or Fetch for this URL — they cannot reach localhost.',
     '',
-    'Git push is blocked inside this container. Make commits freely — the user will',
-    'review and push from the host.',
+    'Outbound network access is restricted to approved domains (Anthropic API, npm, GitHub).',
+    'Make commits freely — the user will review and push from the host.',
     DEVRIG_END,
   ].join('\n');
 
@@ -126,7 +131,7 @@ export async function init(projectDir) {
   // Warn if .devrig/ already exists
   if (existsSync(targetDir)) {
     const rl = createInterface({ input: process.stdin, output: process.stdout });
-    const answer = (await rl.question('  .devrig/ already exists. Overwrite? [y/N]: '))
+    const answer = (await rl.question('  .devrig/ already exists. Re-initialize? [y/N]: '))
       .trim()
       .toLowerCase();
     rl.close();
@@ -136,30 +141,59 @@ export async function init(projectDir) {
     }
   }
 
-  // Copy scaffold files into .devrig/ (whitelist only)
-  log('Copying scaffold files to .devrig/...');
-  for (const file of SCAFFOLD_FILES) {
-    try {
-      cpSync(join(scaffoldDir, file), join(targetDir, file));
-    } catch (err) {
-      die(`Failed to copy ${file}: ${err.message}`);
+  // Run configuration wizard (now includes environment selection)
+  await configure(projectDir);
+
+  // Load config to determine environment
+  const cfg = loadConfig(projectDir);
+  const isLocal = cfg.environment === 'local';
+
+  if (isLocal) {
+    // Local mode: copy scaffold files into .devrig/ (legacy behavior)
+    log('Copying scaffold files to .devrig/...');
+    for (const file of SCAFFOLD_FILES) {
+      try {
+        cpSync(join(scaffoldDir, file), join(targetDir, file));
+      } catch (err) {
+        die(`Failed to copy ${file}: ${err.message}`);
+      }
     }
-  }
 
-  // Set executable permissions on key files
-  try {
-    chmodSync(join(targetDir, 'entrypoint.sh'), 0o755);
-    chmodSync(join(targetDir, 'container-setup.js'), 0o755);
-  } catch (err) {
-    die(`Failed to set file permissions: ${err.message}`);
-  }
+    // Copy mitmproxy directory
+    const mitmSrc = join(scaffoldDir, 'mitmproxy');
+    if (existsSync(mitmSrc)) {
+      cpSync(mitmSrc, join(targetDir, 'mitmproxy'), { recursive: true });
+    }
 
-  // Write version marker
-  const version = getPackageVersion();
-  try {
-    writeFileSync(join(targetDir, '.devrig-version'), version + '\n');
-  } catch (err) {
-    log(`WARNING: Could not write version marker: ${err.message}`);
+    // Set executable permissions on key files
+    try {
+      chmodSync(join(targetDir, 'entrypoint.sh'), 0o755);
+      chmodSync(join(targetDir, 'container-setup.js'), 0o755);
+      chmodSync(join(targetDir, 'firewall.sh'), 0o755);
+    } catch (err) {
+      die(`Failed to set file permissions: ${err.message}`);
+    }
+
+    // Write version marker
+    const version = getPackageVersion();
+    try {
+      writeFileSync(join(targetDir, '.devrig-version'), version + '\n');
+    } catch (err) {
+      log(`WARNING: Could not write version marker: ${err.message}`);
+    }
+
+    // Copy setup.html into .devrig/
+    const setupSrc = join(scaffoldDir, 'setup.html');
+    if (existsSync(setupSrc)) {
+      cpSync(setupSrc, join(targetDir, 'setup.html'));
+    }
+  } else {
+    // Named environment: ensure environment exists at ~/.devrig/environments/{name}/
+    const envPath = ensureEnv(cfg.environment);
+    log(`Using environment "${cfg.environment}" at ${envPath}`);
+
+    // Create project .devrig/ for runtime state only
+    mkdirSync(join(targetDir, 'logs'), { recursive: true });
   }
 
   // Append .gitignore entries if not already present
@@ -174,12 +208,6 @@ export async function init(projectDir) {
     log('Updated .gitignore');
   }
 
-  // Copy setup.html into .devrig/ (not in template/ — survives user file changes)
-  const setupSrc = join(scaffoldDir, 'setup.html');
-  if (existsSync(setupSrc)) {
-    cpSync(setupSrc, join(targetDir, 'setup.html'));
-  }
-
   // Copy devrig.toml.example to project root if absent
   const exampleSrc = join(scaffoldDir, 'devrig.toml.example');
   const exampleDest = join(projectDir, 'devrig.toml.example');
@@ -189,12 +217,8 @@ export async function init(projectDir) {
 
   log('Scaffold complete.');
 
-  // Run configuration wizard
-  await configure(projectDir);
-
   // Generate CLAUDE.md with devrig section
   try {
-    const cfg = loadConfig(projectDir);
     generateClaudeMd(projectDir, cfg);
   } catch {
     log('WARNING: Could not generate CLAUDE.md');
@@ -204,7 +228,11 @@ export async function init(projectDir) {
   console.log('');
   log("Done! Here's what was created:");
   console.log('');
-  console.log('  .devrig/           Docker infrastructure (Dockerfile, compose, entrypoint)');
+  if (isLocal) {
+    console.log('  .devrig/           Docker infrastructure (Dockerfile, compose, entrypoint)');
+  } else {
+    console.log(`  Environment:       "${cfg.environment}" (shared across projects)`);
+  }
   console.log('  devrig.toml        Project configuration');
   console.log('  .env               Environment variables (git author, Claude params)');
   console.log('  .gitignore         Updated with .devrig/');
@@ -214,14 +242,14 @@ export async function init(projectDir) {
 
   // Show config files
   const tomlPath = join(projectDir, 'devrig.toml');
-  const envPath = join(projectDir, '.env');
+  const envFilePath = join(projectDir, '.env');
   if (existsSync(tomlPath)) {
     console.log('  ── devrig.toml ──');
     console.log(readFileSync(tomlPath, 'utf8').replace(/^/gm, '  '));
   }
-  if (existsSync(envPath)) {
+  if (existsSync(envFilePath)) {
     console.log('  ── .env ──');
-    console.log(readFileSync(envPath, 'utf8').replace(/^/gm, '  '));
+    console.log(readFileSync(envFilePath, 'utf8').replace(/^/gm, '  '));
   }
 
   log('To start a session, run:');

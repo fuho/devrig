@@ -24,8 +24,9 @@ import { parseArgs } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { userInfo } from 'node:os';
 import { log, die, verbose } from './log.js';
-import { loadConfig, loadDotenv, resolveProjectDir } from './config.js';
+import { loadConfig, loadDotenv, resolveProjectDir, resolveEnvDir } from './config.js';
 import { composeCmd, buildHash, needsRebuild, startContainer, initVariant } from './docker.js';
+import { ensureEnv } from './env.js';
 import { openBrowser } from './browser.js';
 import {
   registerProcess,
@@ -85,8 +86,15 @@ export async function launch(argv) {
   // -- Step 2: Load configuration (launcher.py: load config) ----------------
   const cfg = loadConfig(projectDir);
 
-  // -- Step 2b: Scaffold staleness check -------------------------------------
-  checkScaffoldStaleness(projectDir);
+  // -- Step 2b: Resolve environment directory --------------------------------
+  const envDirPath = resolveEnvDir(cfg, projectDir);
+  if (cfg.environment !== 'local') {
+    ensureEnv(cfg.environment);
+    verbose(`Using environment "${cfg.environment}" at ${envDirPath}`);
+  }
+
+  // -- Step 2b2: Scaffold staleness check ------------------------------------
+  checkScaffoldStaleness(projectDir, envDirPath);
 
   // -- Step 2c: Regenerate container CLAUDE.md before compose up ---------------
   try {
@@ -108,11 +116,13 @@ export async function launch(argv) {
   verbose('start flags: ' + JSON.stringify(args));
 
   // -- Step 4: Initialize variant (launcher.py: init variant) ---------------
-  const ctx = initVariant(cfg);
+  const ctx = initVariant(cfg, envDirPath);
 
   // -- Step 5: Load dotenv and set project env var -------------------------
   loadDotenv(projectDir);
   process.env.DEVRIG_PROJECT = cfg.project;
+  process.env.DEVRIG_ENV_DIR = envDirPath;
+  process.env.DEVRIG_DEV_PORT = String(cfg.dev_server_port);
 
   // -- Step 6: Change to project directory and set host UID ----------------
   process.chdir(projectDir);
@@ -188,8 +198,9 @@ export async function launch(argv) {
   }
 
   // -- Step 9b: Ensure Claude settings has Chrome MCP config (host side) ----
+  const homeDir = join(envDirPath, 'home');
   if (cfg.bridge_enabled && !args['no-chrome']) {
-    const claudeDir = join(projectDir, '.devrig', 'home', '.claude');
+    const claudeDir = join(homeDir, '.claude');
     mkdirSync(claudeDir, { recursive: true });
     const settingsPath = join(claudeDir, 'settings.json');
     let settings = {};
@@ -209,7 +220,7 @@ export async function launch(argv) {
   }
 
   // -- Step 9c: Ensure container home dirs exist (host-created so ownership matches) --
-  mkdirSync(join(projectDir, '.devrig', 'home', '.claude', 'logs'), { recursive: true });
+  mkdirSync(join(homeDir, '.claude', 'logs'), { recursive: true });
 
   // -- Step 10: Start container (launcher.py: start container) --------------
   startContainer(ctx);
@@ -264,6 +275,7 @@ export async function launch(argv) {
       try {
         await fetch(devUrl, { signal: AbortSignal.timeout(1000) });
         log(`Dev server ready at ${devUrl}`);
+        log(`Routed via Traefik: http://${cfg.project}.localhost`);
         devReady = true;
         break;
       } catch {
@@ -279,7 +291,7 @@ export async function launch(argv) {
     // -- Step 13: Open browser (launcher.py: open browser) ------------------
     if (!args['no-chrome']) {
       log('Opening browser...');
-      openBrowser(`http://localhost:${cfg.dev_server_port}/devrig/setup`);
+      openBrowser(`http://${cfg.project}.localhost/devrig/setup`);
     }
   }
 
@@ -287,8 +299,8 @@ export async function launch(argv) {
   acquireSession(projectDir, sessionInfo);
 
   // -- Step 14: Wait for Claude readiness (launcher.py: wait for claude) ----
-  const sentinel = join(projectDir, '.devrig', 'home', '.claude', 'logs', '.setup-ready');
-  const entrypointLog = join(projectDir, '.devrig', 'home', '.claude', 'logs', 'entrypoint.log');
+  const sentinel = join(homeDir, '.claude', 'logs', '.setup-ready');
+  const entrypointLog = join(homeDir, '.claude', 'logs', 'entrypoint.log');
 
   log('Waiting for Claude Code to be ready in container...');
   let logPos = 0;
@@ -384,6 +396,14 @@ export async function launch(argv) {
       'You have Chrome MCP tools. Open the dev server URL from CLAUDE.md using the Chrome tools.',
     );
   }
+
+  // Log dashboard URLs
+  log('Dashboards:');
+  if (cfg.dev_server_cmd) {
+    console.log(`  App:       http://${cfg.project}.localhost`);
+  }
+  console.log(`  Traefik:   http://localhost:8080`);
+  console.log(`  mitmproxy: http://localhost:8081`);
 
   log('Connecting to Claude Code in container...');
   log(`CLAUDE_PARAMS: ${claudeParams.join(' ') || '<none>'}`);

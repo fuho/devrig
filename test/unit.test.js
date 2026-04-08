@@ -5,8 +5,15 @@ import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
-import { parseTOML, loadConfig, loadDotenv, resolveProjectDir } from '../src/config.js';
+import {
+  parseTOML,
+  loadConfig,
+  loadDotenv,
+  resolveProjectDir,
+  resolveEnvDir,
+} from '../src/config.js';
 import { composeCmd, initVariant, buildFiles, buildHash } from '../src/docker.js';
+import { homedir } from 'node:os';
 
 // ---------------------------------------------------------------------------
 // parseTOML
@@ -161,6 +168,63 @@ describe('loadDotenv', () => {
 });
 
 // ---------------------------------------------------------------------------
+// resolveEnvDir
+// ---------------------------------------------------------------------------
+
+describe('resolveEnvDir', () => {
+  it('returns project .devrig/ for local environment', () => {
+    const result = resolveEnvDir({ environment: 'local' }, '/tmp/myproject');
+    assert.equal(result, join('/tmp/myproject', '.devrig'));
+  });
+
+  it('returns ~/.devrig/environments/{name}/ for named environment', () => {
+    const result = resolveEnvDir({ environment: 'default' }, '/tmp/myproject');
+    assert.equal(result, join(homedir(), '.devrig', 'environments', 'default'));
+  });
+
+  it('returns ~/.devrig/environments/{name}/ for custom environment', () => {
+    const result = resolveEnvDir({ environment: 'work' }, '/tmp/myproject');
+    assert.equal(result, join(homedir(), '.devrig', 'environments', 'work'));
+  });
+
+  it('uses custom environmentsRoot when provided', () => {
+    const result = resolveEnvDir({ environment: 'work' }, '/tmp/myproject', '/custom/root');
+    assert.equal(result, join('/custom/root', 'work'));
+  });
+
+  it('ignores environmentsRoot for local environment', () => {
+    const result = resolveEnvDir({ environment: 'local' }, '/tmp/myproject', '/custom/root');
+    assert.equal(result, join('/tmp/myproject', '.devrig'));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// loadConfig (environment field)
+// ---------------------------------------------------------------------------
+
+describe('loadConfig environment field', () => {
+  let tmpDir;
+
+  afterEach(() => {
+    if (tmpDir) rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('defaults environment to "default" when omitted', () => {
+    tmpDir = mkdtempSync(join(tmpdir(), 'devrig-test-'));
+    writeFileSync(join(tmpDir, 'devrig.toml'), 'project = "test"');
+    const cfg = loadConfig(tmpDir);
+    assert.equal(cfg.environment, 'default');
+  });
+
+  it('reads environment from toml', () => {
+    tmpDir = mkdtempSync(join(tmpdir(), 'devrig-test-'));
+    writeFileSync(join(tmpDir, 'devrig.toml'), 'project = "test"\nenvironment = "work"\n');
+    const cfg = loadConfig(tmpDir);
+    assert.equal(cfg.environment, 'work');
+  });
+});
+
+// ---------------------------------------------------------------------------
 // composeCmd
 // ---------------------------------------------------------------------------
 
@@ -188,11 +252,34 @@ describe('composeCmd', () => {
 // ---------------------------------------------------------------------------
 
 describe('initVariant', () => {
-  it('returns native variant config', () => {
+  it('returns native variant config with default devrig dir', () => {
     const v = initVariant({ project: 'myproj' });
     assert.ok(v.composeFile.includes('compose.yml'));
     assert.equal(v.image, 'myproj-dev:latest');
     assert.equal(v.dockerfile, 'Dockerfile');
+    assert.equal(v.devrigDir, '.devrig');
+  });
+
+  it('uses provided envDir', () => {
+    const v = initVariant({ project: 'myproj' }, '/home/user/.devrig/environments/default');
+    assert.ok(v.composeFile.includes('/home/user/.devrig/environments/default/compose.yml'));
+    assert.equal(v.devrigDir, '/home/user/.devrig/environments/default');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// buildFiles with environment paths
+// ---------------------------------------------------------------------------
+
+describe('buildFiles with environment dir', () => {
+  it('returns absolute paths when devrigDir is an absolute environment path', () => {
+    const envDir = '/tmp/devrig-environments/myenv';
+    const ctx = initVariant({ project: 'myproj' }, envDir);
+    const files = buildFiles(ctx);
+    for (const f of files) {
+      assert.ok(f.startsWith(envDir), `expected ${f} to start with ${envDir}`);
+    }
+    assert.equal(files.length, 5);
   });
 });
 

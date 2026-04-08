@@ -4,3 +4,5 @@ session.json
 *.log
 .devrig-version
 template/
+mitmproxy/
+firewall.sh

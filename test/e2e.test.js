@@ -56,11 +56,12 @@ describe('e2e: devrig init', () => {
 
     try {
       // Answers in order:
-      //   project name, tool, dev server Y, command, port, timeout,
+      //   project name, tool, environment, dev server Y, command, port, timeout,
       //   chrome Y, port, git name, git email, copy template Y
       const answers = [
         'e2e-test',
         'claude',
+        'local',
         'y',
         'npm run dev',
         '3000',
@@ -149,6 +150,7 @@ describe('e2e: devrig init', () => {
       const answers = [
         'di-test',
         'claude',
+        'local',
         'y',
         'npm run dev',
         '3000',

@@ -1,25 +1,17 @@
 #!/usr/bin/env node
 /**
- * container-setup.js — Runs INSIDE the Docker container.
- * Installs/updates Claude Code and sets up the Chrome browser bridge.
- * Ported from container-setup.py.
+ * container-setup.js — Runs INSIDE the Docker container at startup.
+ * Sets up the Chrome browser bridge and configures Claude Code settings.
+ * Claude Code itself is installed at build time in the Dockerfile.
  */
 
 import { execFileSync, spawn } from 'node:child_process';
 import { existsSync, readFileSync, mkdirSync, writeFileSync, chmodSync } from 'node:fs';
 import { join } from 'node:path';
 
-const NATIVE_INSTALLER_URL = 'https://claude.ai/install.sh';
-
 function log(msg) {
   const ts = new Date().toTimeString().slice(0, 8);
   console.log(`[setup] ${ts} ${msg}`);
-}
-
-function claudeVersion() {
-  try {
-    return execFileSync('claude', ['--version'], { encoding: 'utf8' }).trim();
-  } catch { return '<unknown>'; }
 }
 
 function which(cmd) {
@@ -27,50 +19,6 @@ function which(cmd) {
     execFileSync('which', [cmd], { stdio: 'ignore' });
     return true;
   } catch { return false; }
-}
-
-// -- Claude Code installation ------------------------------------------------
-
-function installClaudeCodeNative() {
-  const version = process.env.CLAUDE_VERSION || 'latest';
-  const versionMarker = join(process.env.HOME || '/home/dev', '.claude-version');
-
-  // Skip install if already installed and version matches
-  if (which('claude') && existsSync(versionMarker)) {
-    const installed = readFileSync(versionMarker, 'utf8').trim();
-    if (installed === version || (version === 'latest' && installed)) {
-      log(`claude already installed: ${claudeVersion()} (pinned: ${installed})`);
-      return;
-    }
-  }
-
-  if (which('claude')) {
-    log(`claude found: ${claudeVersion()}`);
-    if (version === 'latest' || version === 'stable') {
-      log(`Re-installing (channel: ${version})...`);
-    } else {
-      log(`Re-installing (version: ${version})...`);
-    }
-  } else {
-    log('claude not found — installing via native installer');
-  }
-
-  // Install with version argument
-  const installArgs =
-    version === 'latest'
-      ? `curl -fsSL ${NATIVE_INSTALLER_URL} | bash`
-      : `curl -fsSL ${NATIVE_INSTALLER_URL} | bash -s ${version}`;
-
-  execFileSync('bash', ['-c', installArgs], { stdio: 'inherit' });
-
-  // Write version marker
-  writeFileSync(versionMarker, version + '\n');
-
-  log(`Installed: ${claudeVersion()}`);
-}
-
-function installClaudeCode() {
-  installClaudeCodeNative();
 }
 
 // -- Chrome bridge setup -----------------------------------------------------
@@ -139,7 +87,18 @@ function disableAutoUpdater() {
 
 // -- Main --------------------------------------------------------------------
 
-installClaudeCode();
+// Verify Claude Code is available (installed at build time)
+if (which('claude')) {
+  try {
+    const ver = execFileSync('claude', ['--version'], { encoding: 'utf8' }).trim();
+    log(`Claude Code: ${ver}`);
+  } catch {
+    log('Claude Code found but version check failed');
+  }
+} else {
+  log('WARNING: Claude Code not found — expected from Dockerfile build');
+}
+
 if (process.env.BRIDGE_ENABLED === '1') {
   setupChromeBridge();
 }

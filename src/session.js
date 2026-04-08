@@ -204,9 +204,15 @@ function pidAlive(pid) {
 // Staleness check
 // ---------------------------------------------------------------------------
 
-/** Warns if scaffold version differs from installed package version. */
-export function checkScaffoldStaleness(projectDir) {
-  const versionFile = join(projectDir, '.devrig', '.devrig-version');
+/**
+ * Warns if scaffold version differs from installed package version.
+ * @param {string} projectDir
+ * @param {string} [envDir] - Absolute path to the environment directory.
+ *   When omitted, falls back to projectDir/.devrig (legacy / local mode).
+ */
+export function checkScaffoldStaleness(projectDir, envDir) {
+  const baseDir = envDir || join(projectDir, '.devrig');
+  const versionFile = join(baseDir, '.devrig-version');
   if (!existsSync(versionFile)) return;
 
   try {

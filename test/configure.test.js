@@ -62,11 +62,12 @@ describe('configure', () => {
 
     try {
       // Answers in order:
-      //   project name, tool, dev server Y, command, port, timeout,
+      //   project name, tool, environment, dev server Y, command, port, timeout,
       //   chrome Y, port, git name, git email, copy template N
       const answers = [
         'test-project',
         'claude',
+        '',
         'y',
         'npm run dev',
         '3000',
@@ -112,8 +113,8 @@ describe('configure', () => {
       ].join('\n');
       writeFileSync(join(tmpDir, '.env'), existingEnv);
 
-      // Answers: project name, tool, dev server N, chrome N, git name, git email, copy template N
-      const answers = ['updated-proj', 'claude', 'n', 'n', 'New User', 'new@example.com', 'n'];
+      // Answers: project name, tool, environment, dev server N, chrome N, git name, git email, copy template N
+      const answers = ['updated-proj', 'claude', '', 'n', 'n', 'New User', 'new@example.com', 'n'];
 
       await runConfigure(tmpDir, answers);
 
@@ -138,6 +139,7 @@ describe('configure', () => {
       const answers = [
         'test-project',
         'claude',
+        '',
         'y',
         'npm run dev',
         'banana',
@@ -167,6 +169,7 @@ describe('configure', () => {
       const answers = [
         'My Cool Project!',
         'claude',
+        '',
         'y',
         'npm run dev',
         'not-a-number',

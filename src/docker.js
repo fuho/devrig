@@ -75,10 +75,13 @@ export function startContainer(ctx) {
 
 /**
  * Returns a ctx-like object for Docker operations.
+ * @param {{ project: string }} cfg
+ * @param {string} [envDir] - Absolute path to the environment directory.
+ *   When omitted, falls back to '.devrig' (legacy / local mode).
  */
-export function initVariant(cfg) {
+export function initVariant(cfg, envDir) {
   const project = cfg.project;
-  const devrigDir = '.devrig';
+  const devrigDir = envDir || '.devrig';
 
   return {
     project,

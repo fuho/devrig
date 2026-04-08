@@ -160,7 +160,6 @@ describe('checkScaffoldStaleness', () => {
 
   it('logs warning when versions differ', () => {
     writeFileSync(join(tmp, '.devrig', '.devrig-version'), '0.0.0\n');
-    // Capture console.log output
     const messages = [];
     const origLog = console.log;
     console.log = (msg) => messages.push(msg);
@@ -170,5 +169,45 @@ describe('checkScaffoldStaleness', () => {
       console.log = origLog;
     }
     assert.ok(messages.some((m) => m.includes('WARNING') && m.includes('0.0.0')));
+  });
+
+  it('uses explicit envDir parameter when provided', () => {
+    const envDir = mkdtempSync(join(tmpdir(), 'devrig-envdir-'));
+    try {
+      writeFileSync(join(envDir, '.devrig-version'), '0.0.0\n');
+      const messages = [];
+      const origLog = console.log;
+      console.log = (msg) => messages.push(msg);
+      try {
+        checkScaffoldStaleness(tmp, envDir);
+      } finally {
+        console.log = origLog;
+      }
+      assert.ok(messages.some((m) => m.includes('WARNING') && m.includes('0.0.0')));
+    } finally {
+      rmSync(envDir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('stopSession edge cases', () => {
+  let tmp;
+
+  beforeEach(() => {
+    tmp = mkdtempSync(join(tmpdir(), 'devrig-session-'));
+    mkdirSync(join(tmp, '.devrig'), { recursive: true });
+  });
+
+  afterEach(() => {
+    rmSync(tmp, { recursive: true, force: true });
+  });
+
+  it('cleans up stale lock with dead PID', () => {
+    writeFileSync(
+      join(tmp, '.devrig', 'session.json'),
+      JSON.stringify({ pid: 999999, project: 'stale', composeArgs: [] }),
+    );
+    stopSession(tmp);
+    assert.ok(!existsSync(join(tmp, '.devrig', 'session.json')), 'stale lock should be removed');
   });
 });

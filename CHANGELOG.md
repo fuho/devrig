@@ -1,6 +1,61 @@
 # Changelog
 
-## Unreleased
+## Unreleased (v2.0.0)
+
+### Breaking Changes
+
+- **Named environments** — Scaffold files and Claude Code home directory now live in `~/.devrig/environments/{name}/` instead of per-project `.devrig/`. Existing projects using `.devrig/` can set `environment = "local"` in `devrig.toml` to preserve the old behavior.
+- **Git shim removed** — `git push` is no longer blocked by a shell shim in the Dockerfile. Network-level security (iptables firewall + mitmproxy allowlist) replaces it.
+- **Dockerfile changes** — Default shell changed from bash to zsh. Claude Code installed at build time instead of runtime. `container-setup.js` no longer handles Claude installation.
+- **compose.yml restructured** — Now includes three services (Traefik, mitmproxy, dev) instead of one. Volume mount paths use `DEVRIG_ENV_DIR` environment variable.
+
+### Features
+
+- **Named environments** (`devrig env`) — Share Claude Code auth, memories, and settings across projects. Environments live at `~/.devrig/environments/{name}/`. Types: `"default"` (shared), named (e.g. `"work"`), `"local"` (project-isolated). New CLI: `devrig env list|create|inspect|delete`.
+- **Network security** — iptables firewall blocks all unauthorized outbound traffic. HTTP/HTTPS redirected through mitmproxy transparent proxy with domain allowlist. Allowed: Anthropic API, npm, GitHub, Sentry, Statsig, PyPI.
+- **Traffic inspection** — mitmproxy captures all HTTP/S traffic with full request/response bodies (HTTPS decrypted via trusted CA cert). Web UI at `localhost:8081`. Hourly rotation of `.mitm` capture files. Offline analysis via `mitmproxy -r` or HAR export.
+- **Traefik reverse proxy** — Routes `http://{project}.localhost` to the dev server. Dashboard at `localhost:8080`. Docker label-based autodiscovery. No HTTPS needed (`.localhost` is a secure context per RFC 6761).
+- **zsh + Powerlevel10k** — Default shell switched to zsh with Powerlevel10k theme, fzf integration, and git-delta for better diffs.
+- **Build-time Claude install** — Claude Code installed during Docker image build instead of at container startup. Faster session starts.
+- **`devrig logs --network`** — Shows mitmproxy web UI URL, log directory, and recent capture files.
+- **`environment` field in devrig.toml** — Controls which environment a project uses. Added to configuration wizard.
+
+### Docker
+
+- mitmproxy sidecar service with transparent proxy mode, domain allowlist addon, and traffic capture
+- Traefik v3.6 service with Docker provider, `exposedByDefault=false`, localhost-only dashboard
+- Dev container uses `network_mode: "service:mitmproxy"` for outbound traffic routing
+- mitmproxy CA certificate shared via Docker volume and trusted via `NODE_EXTRA_CA_CERTS` + `update-ca-certificates`
+- `firewall.sh` — iptables rules: DNS/loopback/Docker networks allowed, HTTP/HTTPS redirected to mitmproxy, everything else rejected
+- `DEVRIG_ENV_DIR` environment variable for compose volume paths
+- `DEVRIG_DEV_PORT` environment variable for Traefik routing
+- zsh, fzf, git-delta added to Dockerfile
+- Claude Code installed at build time via native installer
+- Git push/pull shim removed from Dockerfile
+
+### Fixes
+
+- `container-setup.js` simplified — removed ~40 lines of Claude Code installation logic (now handled at build time)
+- `findChangedFiles()` in update.js now accepts target directory directly instead of deriving it from project dir
+- `checkDevrigDir()` and `checkVersionStaleness()` in doctor.js safely read environment config without calling `die()`
+
+### Development
+
+- New `src/env.js` — environment CRUD operations (envDir, ensureEnv, listEnvs, deleteEnv, inspectEnv, envCommand)
+- New `scaffold/firewall.sh` — iptables firewall script
+- New `scaffold/mitmproxy/allowlist.py` — domain allowlist mitmproxy addon
+- `src/config.js` — added `environment` field to loadConfig(), new `resolveEnvDir()` function
+- `src/docker.js` — `initVariant()` accepts optional environment directory
+- `src/session.js` — `checkScaffoldStaleness()` accepts optional environment directory
+- Tests expanded from 122 to 145: new tests for environments, resolveEnvDir, firewall, allowlist, mitmproxy sidecar, Traefik, zsh, build-time Claude install
+
+## 0.5.1 — 2026-04-07
+
+### Fixes
+
+- TypeScript error on `err.code` in uncaughtException handler
+
+## 0.5.0 — 2026-04-06
 
 ### Features
 
@@ -109,7 +164,7 @@ Initial release as a pure JavaScript npm package.
 - `devrig config` — re-run the configuration wizard
 - Zero production dependencies
 - Auto-rebuild detection via SHA-256 hashing of build files
-- Chrome browser bridge (TCP-to-Unix relay for Docker ↔ Chrome integration)
+- Chrome browser bridge (TCP-to-Unix relay for Docker-Chrome integration)
 - Direct TTY passthrough to Claude Code inside the container
 - Graceful cleanup on exit (SIGINT/SIGTERM)
 - Scaffold staleness detection via `.devrig-version` marker

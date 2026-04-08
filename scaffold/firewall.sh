@@ -1,0 +1,85 @@
+#!/bin/bash
+set -euo pipefail
+
+# Firewall script for devrig containers.
+# Runs inside the mitmproxy sidecar (which has NET_ADMIN capability).
+# Redirects all HTTP/HTTPS traffic to mitmproxy for transparent inspection,
+# and blocks all other outbound traffic.
+
+echo "Configuring firewall..."
+
+# Install required tools if missing (mitmproxy image is Alpine-based)
+if ! command -v iptables >/dev/null 2>&1 || ! command -v ip >/dev/null 2>&1; then
+    echo "Installing iptables and iproute2..."
+    apk add --no-cache iptables iproute2 2>/dev/null || apt-get update -qq && apt-get install -y -qq iptables iproute2 2>/dev/null || true
+fi
+
+# Get the mitmproxy user ID (traffic from mitmproxy itself must bypass redirect)
+MITM_UID=$(id -u mitmproxy 2>/dev/null || echo "65534")
+
+# Detect host network from default route
+HOST_IP=$(ip route | grep default | head -1 | awk '{print $3}')
+if [ -z "$HOST_IP" ]; then
+    echo "WARNING: Could not detect host IP from default route"
+    HOST_NETWORK="172.16.0.0/12"
+else
+    HOST_NETWORK=$(echo "$HOST_IP" | sed "s/\.[0-9]*$/.0\/16/")
+    echo "Host network: $HOST_NETWORK"
+fi
+
+# Flush existing rules
+iptables -F OUTPUT 2>/dev/null || true
+iptables -t nat -F OUTPUT 2>/dev/null || true
+
+# --- NAT table: redirect HTTP/HTTPS to mitmproxy ---
+
+# Redirect HTTP (80) to mitmproxy transparent port (8080)
+iptables -t nat -A OUTPUT -p tcp --dport 80 \
+    -m owner ! --uid-owner "$MITM_UID" \
+    -j REDIRECT --to-port 8080
+
+# Redirect HTTPS (443) to mitmproxy transparent port (8080)
+iptables -t nat -A OUTPUT -p tcp --dport 443 \
+    -m owner ! --uid-owner "$MITM_UID" \
+    -j REDIRECT --to-port 8080
+
+# --- Filter table: allowlist ---
+
+# Allow DNS (needed for domain resolution)
+iptables -A OUTPUT -p udp --dport 53 -j ACCEPT
+iptables -A OUTPUT -p tcp --dport 53 -j ACCEPT
+
+# Allow loopback
+iptables -A OUTPUT -o lo -j ACCEPT
+
+# Allow Docker internal networks (172.16-31.x.x, 10.x.x.x, 192.168.x.x)
+iptables -A OUTPUT -d 10.0.0.0/8 -j ACCEPT
+iptables -A OUTPUT -d 172.16.0.0/12 -j ACCEPT
+iptables -A OUTPUT -d 192.168.0.0/16 -j ACCEPT
+
+# Allow host network (for Chrome bridge and other host services)
+if [ -n "$HOST_IP" ]; then
+    iptables -A OUTPUT -d "$HOST_NETWORK" -j ACCEPT
+fi
+
+# Allow established connections (responses to already-approved traffic)
+iptables -A OUTPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+
+# Allow mitmproxy's own outbound traffic (it actually reaches the internet)
+iptables -A OUTPUT -m owner --uid-owner "$MITM_UID" -j ACCEPT
+
+# Allow traffic to mitmproxy ports (HTTP/HTTPS already redirected via NAT)
+iptables -A OUTPUT -p tcp --dport 8080 -j ACCEPT
+iptables -A OUTPUT -p tcp --dport 8081 -j ACCEPT
+
+# Block everything else with an immediate reject (not silent drop)
+iptables -A OUTPUT -j REJECT --reject-with icmp-port-unreachable
+
+echo "Firewall configured."
+
+# Verify: test that blocked traffic is rejected
+if curl --connect-timeout 3 -s http://example.com >/dev/null 2>&1; then
+    echo "WARNING: Firewall verification failed — example.com is reachable"
+else
+    echo "Firewall OK — unauthorized traffic is blocked."
+fi

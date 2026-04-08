@@ -149,7 +149,10 @@ describe('CLAUDE.md generation', () => {
     assert.ok(content.includes('<!-- devrig:end -->'));
     assert.ok(content.includes('/workspace'));
     assert.ok(content.includes('http://localhost:3000'));
-    assert.ok(content.includes('Git push is blocked'));
+    assert.ok(
+      content.includes('outbound network access is restricted') ||
+        content.includes('Outbound network access'),
+    );
   });
 
   it('user content outside sentinels preserved in both files', () => {

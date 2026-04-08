@@ -5,23 +5,22 @@ import { fileURLToPath } from 'node:url';
 import { createInterface } from 'node:readline/promises';
 import { parseArgs } from 'node:util';
 import { log, die } from './log.js';
-import { resolveProjectDir, getPackageVersion, loadConfig } from './config.js';
+import { resolveProjectDir, getPackageVersion, loadConfig, resolveEnvDir } from './config.js';
 import { generateClaudeMd, SCAFFOLD_FILES } from './init.js';
 
 /**
- * Compares scaffold files against the user's .devrig/ directory.
+ * Compares scaffold files against the target directory (environment or .devrig/).
  * Only checks files in the SCAFFOLD_FILES whitelist.
- * @param {string} projectDir
+ * @param {string} targetDir - The environment or .devrig/ directory to compare against.
  * @param {string} scaffoldDir
  * @returns {{ name: string }[]}
  */
-export function findChangedFiles(projectDir, scaffoldDir) {
-  const devrigDir = join(projectDir, '.devrig');
+export function findChangedFiles(targetDir, scaffoldDir) {
   const changed = [];
 
   for (const file of SCAFFOLD_FILES) {
     const srcPath = join(scaffoldDir, file);
-    const destPath = join(devrigDir, file);
+    const destPath = join(targetDir, file);
 
     if (!existsSync(srcPath)) continue;
 
@@ -55,14 +54,15 @@ export async function update(argv) {
   });
   const force = values.force;
   const projectDir = resolveProjectDir();
-  const devrigDir = join(projectDir, '.devrig');
+  const cfg = loadConfig(projectDir);
+  const envDir = resolveEnvDir(cfg, projectDir);
 
-  if (!existsSync(devrigDir)) {
-    die('.devrig/ not found. Run "devrig init" first.');
+  if (!existsSync(envDir)) {
+    die(`Environment dir not found: ${envDir}. Run "devrig init" first.`);
   }
 
   const scaffoldDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'scaffold');
-  const changed = findChangedFiles(projectDir, scaffoldDir);
+  const changed = findChangedFiles(envDir, scaffoldDir);
 
   if (changed.length === 0) {
     log('All scaffold files are up to date.');
@@ -86,17 +86,16 @@ export async function update(argv) {
 
   for (const f of changed) {
     const src = join(scaffoldDir, f.name);
-    const dest = join(devrigDir, f.name);
+    const dest = join(envDir, f.name);
     cpSync(src, dest);
     log(`Updated ${f.name}`);
   }
 
   // Update version marker
-  writeFileSync(join(devrigDir, '.devrig-version'), getPackageVersion() + '\n');
+  writeFileSync(join(envDir, '.devrig-version'), getPackageVersion() + '\n');
 
   // Regenerate container CLAUDE.md with updated scaffold
   try {
-    const cfg = loadConfig(projectDir);
     generateClaudeMd(projectDir, cfg);
   } catch {
     log('WARNING: Could not regenerate container CLAUDE.md');

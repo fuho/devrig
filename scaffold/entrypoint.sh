@@ -13,6 +13,13 @@ LOG_FILE="${LOG_DIR}/entrypoint.log"
 mkdir -p "$LOG_DIR"
 chown -R dev:dev /home/dev
 
+# Install mitmproxy CA certificate if available (for HTTPS inspection)
+MITM_CERT="/usr/local/share/mitmproxy-certs/mitmproxy-ca-cert.pem"
+if [ -f "$MITM_CERT" ]; then
+  cp "$MITM_CERT" /usr/local/share/ca-certificates/mitmproxy-ca.crt
+  update-ca-certificates 2>/dev/null || true
+fi
+
 # Redirect stdout/stderr to log file (keep fds for final exec)
 exec 3>&1 4>&2
 exec >>"$LOG_FILE" 2>&1

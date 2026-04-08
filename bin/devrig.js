@@ -11,6 +11,7 @@ import { logs } from '../src/logs.js';
 import { exec } from '../src/exec.js';
 import { runAll as runDoctor } from '../src/doctor.js';
 import { update } from '../src/update.js';
+import { envCommand } from '../src/env.js';
 import { setVerbose, die } from '../src/log.js';
 
 // Catch parseArgs errors (unknown flags, missing values) and show clean messages
@@ -145,11 +146,13 @@ By default, shows both dev server and container logs sequentially.
 Flags:
   --dev-server  Show only dev server logs
   --container   Show only container logs
+  --network     Show network traffic info and mitmproxy log locations
   --follow, -f  Stream logs live
 
 Examples:
   devrig logs                  Show all logs
   devrig logs --container -f   Stream container logs live
+  devrig logs --network        Show network traffic info
 
 See also: devrig status`,
 
@@ -190,6 +193,25 @@ Example:
   devrig update
 
 See also: devrig init, devrig doctor`,
+
+  env: `Manage named environments.
+
+Environments share Claude Code auth, memories, and settings across projects.
+They live at ~/.devrig/environments/<name>/.
+
+Commands:
+  list              List all environments
+  create <name>     Create a new environment
+  inspect [name]    Show environment details (default: "default")
+  delete <name>     Delete a named environment
+
+Examples:
+  devrig env list
+  devrig env create work
+  devrig env inspect default
+  devrig env delete work
+
+See also: devrig init`,
 };
 
 function printSubcommandHelp(cmd) {
@@ -215,6 +237,7 @@ Commands:
   exec      Re-attach to a running container
   doctor    Run pre-flight health checks
   update    Update scaffold files to current version
+  env       Manage named environments
 
 Global flags:
   --verbose  Show detailed diagnostic output
@@ -264,6 +287,9 @@ switch (command) {
   }
   case 'update':
     await update(subArgs);
+    break;
+  case 'env':
+    await envCommand(subArgs);
     break;
   case '--version':
   case '-v':

@@ -2,6 +2,7 @@
 import { readFileSync, existsSync, statSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { homedir } from 'node:os';
 import { die } from './log.js';
 
 const CONFIG_FILE = 'devrig.toml';
@@ -73,6 +74,7 @@ export function loadConfig(projectDir) {
   return {
     project: raw.project ?? 'claude-project',
     tool: raw.tool ?? 'claude',
+    environment: raw.environment ?? 'default',
     bridge_enabled: 'chrome_bridge' in raw,
     bridge_port: bridge.port ?? 9229,
     dev_server_cmd: dev.command,
@@ -154,4 +156,28 @@ export function getPackageVersion() {
   const pkgPath = resolve(dirname(thisFile), '..', 'package.json');
   const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));
   return pkg.version;
+}
+
+// ---------------------------------------------------------------------------
+// 6. resolveEnvDir(cfg, projectDir)
+// ---------------------------------------------------------------------------
+
+/**
+ * Maps an environment name to an absolute directory path.
+ * - "local" → join(projectDir, '.devrig')
+ * - anything else → {environmentsRoot}/{name}/
+ * @param {{ environment: string }} cfg
+ * @param {string} projectDir
+ * @param {string} [environmentsRoot] - Override environments root (for testing).
+ * @returns {string}
+ */
+export function resolveEnvDir(
+  cfg,
+  projectDir,
+  environmentsRoot = join(homedir(), '.devrig', 'environments'),
+) {
+  if (cfg.environment === 'local') {
+    return join(projectDir, '.devrig');
+  }
+  return join(environmentsRoot, cfg.environment);
 }

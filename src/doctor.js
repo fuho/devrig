@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { createServer, createConnection } from 'node:net';
 import { userInfo } from 'node:os';
-import { parseTOML, getPackageVersion } from './config.js';
+import { parseTOML, getPackageVersion, resolveEnvDir } from './config.js';
 import { log } from './log.js';
 
 /**
@@ -60,16 +60,28 @@ export function checkChromeBrowser() {
  * @returns {CheckResult}
  */
 export function checkDevrigDir(projectDir) {
-  const devrig = join(projectDir, '.devrig');
-  if (!existsSync(devrig)) {
-    return { status: 'fail', message: '.devrig/ not found — run "devrig init"' };
+  // Safely determine environment dir without die()
+  let envDir = join(projectDir, '.devrig');
+  try {
+    const tomlPath = join(projectDir, 'devrig.toml');
+    if (existsSync(tomlPath)) {
+      const raw = parseTOML(readFileSync(tomlPath, 'utf8'));
+      const environment = raw.environment ?? 'default';
+      envDir = resolveEnvDir({ environment }, projectDir);
+    }
+  } catch {
+    /* fall back to .devrig/ */
+  }
+
+  if (!existsSync(envDir)) {
+    return { status: 'fail', message: `Environment dir not found: ${envDir} — run "devrig init"` };
   }
   const required = ['Dockerfile', 'compose.yml', 'entrypoint.sh'];
-  const missing = required.filter((f) => !existsSync(join(devrig, f)));
+  const missing = required.filter((f) => !existsSync(join(envDir, f)));
   if (missing.length > 0) {
-    return { status: 'fail', message: `.devrig/ missing: ${missing.join(', ')}` };
+    return { status: 'fail', message: `Environment dir missing: ${missing.join(', ')}` };
   }
-  return { status: 'pass', message: '.devrig/ OK' };
+  return { status: 'pass', message: `Environment dir OK (${envDir})` };
 }
 
 /**
@@ -97,7 +109,20 @@ export function checkTomlValid(projectDir) {
  * @returns {CheckResult}
  */
 export function checkVersionStaleness(projectDir) {
-  const versionFile = join(projectDir, '.devrig', '.devrig-version');
+  // Safely determine environment dir without die()
+  let envDir = join(projectDir, '.devrig');
+  try {
+    const tomlPath = join(projectDir, 'devrig.toml');
+    if (existsSync(tomlPath)) {
+      const raw = parseTOML(readFileSync(tomlPath, 'utf8'));
+      const environment = raw.environment ?? 'default';
+      envDir = resolveEnvDir({ environment }, projectDir);
+    }
+  } catch {
+    /* fall back to .devrig/ */
+  }
+
+  const versionFile = join(envDir, '.devrig-version');
   if (!existsSync(versionFile)) {
     return { status: 'warn', message: 'No version marker — cannot check staleness' };
   }
@@ -106,7 +131,7 @@ export function checkVersionStaleness(projectDir) {
   if (scaffoldVersion !== currentVersion) {
     return {
       status: 'warn',
-      message: `Scaffold v${scaffoldVersion}, devrig v${currentVersion} — run "devrig update"`,
+      message: `Scaffold v${scaffoldVersion}, devrig v${currentVersion} — run "devrig init" to update`,
     };
   }
   return { status: 'pass', message: `Version ${currentVersion}` };
