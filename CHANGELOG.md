@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+_(nothing yet)_
+
 ## 0.6.0 — 2026-04-08
 
 ### Breaking Changes
