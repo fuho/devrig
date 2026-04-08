@@ -250,13 +250,30 @@ export async function envCommand(argv) {
       break;
     }
 
+    case 'reset': {
+      const name = argv[1] || 'default';
+      const dir = envDir(name);
+      if (existsSync(dir)) {
+        // Preserve home/ (Claude auth, memories) but re-copy scaffold files
+        log(`Resetting environment "${name}" (preserving home/)...`);
+      }
+      // Force re-copy by removing the version marker
+      const versionFile = join(dir, '.devrig-version');
+      if (existsSync(versionFile)) {
+        rmSync(versionFile);
+      }
+      const result = ensureEnv(name);
+      log(`Environment "${name}" reset at ${result}`);
+      break;
+    }
+
     case 'delete':
     case 'rm': {
       const name = argv[1];
       if (!name) die('Usage: devrig env delete <name>');
       if (name === 'default') {
         die(
-          'Cannot delete the "default" environment. Use "devrig env delete <name>" for named environments.',
+          'Cannot delete the "default" environment. Use "devrig env reset" to repair it, or "devrig env delete <name>" for named environments.',
         );
       }
       deleteEnv(name);
@@ -269,6 +286,7 @@ export async function envCommand(argv) {
 Commands:
   list              List all environments
   create <name>     Create a new environment
+  reset [name]      Re-copy scaffold files (preserves Claude auth/memories)
   inspect [name]    Show environment details (default: "default")
   delete <name>     Delete a named environment`);
       break;

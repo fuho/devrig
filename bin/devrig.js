@@ -202,12 +202,14 @@ They live at ~/.devrig/environments/<name>/.
 Commands:
   list              List all environments
   create <name>     Create a new environment
+  reset [name]      Re-copy scaffold files, preserve auth/memories (default: "default")
   inspect [name]    Show environment details (default: "default")
   delete <name>     Delete a named environment
 
 Examples:
   devrig env list
   devrig env create work
+  devrig env reset
   devrig env inspect default
   devrig env delete work
 
