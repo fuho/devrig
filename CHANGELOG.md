@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### TODO
+
+- Traefik reverse proxy for multi-service projects (when dev server runs in container)
+- Custom mitmproxy web UI
+
+## 0.7.0 — 2026-04-08
+
 ### Features
 
 - `devrig env reset [name]` — re-copies scaffold files while preserving Claude auth/memories
@@ -9,6 +16,9 @@
 - Custom `Dockerfile.mitmproxy` with pre-installed iptables (eliminates ~20s startup delay)
 - Switched from domain allowlist to blocklist (default-allow, block specific domains)
 - mitmproxy web UI password set to `devrig` (was random token in mitmproxy 12.x)
+- Per-subcommand help for `devrig env` (e.g. `devrig env reset --help`)
+- Traffic captures persist across restarts via bind mount at `{envDir}/mitmproxy/logs/`
+- Dashboard URLs during `devrig start` now show mitmproxy password hint
 
 ### Fixes
 
@@ -30,15 +40,20 @@
 - Traefik reverse proxy — dev server runs on host, Traefik couldn't route to it
 - Domain allowlist — replaced by blocklist (default-allow)
 - Git shim in Dockerfile — replaced by network-level firewall
+- `mitmproxy-logs` named Docker volume — replaced by bind mount for host accessibility
 
-### TODO
+### Documentation
 
-- Per-subcommand help for `devrig env` (e.g. `devrig env reset --help` shows reset-specific help)
-- pytest unit tests for `scaffold/mitmproxy/allowlist.py`
-- ShellCheck lint for `firewall.sh` and `entrypoint.sh`
-- Traefik reverse proxy for multi-service projects (when dev server runs in container)
-- Traffic persistence across restarts (mitmproxy-logs volume lifecycle)
-- Custom mitmproxy web UI
+- New `docs/logs.md` — log locations, viewing commands, traffic capture analysis, cleanup lifecycle
+- README: added "All logs" section with link to docs/logs.md
+
+### Development
+
+- ShellCheck lint for `scaffold/firewall.sh` and `scaffold/entrypoint.sh` (added to CI and `npm run check`)
+- pytest tests for `scaffold/mitmproxy/allowlist.py` (16 tests covering blocklist, passthrough, and hooks)
+- Python CI job added to GitHub Actions
+- `npm run lint:shell` and `npm run test:python` scripts added
+- 4 new env subcommand help tests
 
 ## 0.6.0 — 2026-04-08
 

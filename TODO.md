@@ -7,7 +7,6 @@ _(none)_
 ## Medium priority
 
 - [ ] Multi-tool support — implement adapters for Codex, open-code (config `tool` field is parsed but only Claude is wired up)
-- [ ] Document `.devrig/logs/` for TTY and bridge debugging
 
 ## Low priority
 
@@ -15,6 +14,12 @@ _(none)_
 
 ## Done
 
+- [x] Document `.devrig/logs/` for TTY and bridge debugging (`docs/logs.md`)
+- [x] Per-subcommand help for `devrig env` (e.g. `devrig env reset --help`)
+- [x] ShellCheck lint for `firewall.sh` and `entrypoint.sh`
+- [x] pytest unit tests for `scaffold/mitmproxy/allowlist.py`
+- [x] Traffic persistence across restarts (bind mount replaces named volume)
+- [x] Dashboard URLs show mitmproxy password hint
 - [x] Session lock — guard against parallel `devrig start` sessions (PID-based lock file)
 - [x] `devrig stop` — explicit teardown without starting a session
 - [x] `devrig status` — show what's running (container, bridge, dev server)

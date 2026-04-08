@@ -29,7 +29,6 @@ npx devrig start
 Here's what `devrig start` looks like:
 
 ```
-[devrig] Using environment "default" at ~/.devrig/environments/default
 [devrig] Building Docker image (files changed)...
 [devrig] Build complete.
 [devrig] Chrome bridge started on port 9229
@@ -39,7 +38,7 @@ Here's what `devrig start` looks like:
 [devrig] Waiting for Claude Code to be ready in container...
 [devrig] Claude Code is ready.
 [devrig] Dev server: http://localhost:3000
-[devrig] Network inspector: http://localhost:8081
+[devrig] Network inspector: http://localhost:8081  (password: devrig)
 [devrig] Connecting to Claude Code in container...
 ```
 
@@ -121,6 +120,10 @@ All outbound traffic from the dev container passes through a transparent mitmpro
 ```bash
 devrig logs --network          # Show mitmproxy log locations and recent captures
 ```
+
+### All logs
+
+Devrig writes logs to `.devrig/logs/` (host side) and the environment directory (container side). Traffic captures persist across restarts as `.mitm` files. See [docs/logs.md](docs/logs.md) for the full reference.
 
 ## Configuration
 
@@ -212,11 +215,13 @@ GIT_AUTHOR_EMAIL=you@example.com
 | ----------------------- | ---------------------------------------------------------- |
 | `npm test`              | Unit + integration tests (including scaffold verification) |
 | `npm run test:docker`   | Docker integration tests (build + runtime)                 |
+| `npm run test:python`   | pytest tests for mitmproxy blocklist addon                 |
 | `npm run test:coverage` | Tests with V8 coverage report                              |
 | `npm run lint`          | ESLint                                                     |
+| `npm run lint:shell`    | ShellCheck for scaffold shell scripts                      |
 | `npm run format:check`  | Prettier check                                             |
 | `npm run typecheck`     | TypeScript JSDoc type checking                             |
-| `npm run check`         | All of the above, sequentially                             |
+| `npm run check`         | Lint, ShellCheck, format, typecheck, and test sequentially |
 
 <details>
 <summary>Project structure</summary>
