@@ -56,7 +56,7 @@ services:
       traefik.http.services.${DEVRIG_PROJECT:-my-project}.loadbalancer.server.port: "${DEVRIG_DEV_PORT:-3000}"
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-sf", "http://localhost:8081/"]
+      test: ["CMD", "sh", "-c", "curl -so /dev/null -w '%{http_code}' http://127.0.0.1:8081/ | grep -qE '^(200|403)' && iptables -t nat -S OUTPUT | grep -q REDIRECT"]
       interval: 5s
       timeout: 3s
       retries: 12
