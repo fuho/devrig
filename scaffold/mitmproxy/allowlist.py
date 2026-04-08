@@ -19,6 +19,8 @@ ALLOWED_DOMAINS = {
     "anthropic.com",
     "api.anthropic.com",
     "statsig.anthropic.com",
+    "claude.ai",
+    "platform.claude.com",
     # Package registries
     "registry.npmjs.org",
     # GitHub
