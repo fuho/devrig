@@ -2,10 +2,24 @@
 
 ## Unreleased
 
+### Features
+
+- `devrig env reset [name]` — re-copies scaffold files while preserving Claude auth/memories
+- Improved error message when project not initialized: suggests `devrig init`
+- Custom `Dockerfile.mitmproxy` with pre-installed iptables (eliminates ~20s startup delay)
+
 ### Fixes
 
 - `devrig doctor` detects pre-v0.6 projects (has `.devrig/` scaffold but no environment) and suggests adding `environment = "local"` to `devrig.toml` or running `devrig start` to auto-create the environment
 - `devrig doctor` version staleness check falls back to `.devrig/.devrig-version` when the environment dir doesn't exist yet (pre-v0.6 migration)
+- `extra_hosts` moved from dev to mitmproxy service (fixes Docker conflict with `network_mode: service:`)
+
+### TODO
+
+- Per-subcommand help for `devrig env` (e.g. `devrig env reset --help` shows reset-specific help)
+- Re-enable compose runtime tests when custom mitmproxy image is stable
+- pytest unit tests for `scaffold/mitmproxy/allowlist.py`
+- ShellCheck lint for `firewall.sh` and `entrypoint.sh`
 
 ## 0.6.0 — 2026-04-08
 
