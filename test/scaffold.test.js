@@ -84,10 +84,14 @@ describe('scaffold content', () => {
       assert.ok(!dockerfile.includes('pnpm@latest'), 'should not use pnpm@latest');
     });
 
-    it('defers Claude Code install to runtime (persistent home volume)', () => {
+    it('installs Claude Code at build time to /usr/local/bin', () => {
       assert.ok(
-        !dockerfile.includes('claude.ai/install.sh'),
-        'should not install Claude Code at build time (home is a bind mount)',
+        dockerfile.includes('claude.ai/install.sh'),
+        'should install Claude Code via native installer',
+      );
+      assert.ok(
+        dockerfile.includes('mv') && dockerfile.includes('/usr/local/bin/claude'),
+        'should move claude to /usr/local/bin/ to survive home bind mount',
       );
     });
 
