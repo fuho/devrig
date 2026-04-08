@@ -7,6 +7,12 @@
 - Traefik reverse proxy for multi-service projects (when dev server runs in container)
 - Custom mitmproxy web UI
 
+## 0.7.1 — 2026-04-08
+
+### Fixes
+
+- Setup page (`/devrig/setup`) no longer gets stuck on "Waiting for Claude Code..." — added `/devrig/status` fetch fallback for missed SSE events
+
 ## 0.7.0 — 2026-04-08
 
 ### Features
