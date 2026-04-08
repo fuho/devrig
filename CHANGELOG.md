@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased (v2.0.0)
+## 0.6.0 — 2026-04-08
 
 ### Breaking Changes
 
@@ -38,16 +38,24 @@
 - `container-setup.js` simplified — removed ~40 lines of Claude Code installation logic (now handled at build time)
 - `findChangedFiles()` in update.js now accepts target directory directly instead of deriving it from project dir
 - `checkDevrigDir()` and `checkVersionStaleness()` in doctor.js safely read environment config without calling `die()`
+- `showNetworkLogs()` in logs.js safely reads config without calling `die()`
+- Server test: `?agent=` query param now required for agent connection detection (matches server behavior)
 
 ### Development
 
 - New `src/env.js` — environment CRUD operations (envDir, ensureEnv, listEnvs, deleteEnv, inspectEnv, envCommand)
 - New `scaffold/firewall.sh` — iptables firewall script
 - New `scaffold/mitmproxy/allowlist.py` — domain allowlist mitmproxy addon
-- `src/config.js` — added `environment` field to loadConfig(), new `resolveEnvDir()` function
+- `src/config.js` — added `environment` field to loadConfig(), new `resolveEnvDir()` with optional `environmentsRoot` parameter for testability
 - `src/docker.js` — `initVariant()` accepts optional environment directory
 - `src/session.js` — `checkScaffoldStaleness()` accepts optional environment directory
-- Tests expanded from 122 to 145: new tests for environments, resolveEnvDir, firewall, allowlist, mitmproxy sidecar, Traefik, zsh, build-time Claude install
+- `src/env.js` — all functions accept optional `root` parameter for test injection (no global mutation)
+- `src/logs.js` — `showNetworkLogs()` exported for direct testing
+- New `test/env.test.js` — 15 tests covering all environment CRUD functions with temp dirs
+- Test coverage improved: 58% → 66% line, 76% → 78% branch, 62% → 73% function
+- Tests expanded from 122 to 197 (176 unit/integration + 21 Docker/e2e)
+- Docker integration tests added for zsh, fzf, git-delta, Claude Code pre-install, git shim removal
+- Compose runtime tests skipped pending custom mitmproxy image with pre-installed iptables
 
 ## 0.5.1 — 2026-04-07
 
