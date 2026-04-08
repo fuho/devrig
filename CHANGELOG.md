@@ -2,10 +2,17 @@
 
 ## Unreleased
 
+### Features
+
+- **Firewall dashboard** at `/devrig/firewall` — live traffic stream, domain discovery, and rules management
+- **Rules engine** replaces hardcoded domain sets — regex-based rules for blocking, passthrough, header stripping, and header injection
+- **Firewall API** on port 8082 — CRUD endpoints for rules, SSE traffic stream, domain hit counts
+- Rules persist across container restarts via `rules.json`
+- Quick actions: click a domain to pre-fill a block rule
+
 ### TODO
 
 - Traefik reverse proxy for multi-service projects (when dev server runs in container)
-- Custom mitmproxy web UI
 
 ## 0.7.1 — 2026-04-08
 

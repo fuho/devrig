@@ -21,6 +21,7 @@ describe('template server', () => {
     cpSync(join(templateDir, 'server.js'), join(tmp, 'server.js'));
     cpSync(join(templateDir, 'index.html'), join(tmp, 'index.html'));
     cpSync(join(scaffoldDir, 'setup.html'), join(tmp, '.devrig', 'setup.html'));
+    cpSync(join(scaffoldDir, 'firewall.html'), join(tmp, '.devrig', 'firewall.html'));
 
     proc = spawn('node', ['server.js'], {
       cwd: tmp,
@@ -76,6 +77,12 @@ describe('template server', () => {
     const res = await fetch(`http://localhost:${PORT}/devrig/status`);
     const json = await res.json();
     assert.equal(json.agentConnected, true);
+  });
+
+  it('serves /devrig/firewall from .devrig/firewall.html', async () => {
+    const res = await fetch(`http://localhost:${PORT}/devrig/firewall`);
+    assert.equal(res.status, 200);
+    assert.ok((await res.text()).includes('Traffic Control'));
   });
 
   it('returns 404 for missing files', async () => {

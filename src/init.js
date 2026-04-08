@@ -21,6 +21,7 @@ export const SCAFFOLD_FILES = [
   'entrypoint.sh',
   'firewall.sh',
   'setup.html',
+  'firewall.html',
 ];
 
 const DEVRIG_START = '<!-- devrig:start -->';
@@ -83,6 +84,7 @@ export function generateClaudeMd(projectDir, cfg) {
     '',
     'Dashboards (when session is running):',
     '- Network traffic: http://localhost:8081',
+    `- Firewall: http://localhost:${cfg.dev_server_port}/devrig/firewall`,
     DEVRIG_END,
   ].join('\n');
 
@@ -187,6 +189,15 @@ export async function init(projectDir) {
     if (existsSync(setupSrc)) {
       cpSync(setupSrc, join(targetDir, 'setup.html'));
     }
+
+    // Copy firewall.html into .devrig/
+    const firewallSrc = join(scaffoldDir, 'firewall.html');
+    if (existsSync(firewallSrc)) {
+      cpSync(firewallSrc, join(targetDir, 'firewall.html'));
+    }
+
+    // Create rules directory for firewall API persistence
+    mkdirSync(join(targetDir, 'rules'), { recursive: true });
   } else {
     // Named environment: ensure environment exists at ~/.devrig/environments/{name}/
     const envPath = ensureEnv(cfg.environment);
@@ -200,6 +211,15 @@ export async function init(projectDir) {
     if (existsSync(setupSrc)) {
       cpSync(setupSrc, join(targetDir, 'setup.html'));
     }
+
+    // Copy firewall.html to project .devrig/ so the dev server can find it
+    const firewallSrc = join(scaffoldDir, 'firewall.html');
+    if (existsSync(firewallSrc)) {
+      cpSync(firewallSrc, join(targetDir, 'firewall.html'));
+    }
+
+    // Create rules directory for firewall API persistence
+    mkdirSync(join(targetDir, 'rules'), { recursive: true });
   }
 
   // Append .gitignore entries if not already present

@@ -39,6 +39,7 @@ const ENV_SCAFFOLD_FILES = [
   'entrypoint.sh',
   'firewall.sh',
   'setup.html',
+  'firewall.html',
 ];
 
 /** Directories copied from scaffold/ into a new environment. */
@@ -85,6 +86,7 @@ export function ensureEnv(name, root = ENVIRONMENTS_ROOT) {
   // Create directory structure
   mkdirSync(join(dir, 'home', '.claude', 'logs'), { recursive: true });
   mkdirSync(join(dir, 'mitmproxy', 'logs'), { recursive: true });
+  mkdirSync(join(dir, 'rules'), { recursive: true });
 
   // Copy scaffold files
   for (const file of ENV_SCAFFOLD_FILES) {

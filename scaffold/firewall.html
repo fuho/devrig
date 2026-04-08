@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>devrig — Traffic Control</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      background: #0a0a0a; color: #e0e0e0;
+      min-height: 100vh; display: flex; flex-direction: column;
+    }
+
+    /* Header */
+    .header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 20px; border-bottom: 1px solid #2a2a2a;
+    }
+    .header h1 { font-size: 16px; font-weight: 600; }
+    .header h1 span { color: #888; font-weight: 400; }
+    .api-status { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #888; }
+    .api-dot { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; flex-shrink: 0; }
+    .api-dot.offline { background: #555; animation: pulse 1.5s ease-in-out infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
+
+    /* Grid layout */
+    .grid {
+      display: grid; grid-template-columns: 1fr 380px; gap: 12px;
+      padding: 12px; flex: 1; min-height: 0;
+    }
+
+    /* Panels */
+    .panel {
+      background: #161616; border: 1px solid #2a2a2a; border-radius: 8px;
+      display: flex; flex-direction: column; min-height: 0;
+    }
+    .panel-head {
+      padding: 12px 16px; border-bottom: 1px solid #2a2a2a;
+      font-size: 12px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.05em; color: #888;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .panel-body { padding: 8px; overflow-y: auto; flex: 1; min-height: 0; }
+
+    /* Traffic panel */
+    .traffic-panel { grid-row: 1 / 3; }
+    .traffic-actions { display: flex; gap: 8px; }
+    .traffic-actions button {
+      background: #222; border: 1px solid #333; border-radius: 4px;
+      color: #ccc; font-size: 11px; padding: 3px 10px; cursor: pointer;
+    }
+    .traffic-actions button:hover { background: #2a2a2a; border-color: #444; }
+    .traffic-actions button:focus-visible { outline: 2px solid #3b82f6; outline-offset: 1px; }
+    .traffic-actions button.active { background: #7f1d1d; border-color: #991b1b; color: #fca5a5; }
+
+    .filter-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: #1e3a5f; color: #93c5fd; font-size: 11px; font-weight: 400;
+      padding: 2px 8px; border-radius: 10px; margin-left: 8px;
+      text-transform: none; letter-spacing: 0;
+    }
+    .filter-badge button {
+      background: none; border: none; color: #93c5fd; cursor: pointer;
+      font-size: 13px; line-height: 1; padding: 0 0 0 2px;
+    }
+    .filter-badge button:hover { color: #fff; }
+
+    .traffic-row {
+      display: flex; align-items: center; gap: 8px;
+      padding: 5px 8px; border-radius: 4px; font-size: 12px;
+      font-family: 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+    }
+    .traffic-row:hover { background: #1e1e1e; }
+    .traffic-row .time { color: #666; width: 64px; flex-shrink: 0; }
+    .traffic-row .method { width: 52px; flex-shrink: 0; font-weight: 600; }
+    .traffic-row .host { color: #ccc; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex-shrink: 0; }
+    .traffic-row .path { color: #888; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .traffic-row .status { width: 32px; flex-shrink: 0; text-align: right; }
+    .traffic-row.allowed { color: #4ade80; }
+    .traffic-row.blocked { color: #f87171; }
+    .traffic-row.modified { color: #fbbf24; }
+
+    .rule-badge {
+      font-size: 10px; padding: 1px 6px; border-radius: 3px;
+      font-weight: 600; text-transform: uppercase; flex-shrink: 0;
+    }
+    .rule-badge.block { background: #7f1d1d; color: #fca5a5; }
+    .rule-badge.passthrough { background: #1e3a5f; color: #93c5fd; }
+    .rule-badge.strip_header { background: #713f12; color: #fcd34d; }
+    .rule-badge.add_header { background: #14532d; color: #86efac; }
+
+    .traffic-empty {
+      display: flex; align-items: center; justify-content: center;
+      height: 100%; color: #555; font-size: 13px;
+    }
+
+    /* Domains panel */
+    .domain-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 6px 10px; border-radius: 4px; font-size: 13px; cursor: pointer;
+    }
+    .domain-row:hover { background: #1e1e1e; }
+    .domain-row.active { background: #1e3a5f; }
+    .domain-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .domain-count { color: #666; font-size: 12px; font-family: 'SF Mono', SFMono-Regular, Consolas, monospace; flex-shrink: 0; margin-left: 8px; }
+    .stale-indicator { font-size: 10px; color: #fbbf24; margin-left: 8px; }
+
+    /* Rules panel */
+    .rule-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 10px; border-bottom: 1px solid #1e1e1e; font-size: 13px;
+    }
+    .rule-item:last-child { border-bottom: none; }
+    .rule-pattern {
+      font-family: 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+      font-size: 12px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .rule-header-val { color: #888; font-size: 11px; margin-left: 4px; }
+    .rule-actions { display: flex; gap: 4px; flex-shrink: 0; }
+    .rule-actions button {
+      background: #222; border: 1px solid #333; border-radius: 4px;
+      color: #ccc; font-size: 11px; padding: 2px 8px; cursor: pointer;
+    }
+    .rule-actions button:hover { background: #2a2a2a; border-color: #444; }
+    .rule-actions button:focus-visible { outline: 2px solid #3b82f6; outline-offset: 1px; }
+    .rule-actions .delete-btn:hover { background: #7f1d1d; border-color: #991b1b; color: #fca5a5; }
+    .rule-disabled { opacity: 0.45; }
+
+    /* Add rule form */
+    .form-group { margin-bottom: 10px; }
+    .form-group label { display: block; font-size: 11px; color: #888; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.03em; }
+    .form-group select,
+    .form-group input {
+      width: 100%; background: #111; border: 1px solid #2a2a2a; border-radius: 4px;
+      color: #e0e0e0; font-size: 13px; padding: 7px 10px;
+      font-family: inherit;
+    }
+    .form-group input:focus,
+    .form-group select:focus { border-color: #3b82f6; outline: none; }
+    .form-group input.invalid { border-color: #f87171; }
+    .match-preview { font-size: 11px; color: #888; margin-top: 3px; }
+    .match-preview.error { color: #f87171; }
+    .form-error { font-size: 12px; color: #f87171; margin-bottom: 8px; }
+    .form-submit {
+      width: 100%; background: #1e3a5f; border: 1px solid #2563eb; border-radius: 4px;
+      color: #93c5fd; font-size: 13px; font-weight: 600; padding: 8px; cursor: pointer;
+    }
+    .form-submit:hover { background: #1e40af; }
+    .form-submit:focus-visible { outline: 2px solid #3b82f6; outline-offset: 1px; }
+
+    .panel-offline {
+      display: flex; align-items: center; justify-content: center;
+      height: 60px; color: #555; font-size: 12px;
+    }
+
+    /* Footer */
+    .footer {
+      padding: 10px 20px; border-top: 1px solid #2a2a2a;
+      font-size: 12px; color: #555; text-align: center;
+    }
+    .footer a { color: #888; text-decoration: none; }
+    .footer a:hover { color: #ccc; }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .grid { grid-template-columns: 1fr; }
+      .traffic-panel { grid-row: auto; min-height: 300px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>devrig <span>— Traffic Control</span></h1>
+    <div class="api-status">
+      <span id="api-label">Connecting...</span>
+      <span class="api-dot offline" id="api-dot"></span>
+    </div>
+  </div>
+
+  <div class="grid">
+    <!-- Traffic (left, spans both rows) -->
+    <div class="panel traffic-panel">
+      <div class="panel-head">
+        <span>Traffic <span id="filter-badge-slot"></span></span>
+        <div class="traffic-actions">
+          <button id="btn-pause" type="button">Pause</button>
+          <button id="btn-clear" type="button">Clear</button>
+        </div>
+      </div>
+      <div class="panel-body" id="traffic-list">
+        <div class="traffic-empty" id="traffic-empty">Waiting for traffic...</div>
+      </div>
+    </div>
+
+    <!-- Domains (top right) -->
+    <div class="panel">
+      <div class="panel-head">
+        <span>Domains <span id="domains-stale" class="stale-indicator" hidden>stale</span></span>
+      </div>
+      <div class="panel-body" id="domains-list">
+        <div class="panel-offline" id="domains-offline" hidden>API offline</div>
+      </div>
+    </div>
+
+    <!-- Rules (bottom right) -->
+    <div class="panel">
+      <div class="panel-head">Rules</div>
+      <div class="panel-body" id="rules-body">
+        <div id="rules-list"></div>
+        <div class="panel-offline" id="rules-offline" hidden>API offline</div>
+
+        <!-- Add Rule Form -->
+        <div style="border-top: 1px solid #2a2a2a; padding-top: 10px; margin-top: 8px;">
+          <div class="form-group">
+            <label for="rule-type">Type</label>
+            <select id="rule-type">
+              <option value="block">block</option>
+              <option value="passthrough">passthrough</option>
+              <option value="strip_header">strip_header</option>
+              <option value="add_header">add_header</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="rule-match">Match (regex)</label>
+            <input type="text" id="rule-match" placeholder="e\.g\. example\.com">
+            <div class="match-preview" id="match-preview"></div>
+          </div>
+          <div class="form-group" id="header-group" hidden>
+            <label for="rule-header">Header</label>
+            <input type="text" id="rule-header" placeholder="X-Custom-Header">
+          </div>
+          <div class="form-group" id="value-group" hidden>
+            <label for="rule-value">Value</label>
+            <input type="text" id="rule-value" placeholder="header value">
+          </div>
+          <div class="form-error" id="form-error" hidden></div>
+          <button class="form-submit" id="btn-create" type="button">Create Rule</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    mitmproxy <a href="http://localhost:8081" target="_blank" rel="noopener">&#8599; localhost:8081</a> (password: devrig)
+  </div>
+
+  <script>
+    const API = 'http://localhost:8082';
+    const MAX_ROWS = 500;
+
+    const state = {
+      paused: false,
+      domainFilter: null,
+      trafficRows: [],
+      domains: {},
+      rules: [],
+      apiOnline: false,
+    };
+
+    // --- Utility ---
+    function escapeRegex(str) {
+      return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+    function formatTime(ts) {
+      var d = new Date(ts * 1000);
+      return [d.getHours(), d.getMinutes(), d.getSeconds()]
+        .map(function(n) { return String(n).padStart(2, '0'); }).join(':');
+    }
+    function debounce(fn, ms) {
+      var t;
+      return function() {
+        var args = arguments, self = this;
+        clearTimeout(t);
+        t = setTimeout(function() { fn.apply(self, args); }, ms);
+      };
+    }
+    function sanitize(str) {
+      var el = document.createElement('span');
+      el.textContent = str;
+      return el.innerHTML;
+    }
+    async function apiFetch(path, opts) {
+      opts = opts || {};
+      try {
+        var res = await fetch(API + path, Object.assign({}, opts, { signal: AbortSignal.timeout(5000) }));
+        var data = await res.json();
+        return { ok: res.ok, data: data, error: res.ok ? null : (data.error || 'Request failed') };
+      } catch (e) {
+        return { ok: false, data: null, error: e.name === 'AbortError' ? 'Timeout' : 'Network error' };
+      }
+    }
+
+    // --- API Status ---
+    var apiDot = document.getElementById('api-dot');
+    var apiLabel = document.getElementById('api-label');
+    function setApiOnline(online) {
+      state.apiOnline = online;
+      apiDot.classList.toggle('offline', !online);
+      apiLabel.textContent = online ? 'Connected' : 'Offline';
+    }
+
+    // --- Traffic Panel ---
+    var trafficList = document.getElementById('traffic-list');
+    var trafficEmpty = document.getElementById('traffic-empty');
+    var btnPause = document.getElementById('btn-pause');
+    var btnClear = document.getElementById('btn-clear');
+    var filterSlot = document.getElementById('filter-badge-slot');
+    var eventSource = null;
+    var rowMap = new Map();
+
+    function rowClass(ruleType) {
+      if (ruleType === 'block') return 'blocked';
+      if (ruleType === 'strip_header' || ruleType === 'add_header') return 'modified';
+      return 'allowed';
+    }
+
+    function createBadge(ruleType) {
+      if (!ruleType) return null;
+      var badge = document.createElement('span');
+      badge.className = 'rule-badge ' + ruleType;
+      badge.textContent = ruleType.replace('_', ' ');
+      return badge;
+    }
+
+    function parseURL(url) {
+      try { var u = new URL(url); return { host: u.host, path: u.pathname + u.search }; }
+      catch (e) { return { host: '', path: url || '' }; }
+    }
+
+    function addTrafficRow(data) {
+      trafficEmpty.hidden = true;
+
+      // Check if this is a response update for an existing row
+      if (data.id && rowMap.has(data.id)) {
+        var existing = rowMap.get(data.id);
+        if (data.status != null) {
+          var statusEl = existing.querySelector('.status');
+          if (statusEl) statusEl.textContent = data.status;
+        }
+        if (data.rule_type) {
+          existing.className = 'traffic-row ' + rowClass(data.rule_type);
+          var oldBadge = existing.querySelector('.rule-badge');
+          var newBadge = createBadge(data.rule_type);
+          if (oldBadge && newBadge) oldBadge.replaceWith(newBadge);
+          else if (newBadge) existing.appendChild(newBadge);
+        }
+        var stateRow = state.trafficRows.find(function(r) { return r.id === data.id; });
+        if (stateRow) Object.assign(stateRow, data);
+        return;
+      }
+
+      var parsed = parseURL(data.url);
+      var host = data.host || parsed.host;
+
+      // Domain filter
+      if (state.domainFilter && host !== state.domainFilter) return;
+
+      // Track in state
+      state.trafficRows.unshift(data);
+      if (state.trafficRows.length > MAX_ROWS) state.trafficRows.pop();
+
+      var row = document.createElement('div');
+      row.className = 'traffic-row ' + rowClass(data.rule_type);
+
+      var timeSpan = document.createElement('span');
+      timeSpan.className = 'time';
+      timeSpan.textContent = formatTime(data.ts);
+
+      var methodSpan = document.createElement('span');
+      methodSpan.className = 'method';
+      methodSpan.textContent = data.method || '';
+
+      var hostSpan = document.createElement('span');
+      hostSpan.className = 'host';
+      hostSpan.textContent = host;
+
+      var pathSpan = document.createElement('span');
+      pathSpan.className = 'path';
+      pathSpan.textContent = parsed.path;
+
+      var statusSpan = document.createElement('span');
+      statusSpan.className = 'status';
+      statusSpan.textContent = data.status || '';
+
+      row.appendChild(timeSpan);
+      row.appendChild(methodSpan);
+      row.appendChild(hostSpan);
+      row.appendChild(pathSpan);
+      row.appendChild(statusSpan);
+
+      var badge = createBadge(data.rule_type);
+      if (badge) row.appendChild(badge);
+
+      if (data.id) rowMap.set(data.id, row);
+
+      var firstRow = trafficList.querySelector('.traffic-row');
+      if (firstRow) {
+        trafficList.insertBefore(row, firstRow);
+      } else {
+        trafficList.insertBefore(row, trafficEmpty.nextSibling);
+      }
+
+      // Cap DOM elements
+      var rows = trafficList.querySelectorAll('.traffic-row');
+      while (rows.length > MAX_ROWS) {
+        var last = rows[rows.length - 1];
+        last.parentNode.removeChild(last);
+        rows = trafficList.querySelectorAll('.traffic-row');
+      }
+    }
+
+    function connectSSE() {
+      if (eventSource) { eventSource.close(); eventSource = null; }
+      try {
+        eventSource = new EventSource(API + '/traffic');
+      } catch (e) {
+        setApiOnline(false);
+        setTimeout(connectSSE, 3000);
+        return;
+      }
+      eventSource.onopen = function() { setApiOnline(true); };
+      eventSource.onmessage = function(e) {
+        if (state.paused) return;
+        try { addTrafficRow(JSON.parse(e.data)); } catch (err) { /* ignore parse errors */ }
+      };
+      eventSource.onerror = function() {
+        setApiOnline(false);
+        eventSource.close();
+        eventSource = null;
+        setTimeout(connectSSE, 3000);
+      };
+    }
+
+    btnPause.addEventListener('click', function() {
+      state.paused = !state.paused;
+      btnPause.textContent = state.paused ? 'Resume' : 'Pause';
+      btnPause.classList.toggle('active', state.paused);
+    });
+    btnClear.addEventListener('click', function() {
+      state.trafficRows = [];
+      rowMap.clear();
+      var rows = trafficList.querySelectorAll('.traffic-row');
+      rows.forEach(function(el) { el.parentNode.removeChild(el); });
+      trafficEmpty.hidden = false;
+    });
+
+    function renderFilterBadge() {
+      // Clear existing
+      while (filterSlot.firstChild) filterSlot.removeChild(filterSlot.firstChild);
+      if (state.domainFilter) {
+        var badge = document.createElement('span');
+        badge.className = 'filter-badge';
+        badge.textContent = state.domainFilter + ' ';
+        var closeBtn = document.createElement('button');
+        closeBtn.type = 'button';
+        closeBtn.setAttribute('aria-label', 'Clear filter');
+        closeBtn.textContent = '\u00d7';
+        closeBtn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          state.domainFilter = null;
+          renderFilterBadge();
+          renderDomains();
+        });
+        badge.appendChild(closeBtn);
+        filterSlot.appendChild(badge);
+      }
+    }
+
+    // --- Domains Panel ---
+    var domainsList = document.getElementById('domains-list');
+    var domainsOffline = document.getElementById('domains-offline');
+    var domainsStale = document.getElementById('domains-stale');
+
+    function renderDomains() {
+      var sorted = Object.entries(state.domains).sort(function(a, b) { return b[1] - a[1]; });
+      // remove old rows
+      var oldRows = domainsList.querySelectorAll('.domain-row');
+      oldRows.forEach(function(el) { el.parentNode.removeChild(el); });
+      domainsOffline.hidden = true;
+      sorted.forEach(function(entry) {
+        var host = entry[0], count = entry[1];
+        var row = document.createElement('div');
+        row.className = 'domain-row' + (state.domainFilter === host ? ' active' : '');
+        var nameSpan = document.createElement('span');
+        nameSpan.className = 'domain-name';
+        nameSpan.textContent = host;
+        var countSpan = document.createElement('span');
+        countSpan.className = 'domain-count';
+        countSpan.textContent = count;
+        row.appendChild(nameSpan);
+        row.appendChild(countSpan);
+        row.addEventListener('click', function() {
+          state.domainFilter = state.domainFilter === host ? null : host;
+          renderFilterBadge();
+          renderDomains();
+          if (state.domainFilter) prefillBlock(host);
+        });
+        domainsList.insertBefore(row, domainsOffline);
+      });
+    }
+
+    async function refreshDomains() {
+      var result = await apiFetch('/domains');
+      if (result.ok && result.data) {
+        state.domains = result.data;
+        domainsStale.hidden = true;
+        renderDomains();
+      } else {
+        domainsStale.hidden = false;
+        if (Object.keys(state.domains).length === 0) {
+          domainsOffline.hidden = false;
+        }
+      }
+    }
+
+    // --- Rules Panel ---
+    var rulesList = document.getElementById('rules-list');
+    var rulesOffline = document.getElementById('rules-offline');
+
+    function renderRules() {
+      while (rulesList.firstChild) rulesList.removeChild(rulesList.firstChild);
+      rulesOffline.hidden = true;
+      state.rules.forEach(function(rule) {
+        var item = document.createElement('div');
+        item.className = 'rule-item' + (rule.enabled === false ? ' rule-disabled' : '');
+
+        var badge = document.createElement('span');
+        badge.className = 'rule-badge ' + rule.type;
+        badge.textContent = rule.type.replace('_', ' ');
+
+        var pattern = document.createElement('span');
+        pattern.className = 'rule-pattern';
+        pattern.textContent = rule.match;
+        if (rule.header) {
+          var hv = document.createElement('span');
+          hv.className = 'rule-header-val';
+          hv.textContent = rule.header + (rule.value ? ' = ' + rule.value : '');
+          pattern.appendChild(hv);
+        }
+
+        var actions = document.createElement('div');
+        actions.className = 'rule-actions';
+        var toggleBtn = document.createElement('button');
+        toggleBtn.type = 'button';
+        toggleBtn.className = 'toggle-btn';
+        toggleBtn.textContent = rule.enabled === false ? 'Enable' : 'Disable';
+        toggleBtn.addEventListener('click', function() { toggleRule(rule); });
+        var deleteBtn = document.createElement('button');
+        deleteBtn.type = 'button';
+        deleteBtn.className = 'delete-btn';
+        deleteBtn.textContent = '\u00d7';
+        deleteBtn.addEventListener('click', function() { deleteRule(rule); });
+        actions.appendChild(toggleBtn);
+        actions.appendChild(deleteBtn);
+
+        item.appendChild(badge);
+        item.appendChild(pattern);
+        item.appendChild(actions);
+        rulesList.appendChild(item);
+      });
+    }
+
+    async function fetchAndRenderRules() {
+      var result = await apiFetch('/rules');
+      if (result.ok && Array.isArray(result.data)) {
+        state.rules = result.data;
+        renderRules();
+      } else {
+        rulesOffline.hidden = false;
+      }
+    }
+
+    async function toggleRule(rule) {
+      await apiFetch('/rules/' + rule.id, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: !(rule.enabled !== false) }),
+      });
+      fetchAndRenderRules();
+    }
+    async function deleteRule(rule) {
+      await apiFetch('/rules/' + rule.id, { method: 'DELETE' });
+      fetchAndRenderRules();
+    }
+
+    // --- Add Rule Form ---
+    var ruleType = document.getElementById('rule-type');
+    var ruleMatch = document.getElementById('rule-match');
+    var ruleHeader = document.getElementById('rule-header');
+    var ruleValue = document.getElementById('rule-value');
+    var headerGroup = document.getElementById('header-group');
+    var valueGroup = document.getElementById('value-group');
+    var matchPreview = document.getElementById('match-preview');
+    var formError = document.getElementById('form-error');
+    var btnCreate = document.getElementById('btn-create');
+
+    function updateFormVisibility() {
+      var t = ruleType.value;
+      headerGroup.hidden = !(t === 'strip_header' || t === 'add_header');
+      valueGroup.hidden = !(t === 'add_header');
+    }
+    ruleType.addEventListener('change', updateFormVisibility);
+
+    var updateMatchPreview = debounce(function() {
+      var val = ruleMatch.value;
+      if (!val) {
+        matchPreview.textContent = '';
+        matchPreview.className = 'match-preview';
+        ruleMatch.classList.remove('invalid');
+        return;
+      }
+      try {
+        var re = new RegExp(val);
+        ruleMatch.classList.remove('invalid');
+        var count = state.trafficRows.filter(function(r) {
+          return re.test(r.url || '') || re.test(r.host || '');
+        }).length;
+        matchPreview.textContent = 'Matches ' + count + ' recent request' + (count !== 1 ? 's' : '');
+        matchPreview.className = 'match-preview';
+      } catch (e) {
+        ruleMatch.classList.add('invalid');
+        matchPreview.textContent = 'Invalid regex';
+        matchPreview.className = 'match-preview error';
+      }
+    }, 200);
+    ruleMatch.addEventListener('input', updateMatchPreview);
+
+    async function createRule() {
+      formError.hidden = true;
+      var body = { type: ruleType.value, match: ruleMatch.value };
+      if (!body.match) {
+        formError.textContent = 'Match pattern is required';
+        formError.hidden = false;
+        return;
+      }
+      try { new RegExp(body.match); } catch (e) {
+        formError.textContent = 'Invalid regex';
+        formError.hidden = false;
+        return;
+      }
+      if (ruleType.value === 'strip_header' || ruleType.value === 'add_header') {
+        body.header = ruleHeader.value;
+        if (!body.header) {
+          formError.textContent = 'Header name is required';
+          formError.hidden = false;
+          return;
+        }
+      }
+      if (ruleType.value === 'add_header') {
+        body.value = ruleValue.value;
+      }
+      var result = await apiFetch('/rules', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (result.ok) {
+        ruleMatch.value = '';
+        ruleHeader.value = '';
+        ruleValue.value = '';
+        matchPreview.textContent = '';
+        fetchAndRenderRules();
+      } else {
+        formError.textContent = result.error || 'Failed to create rule';
+        formError.hidden = false;
+      }
+    }
+    btnCreate.addEventListener('click', createRule);
+    [ruleMatch, ruleHeader, ruleValue].forEach(function(el) {
+      el.addEventListener('keydown', function(e) { if (e.key === 'Enter') createRule(); });
+    });
+
+    function prefillBlock(host) {
+      ruleType.value = 'block';
+      updateFormVisibility();
+      ruleMatch.value = escapeRegex(host);
+      ruleMatch.focus();
+      updateMatchPreview();
+    }
+    function prefillStripHeader(headerName) {
+      ruleType.value = 'strip_header';
+      updateFormVisibility();
+      ruleHeader.value = headerName;
+      ruleMatch.focus();
+      updateMatchPreview();
+    }
+
+    // --- Bootstrap ---
+    function init() {
+      connectSSE();
+      fetchAndRenderRules();
+      refreshDomains();
+      setInterval(refreshDomains, 5000);
+    }
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>

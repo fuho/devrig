@@ -235,10 +235,11 @@ describe('scaffold content', () => {
       assert.ok(existsSync(join(scaffoldDir, 'mitmproxy', 'allowlist.py')));
     });
 
-    it('uses blocklist (default-allow) not allowlist', () => {
+    it('uses rules engine with default block rules', () => {
       const content = readFileSync(join(scaffoldDir, 'mitmproxy', 'allowlist.py'), 'utf8');
-      assert.ok(content.includes('BLOCKED_DOMAINS'), 'should define BLOCKED_DOMAINS');
+      assert.ok(content.includes('DEFAULT_RULES'), 'should define DEFAULT_RULES');
       assert.ok(content.includes('_is_blocked'), 'should define _is_blocked function');
+      assert.ok(content.includes('"block"'), 'should have block rule type');
     });
 
     it('kills blocked requests', () => {

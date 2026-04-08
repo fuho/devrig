@@ -103,17 +103,19 @@ environment = "default"   # or "work", "local", etc.
 
 All outbound traffic from the dev container passes through a transparent mitmproxy:
 
-- **Domain blocklist** — All traffic is allowed by default. Specific domains can be blocked (e.g. telemetry endpoints). More practical than an allowlist since Claude Code needs many domains to function.
+- **Domain blocklist** — All traffic is allowed by default. Specific domains can be blocked (e.g. telemetry endpoints). Rules are configurable live via the firewall dashboard or API — no container restart needed. Supports regex matching with block, passthrough, strip-header, and add-header rule types.
 - **HTTPS inspection** — mitmproxy CA certificate is trusted inside the container. Full request/response bodies are captured.
 - **Traffic capture** — `.mitm` files with hourly rotation. Analyze offline with `mitmproxy -r <file>` or convert to HAR.
 - **Firewall** — iptables rules redirect HTTP/HTTPS to mitmproxy and block all other outbound traffic.
 
 ### Dashboards
 
-| URL                     | What                                       |
-| ----------------------- | ------------------------------------------ |
-| `http://localhost:3000` | Your dev server (port configurable)        |
-| `http://localhost:8081` | mitmproxy web UI — live traffic inspection |
+| URL                                    | What                                                  |
+| -------------------------------------- | ----------------------------------------------------- |
+| `http://localhost:3000`                | Your dev server (port configurable)                   |
+| `http://localhost:3000/devrig/firewall`| Firewall dashboard — live traffic, rules management   |
+| `http://localhost:8081`                | mitmproxy web UI — deep request/response inspection   |
+| `http://localhost:8082`                | Firewall API — rules CRUD, traffic stream (SSE)       |
 
 ### Network logs
 

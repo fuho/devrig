@@ -108,6 +108,19 @@ The native installer creates:
 
 Moving just the symlink doesn't work (target is under the bind mount). Must copy the entire `~/.local/share/claude/` tree to a path outside `/home/dev`.
 
+### Live Rules Configuration
+
+The firewall dashboard at `/devrig/firewall` provides runtime rule management via an HTTP API on port 8082. Rules are stored as regex patterns and support four actions:
+
+| Type | Action |
+|------|--------|
+| `block` | Reject the request (`flow.kill()`) |
+| `passthrough` | Skip TLS interception (for WebSocket connections etc.) |
+| `strip_header` | Remove a header matching the pattern from requests |
+| `add_header` | Inject a header into requests matching the URL pattern |
+
+Rules are persisted to `/data/rules.json` inside the mitmproxy container (bind-mounted from `{envDir}/rules/`). The API runs as a daemon thread inside the mitmproxy addon — no separate process needed. Changes take effect immediately on the next request.
+
 ### chrome-native-host Permissions
 
 The shim at `/home/dev/.claude/chrome/chrome-native-host` must be writable (0755). Claude Code's `--chrome` flag updates this file on startup. Making it read-only (0555) causes Claude Code to silently fail to establish the MCP connection.

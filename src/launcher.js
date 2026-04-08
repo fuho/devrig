@@ -401,6 +401,7 @@ export async function launch(argv) {
     log(`Dev server: http://localhost:${cfg.dev_server_port}`);
   }
   log('Network inspector: http://localhost:8081  (password: devrig)');
+  log(`Firewall dashboard: http://localhost:${cfg.dev_server_port}/devrig/firewall`);
 
   log('Connecting to Claude Code in container...');
   log(`CLAUDE_PARAMS: ${claudeParams.join(' ') || '<none>'}`);

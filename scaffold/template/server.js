@@ -56,6 +56,11 @@ const server = createServer((req, res) => {
     return;
   }
 
+  if (path === '/devrig/firewall') {
+    serveFile(res, join(DEVRIG_DIR, 'firewall.html'));
+    return;
+  }
+
   if (path === '/devrig/events') {
     res.writeHead(200, {
       'Content-Type': 'text/event-stream',

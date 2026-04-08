@@ -1,7 +1,7 @@
 services:
   # ── Outbound traffic proxy (mitmproxy) ─────────────────────────────────
   # All dev container traffic routes through this sidecar for inspection
-  # and domain blocking. Web UI at http://localhost:8081.
+  # and domain blocking. Web UI at http://localhost:8081. Firewall API at http://localhost:8082.
   mitmproxy:
     build:
       context: ${DEVRIG_ENV_DIR:-.devrig}
@@ -18,11 +18,16 @@ services:
         exec gosu mitmproxy mitmweb --mode transparent --web-host 0.0.0.0 --set block_global=false --set connection_strategy=lazy --set web_password=devrig -s /addons/allowlist.py -w /logs/traffic-%Y-%m-%d_%H.mitm
     ports:
       - "127.0.0.1:8081:8081"
+      - "127.0.0.1:8082:8082"
     volumes:
       - ${DEVRIG_ENV_DIR:-.devrig}/mitmproxy/allowlist.py:/addons/allowlist.py:ro
       - ${DEVRIG_ENV_DIR:-.devrig}/firewall.sh:/usr/local/bin/firewall.sh:ro
       - ${DEVRIG_ENV_DIR:-.devrig}/mitmproxy/logs:/logs
+      - ${DEVRIG_ENV_DIR:-.devrig}/rules:/data
       - mitmproxy-certs:/home/mitmproxy/.mitmproxy
+    environment:
+      - DEVRIG_API=1
+      - DEVRIG_RULES_PATH=/data/rules.json
     cap_add:
       - NET_ADMIN
       - NET_RAW
