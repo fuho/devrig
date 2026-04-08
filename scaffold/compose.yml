@@ -25,13 +25,16 @@ services:
     build:
       context: ${DEVRIG_ENV_DIR:-.devrig}
       dockerfile: Dockerfile.mitmproxy
+    # Starts as root for iptables, drops to mitmproxy for mitmweb
+    user: "root"
     entrypoint:
       - /bin/sh
       - -c
       - |
-        # Run firewall rules, then start mitmweb
+        # Fix log dir permissions and run firewall as root
+        chown -R mitmproxy:mitmproxy /logs /home/mitmproxy/.mitmproxy
         /usr/local/bin/firewall.sh || echo "WARNING: Firewall setup failed"
-        exec mitmweb --mode transparent --web-host 0.0.0.0 --set block_global=false --set connection_strategy=lazy -s /addons/allowlist.py -w /logs/traffic-%Y-%m-%d_%H.mitm
+        exec gosu mitmproxy mitmweb --mode transparent --web-host 0.0.0.0 --set block_global=false --set connection_strategy=lazy -s /addons/allowlist.py -w /logs/traffic-%Y-%m-%d_%H.mitm
     ports:
       - "127.0.0.1:8081:8081"
     volumes:
