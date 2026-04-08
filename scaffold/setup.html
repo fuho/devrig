@@ -49,11 +49,21 @@
     const dot = document.getElementById('agent-dot');
     const status = document.getElementById('agent-status');
     const hint = document.getElementById('hint');
-    const es = new EventSource('/devrig/events');
-    es.addEventListener('agent-connected', () => {
+
+    function updateConnected() {
       dot.classList.remove('pending');
       status.textContent = 'Claude Code connected';
       hint.innerHTML = 'Claude Code is connected and can see your app at <code>localhost:' + location.port + '</code>';
+    }
+
+    const es = new EventSource('/devrig/events');
+    es.addEventListener('agent-connected', updateConnected);
+    es.addEventListener('connected', () => {
+      // Fallback: check status in case SSE catch-up event was missed
+      fetch('/devrig/status')
+        .then(r => r.json())
+        .then(data => { if (data.agentConnected) updateConnected(); })
+        .catch(() => {});
     });
     es.onerror = () => {
       status.textContent = 'Connection lost — refresh to retry';

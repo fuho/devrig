@@ -91,6 +91,12 @@ describe('template server', () => {
     const { value } = await reader.read();
     reader.cancel();
     const text = new TextDecoder().decode(value);
-    assert.ok(text.includes('event: connected'));
+    assert.ok(text.includes('event: connected'), 'should include connected event');
+    // Agent was marked connected by the previous test, so the catch-up
+    // agent-connected event should appear in the initial response
+    assert.ok(
+      text.includes('event: agent-connected'),
+      'should include agent-connected catch-up event',
+    );
   });
 });
