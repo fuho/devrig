@@ -85,19 +85,40 @@ function disableAutoUpdater() {
   log('Auto-updater disabled (updates via --rebuild)');
 }
 
-// -- Main --------------------------------------------------------------------
+// -- Claude Code installation ------------------------------------------------
 
-// Verify Claude Code is available (installed at build time)
-if (which('claude')) {
+function installClaudeCode() {
+  const version = process.env.CLAUDE_VERSION || 'latest';
+
+  if (which('claude')) {
+    try {
+      const ver = execFileSync('claude', ['--version'], { encoding: 'utf8' }).trim();
+      log(`Claude Code already installed: ${ver}`);
+      return;
+    } catch {
+      log('Claude Code found but version check failed — reinstalling');
+    }
+  }
+
+  log('Installing Claude Code via native installer...');
+  const installArgs =
+    version === 'latest'
+      ? `curl -fsSL https://claude.ai/install.sh | bash`
+      : `curl -fsSL https://claude.ai/install.sh | bash -s ${version}`;
+
+  execFileSync('bash', ['-c', installArgs], { stdio: 'inherit' });
+
   try {
     const ver = execFileSync('claude', ['--version'], { encoding: 'utf8' }).trim();
-    log(`Claude Code: ${ver}`);
+    log(`Installed: ${ver}`);
   } catch {
-    log('Claude Code found but version check failed');
+    log('WARNING: Claude Code installed but version check failed');
   }
-} else {
-  log('WARNING: Claude Code not found — expected from Dockerfile build');
 }
+
+// -- Main --------------------------------------------------------------------
+
+installClaudeCode();
 
 if (process.env.BRIDGE_ENABLED === '1') {
   setupChromeBridge();

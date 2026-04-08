@@ -67,8 +67,9 @@ RUN git config --global --add safe.directory /workspace
 # Install pnpm globally so Claude Code can run project scripts
 RUN npm install -g pnpm@9
 
-# Install Claude Code at build time
-RUN curl -fsSL https://claude.ai/install.sh | bash
+# Claude Code is installed at runtime by container-setup.js into the
+# persistent home volume (/home/dev/.local/bin/). This survives container
+# rebuilds and is shared across projects using the same environment.
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD ["zsh"]

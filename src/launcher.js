@@ -410,7 +410,17 @@ export async function launch(argv) {
 
   const child = spawn(
     'docker',
-    ['exec', '-it', '--user', 'dev', '-e', 'PATH=/home/dev/.local/bin:/home/dev/.npm-global/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin', containerId, 'claude', ...claudeParams],
+    [
+      'exec',
+      '-it',
+      '--user',
+      'dev',
+      '-e',
+      'PATH=/home/dev/.local/bin:/home/dev/.npm-global/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
+      containerId,
+      'claude',
+      ...claudeParams,
+    ],
     {
       stdio: 'inherit',
     },
