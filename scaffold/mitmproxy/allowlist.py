@@ -15,12 +15,13 @@ logger = logging.getLogger("allowlist")
 # Domains that are allowed through the proxy.
 # Subdomains are matched: "github.com" allows "api.github.com".
 ALLOWED_DOMAINS = {
-    # Claude API
+    # Claude API and services
     "anthropic.com",
     "api.anthropic.com",
     "statsig.anthropic.com",
     "claude.ai",
     "platform.claude.com",
+    "claudeusercontent.com",
     # Package registries
     "registry.npmjs.org",
     # GitHub
