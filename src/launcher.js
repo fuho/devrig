@@ -275,7 +275,7 @@ export async function launch(argv) {
       try {
         await fetch(devUrl, { signal: AbortSignal.timeout(1000) });
         log(`Dev server ready at ${devUrl}`);
-        log(`Routed via Traefik: http://${cfg.project}.localhost`);
+        log(`Routed via Traefik: http://${cfg.project}.localhost:8000`);
         devReady = true;
         break;
       } catch {
@@ -400,7 +400,7 @@ export async function launch(argv) {
   // Log dashboard URLs
   log('Dashboards:');
   if (cfg.dev_server_cmd) {
-    console.log(`  App:       http://${cfg.project}.localhost`);
+    console.log(`  App:       http://${cfg.project}.localhost:8000`);
   }
   console.log(`  Traefik:   http://localhost:8080`);
   console.log(`  mitmproxy: http://localhost:8081`);
