@@ -194,6 +194,12 @@ export async function init(projectDir) {
 
     // Create project .devrig/ for runtime state only
     mkdirSync(join(targetDir, 'logs'), { recursive: true });
+
+    // Copy setup.html to project .devrig/ so the dev server can find it
+    const setupSrc = join(scaffoldDir, 'setup.html');
+    if (existsSync(setupSrc)) {
+      cpSync(setupSrc, join(targetDir, 'setup.html'));
+    }
   }
 
   // Append .gitignore entries if not already present

@@ -67,6 +67,13 @@ if [ -n "$HOST_IP" ]; then
     iptables -A OUTPUT -d "$HOST_NETWORK" -j ACCEPT
 fi
 
+# Allow host.docker.internal (may be outside standard private ranges, e.g. OrbStack uses 0.250.x.x)
+HOST_DOCKER_IP=$(getent hosts host.docker.internal 2>/dev/null | awk '{print $1}')
+if [ -n "$HOST_DOCKER_IP" ]; then
+    echo "host.docker.internal: $HOST_DOCKER_IP"
+    iptables -A OUTPUT -d "$HOST_DOCKER_IP" -j ACCEPT
+fi
+
 # Allow established connections (responses to already-approved traffic)
 iptables -A OUTPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
 
