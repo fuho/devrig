@@ -35,12 +35,13 @@ function setupChromeBridge() {
   const chromeDir = join(home, '.claude', 'chrome');
   mkdirSync(chromeDir, { recursive: true });
 
-  // Write chrome-native-host as a shim that execs the MCP↔NMH bridge.
-  // Make it read-only so Claude Code's --chrome flag cannot overwrite it.
+  // Write chrome-native-host shim. Leave it writable so Claude Code's
+  // --chrome flag can overwrite it with its own version (which will also
+  // use the socat relay already running).
   const hostScript = join(chromeDir, 'chrome-native-host');
   try { chmodSync(hostScript, 0o755); } catch { /* doesn't exist yet */ }
   writeFileSync(hostScript, `#!/bin/sh\nexec node /usr/local/bin/chrome-mcp-bridge.cjs\n`);
-  chmodSync(hostScript, 0o555);
+  chmodSync(hostScript, 0o755);
 
   spawn('socat', [
     `UNIX-LISTEN:${sockPath},fork,reuseaddr`,
