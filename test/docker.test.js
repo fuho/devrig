@@ -147,10 +147,7 @@ describe('scaffold image verification', { timeout: 120_000 }, () => {
   });
 });
 
-// TODO: compose runtime tests need a custom mitmproxy image with iptables pre-installed.
-// The stock mitmproxy image requires apt-get install during entrypoint which is too slow.
-// Re-enable when scaffold/Dockerfile.mitmproxy is added.
-describe.skip('compose runtime verification', { timeout: 300_000 }, () => {
+describe('compose runtime verification', { timeout: 300_000 }, () => {
   const projectName = 'devrig-test-compose';
   let tmpDir;
 
