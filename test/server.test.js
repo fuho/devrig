@@ -70,7 +70,9 @@ describe('template server', () => {
     assert.equal(typeof json.startedAt, 'string');
   });
 
-  it('marks agent as connected after GET /', async () => {
+  it('marks agent as connected after GET /?agent=test', async () => {
+    // Trigger agent detection with ?agent= query param
+    await fetch(`http://localhost:${PORT}/?agent=test`);
     const res = await fetch(`http://localhost:${PORT}/devrig/status`);
     const json = await res.json();
     assert.equal(json.agentConnected, true);
