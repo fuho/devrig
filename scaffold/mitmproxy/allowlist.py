@@ -1,8 +1,9 @@
 """
-Domain allowlist addon for mitmproxy.
+Domain blocklist addon for mitmproxy.
 
-Blocks requests to domains not in the allowlist. Blocked requests are
-killed and logged. Add domains to ALLOWED_DOMAINS to permit traffic.
+Default: all traffic is allowed. Only domains in BLOCKED_DOMAINS are
+rejected. This is more practical than an allowlist since Claude Code
+needs many domains to function and discovering them all is tedious.
 
 Usage:
   mitmweb --mode transparent -s /addons/allowlist.py
@@ -10,47 +11,27 @@ Usage:
 
 import logging
 
-logger = logging.getLogger("allowlist")
+logger = logging.getLogger("blocklist")
 
-# Domains that are allowed through the proxy.
-# Subdomains are matched: "github.com" allows "api.github.com".
-ALLOWED_DOMAINS = {
-    # Claude API and services
-    "anthropic.com",
-    "api.anthropic.com",
-    "statsig.anthropic.com",
-    "claude.ai",
-    "platform.claude.com",
-    "claudeusercontent.com",
-    # Package registries
-    "registry.npmjs.org",
-    # GitHub
-    "github.com",
-    "api.github.com",
-    "raw.githubusercontent.com",
-    "objects.githubusercontent.com",
-    "github-releases.githubusercontent.com",
-    # Telemetry
-    "sentry.io",
-    "statsig.com",
-    # PyPI (for pip installs if needed)
-    "pypi.org",
-    "files.pythonhosted.org",
+# Domains that are blocked. Subdomains are matched:
+# "datadoghq.com" blocks "http-intake.logs.us5.datadoghq.com".
+BLOCKED_DOMAINS = {
+    "datadoghq.com",
 }
 
 
-def _is_allowed(host: str) -> bool:
-    """Check if a host matches any allowed domain (including subdomains)."""
+def _is_blocked(host: str) -> bool:
+    """Check if a host matches any blocked domain (including subdomains)."""
     host = host.lower()
-    for domain in ALLOWED_DOMAINS:
+    for domain in BLOCKED_DOMAINS:
         if host == domain or host.endswith("." + domain):
             return True
     return False
 
 
 def request(flow):
-    """Called for each request. Kills requests to non-allowed domains."""
+    """Called for each request. Kills requests to blocked domains."""
     host = flow.request.pretty_host
-    if not _is_allowed(host):
+    if _is_blocked(host):
         logger.warning("BLOCKED: %s %s", flow.request.method, flow.request.url)
         flow.kill()

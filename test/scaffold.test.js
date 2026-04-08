@@ -235,11 +235,10 @@ describe('scaffold content', () => {
       assert.ok(existsSync(join(scaffoldDir, 'mitmproxy', 'allowlist.py')));
     });
 
-    it('allows essential domains', () => {
+    it('uses blocklist (default-allow) not allowlist', () => {
       const content = readFileSync(join(scaffoldDir, 'mitmproxy', 'allowlist.py'), 'utf8');
-      assert.ok(content.includes('anthropic.com'), 'should allow Claude API');
-      assert.ok(content.includes('registry.npmjs.org'), 'should allow npm');
-      assert.ok(content.includes('github.com'), 'should allow GitHub');
+      assert.ok(content.includes('BLOCKED_DOMAINS'), 'should define BLOCKED_DOMAINS');
+      assert.ok(content.includes('_is_blocked'), 'should define _is_blocked function');
     });
 
     it('kills blocked requests', () => {
@@ -247,18 +246,9 @@ describe('scaffold content', () => {
       assert.ok(content.includes('flow.kill()'), 'should kill blocked requests');
     });
 
-    it('defines _is_allowed function and request hook', () => {
+    it('defines request hook', () => {
       const content = readFileSync(join(scaffoldDir, 'mitmproxy', 'allowlist.py'), 'utf8');
-      assert.ok(content.includes('def _is_allowed('), 'should define _is_allowed function');
       assert.ok(content.includes('def request('), 'should define request hook');
-    });
-
-    it('checks _is_allowed before killing', () => {
-      const content = readFileSync(join(scaffoldDir, 'mitmproxy', 'allowlist.py'), 'utf8');
-      // The request function should call _is_allowed before flow.kill
-      const isAllowedIdx = content.indexOf('_is_allowed(');
-      const killIdx = content.lastIndexOf('flow.kill()');
-      assert.ok(isAllowedIdx < killIdx, '_is_allowed check should precede flow.kill');
     });
   });
 

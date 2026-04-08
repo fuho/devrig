@@ -104,7 +104,7 @@ environment = "default"   # or "work", "local", etc.
 
 All outbound traffic from the dev container passes through a transparent mitmproxy:
 
-- **Domain allowlist** — Only approved domains are allowed (Anthropic API, npm, GitHub, Sentry, Statsig, PyPI). Everything else is blocked.
+- **Domain blocklist** — All traffic is allowed by default. Specific domains can be blocked (e.g. telemetry endpoints). More practical than an allowlist since Claude Code needs many domains to function.
 - **HTTPS inspection** — mitmproxy CA certificate is trusted inside the container. Full request/response bodies are captured.
 - **Traffic capture** — `.mitm` files with hourly rotation. Analyze offline with `mitmproxy -r <file>` or convert to HAR.
 - **Firewall** — iptables rules redirect HTTP/HTTPS to mitmproxy and block all other outbound traffic.
