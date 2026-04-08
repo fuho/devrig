@@ -22,7 +22,9 @@ services:
   # All dev container traffic routes through this sidecar for inspection
   # and domain allowlisting. Web UI at http://localhost:8081.
   mitmproxy:
-    image: mitmproxy/mitmproxy:latest
+    build:
+      context: ${DEVRIG_ENV_DIR:-.devrig}
+      dockerfile: Dockerfile.mitmproxy
     entrypoint:
       - /bin/sh
       - -c

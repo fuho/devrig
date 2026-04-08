@@ -143,7 +143,9 @@ export function resolveProjectDir() {
     dir = parent;
   }
 
-  die(`Could not find ${CONFIG_FILE} or .devrig/ in any parent directory.\n  Run "devrig init" to set up your project.`);
+  die(
+    `Could not find ${CONFIG_FILE} or .devrig/ in any parent directory.\n  Run "devrig init" to set up your project.`,
+  );
 }
 
 // ---------------------------------------------------------------------------

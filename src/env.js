@@ -32,6 +32,7 @@ const ENVIRONMENTS_ROOT = join(homedir(), '.devrig', 'environments');
 const ENV_SCAFFOLD_FILES = [
   '.dockerignore',
   'Dockerfile',
+  'Dockerfile.mitmproxy',
   'chrome-mcp-bridge.cjs',
   'compose.yml',
   'container-setup.js',

@@ -8,12 +8,6 @@ set -euo pipefail
 
 echo "Configuring firewall..."
 
-# Install required tools if missing (mitmproxy image is Alpine-based)
-if ! command -v iptables >/dev/null 2>&1 || ! command -v ip >/dev/null 2>&1; then
-    echo "Installing iptables and iproute2..."
-    apk add --no-cache iptables iproute2 2>/dev/null || apt-get update -qq && apt-get install -y -qq iptables iproute2 2>/dev/null || true
-fi
-
 # Get the mitmproxy user ID (traffic from mitmproxy itself must bypass redirect)
 MITM_UID=$(id -u mitmproxy 2>/dev/null || echo "65534")
 

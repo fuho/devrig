@@ -160,7 +160,7 @@ describe('scaffold content', () => {
 
     it('has mitmproxy sidecar service', () => {
       assert.ok(compose.includes('mitmproxy:'), 'should have mitmproxy service');
-      assert.ok(compose.includes('mitmproxy/mitmproxy'), 'should use official mitmproxy image');
+      assert.ok(compose.includes('Dockerfile.mitmproxy'), 'should build from Dockerfile.mitmproxy');
     });
 
     it('dev container routes traffic through mitmproxy', () => {
