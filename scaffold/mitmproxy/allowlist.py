@@ -19,6 +19,12 @@ BLOCKED_DOMAINS = {
     "datadoghq.com",
 }
 
+# Domains where mitmproxy should not intercept TLS (pass through as-is).
+# WebSocket connections break when mitmproxy decrypts and re-encrypts them.
+PASSTHROUGH_DOMAINS = {
+    "claudeusercontent.com",
+}
+
 
 def _is_blocked(host: str) -> bool:
     """Check if a host matches any blocked domain (including subdomains)."""
@@ -27,6 +33,22 @@ def _is_blocked(host: str) -> bool:
         if host == domain or host.endswith("." + domain):
             return True
     return False
+
+
+def _is_passthrough(host: str) -> bool:
+    """Check if a host should bypass TLS interception."""
+    host = host.lower()
+    for domain in PASSTHROUGH_DOMAINS:
+        if host == domain or host.endswith("." + domain):
+            return True
+    return False
+
+
+def tls_clienthello(data):
+    """Skip TLS interception for passthrough domains (e.g. WebSocket relays)."""
+    if data.context.server.address and _is_passthrough(data.context.server.address[0]):
+        data.ignore_connection = True
+        logger.info("PASSTHROUGH: %s", data.context.server.address[0])
 
 
 def request(flow):
