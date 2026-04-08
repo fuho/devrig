@@ -214,12 +214,7 @@ export async function init(projectDir) {
     log('Updated .gitignore');
   }
 
-  // Copy devrig.toml.example to project root if absent
-  const exampleSrc = join(scaffoldDir, 'devrig.toml.example');
-  const exampleDest = join(projectDir, 'devrig.toml.example');
-  if (existsSync(exampleSrc) && !existsSync(exampleDest)) {
-    cpSync(exampleSrc, exampleDest);
-  }
+  // devrig.toml.example is no longer copied — the wizard generates devrig.toml directly
 
   log('Scaffold complete.');
 
