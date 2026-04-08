@@ -5,6 +5,11 @@ on:
   pull_request:
     branches: [master]
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: shellcheck scaffold/firewall.sh scaffold/entrypoint.sh
   check:
     runs-on: ubuntu-latest
     strategy:
@@ -20,3 +25,12 @@ jobs:
       - run: npm run format:check
       - run: npm run typecheck
       - run: npm test
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install pytest
+      - run: pytest test/test_allowlist.py -v

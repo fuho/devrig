@@ -1,6 +1,6 @@
 {
   "name": "devrig",
-  "version": "0.6.1",
+  "version": "0.7.0",
   "description": "Containerized AI coding environment with browser control",
   "type": "module",
   "bin": {
@@ -23,10 +23,12 @@
     "test:coverage": "node --test --experimental-test-coverage test/unit.test.js test/init.test.js test/cleanup.test.js test/configure.test.js test/session.test.js test/logs.test.js test/exec.test.js test/doctor.test.js test/update.test.js test/env.test.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
+    "lint:shell": "shellcheck scaffold/firewall.sh scaffold/entrypoint.sh",
+    "test:python": "pytest test/test_allowlist.py -v",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "tsc --project jsconfig.json",
-    "check": "npm run lint && npm run format:check && npm run typecheck && npm test"
+    "check": "npm run lint && npm run lint:shell && npm run format:check && npm run typecheck && npm test"
   },
   "author": "Ondrej Dolejsi (https://github.com/fuho)",
   "license": "MIT",

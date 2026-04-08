@@ -19,5 +19,9 @@ node_modules/
 # Claude Code local data
 .claude/
 
+# Python
+.pytest_cache/
+__pycache__/
+
 # Internal working docs (specs, plans, reviews)
 # Note: docs/ is NOT ignored — it contains project documentation
