@@ -23,6 +23,7 @@
 - TLS passthrough for `claudeusercontent.com` (WebSocket bridge breaks under MITM interception)
 - `setup.html` copied to project `.devrig/` for non-local environments
 - `container-setup.js` simplified: verifies claude at startup, no longer installs it
+- Re-enabled compose runtime tests (tini, tmpfs, masking, CLAUDE.md shadow mount, zsh)
 
 ### Removed
 
@@ -33,7 +34,6 @@
 ### TODO
 
 - Per-subcommand help for `devrig env` (e.g. `devrig env reset --help` shows reset-specific help)
-- Re-enable compose runtime tests when custom mitmproxy image is stable
 - pytest unit tests for `scaffold/mitmproxy/allowlist.py`
 - ShellCheck lint for `firewall.sh` and `entrypoint.sh`
 - Traefik reverse proxy for multi-service projects (when dev server runs in container)
