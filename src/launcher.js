@@ -238,6 +238,7 @@ export async function launch(argv) {
       env: {
         ...process.env,
         BRIDGE_LOG_DIR: logsDir,
+        BRIDGE_HOST: '0.0.0.0',
         BRIDGE_PORT: String(cfg.bridge_port),
       },
     });
