@@ -74,6 +74,14 @@ export function checkDevrigDir(projectDir) {
   }
 
   if (!existsSync(envDir)) {
+    // Detect pre-v0.6 project: has .devrig/ with scaffold files but no environment field
+    const localDevrig = join(projectDir, '.devrig');
+    if (envDir !== localDevrig && existsSync(join(localDevrig, 'Dockerfile'))) {
+      return {
+        status: 'fail',
+        message: `Environment dir not found: ${envDir}. This project was set up before environments existed. Fix: add 'environment = "local"' to devrig.toml, or run "devrig start" to auto-create the environment.`,
+      };
+    }
     return { status: 'fail', message: `Environment dir not found: ${envDir} — run "devrig init"` };
   }
   const required = ['Dockerfile', 'compose.yml', 'entrypoint.sh'];
@@ -122,7 +130,14 @@ export function checkVersionStaleness(projectDir) {
     /* fall back to .devrig/ */
   }
 
-  const versionFile = join(envDir, '.devrig-version');
+  let versionFile = join(envDir, '.devrig-version');
+  // Fall back to .devrig/ version file for pre-v0.6 projects
+  if (!existsSync(versionFile)) {
+    const localVersion = join(projectDir, '.devrig', '.devrig-version');
+    if (envDir !== join(projectDir, '.devrig') && existsSync(localVersion)) {
+      versionFile = localVersion;
+    }
+  }
   if (!existsSync(versionFile)) {
     return { status: 'warn', message: 'No version marker — cannot check staleness' };
   }

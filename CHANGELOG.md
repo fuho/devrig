@@ -2,7 +2,10 @@
 
 ## Unreleased
 
-_(nothing yet)_
+### Fixes
+
+- `devrig doctor` detects pre-v0.6 projects (has `.devrig/` scaffold but no environment) and suggests adding `environment = "local"` to `devrig.toml` or running `devrig start` to auto-create the environment
+- `devrig doctor` version staleness check falls back to `.devrig/.devrig-version` when the environment dir doesn't exist yet (pre-v0.6 migration)
 
 ## 0.6.0 — 2026-04-08
 
