@@ -21,9 +21,20 @@ else
     echo "Host network: $HOST_NETWORK"
 fi
 
-# Flush existing rules
+# Save Docker's internal DNS NAT rules before flushing.
+# Docker redirects 127.0.0.11:53 to its embedded resolver via NAT rules.
+# Flushing nat OUTPUT without restoring these breaks DNS resolution.
+DOCKER_DNS_RULES=$(iptables-save -t nat 2>/dev/null | grep "127\.0\.0\.11" || true)
+
+# Flush existing OUTPUT rules only
 iptables -F OUTPUT 2>/dev/null || true
 iptables -t nat -F OUTPUT 2>/dev/null || true
+
+# Restore Docker DNS NAT rules
+if [ -n "$DOCKER_DNS_RULES" ]; then
+    echo "Restoring Docker DNS rules..."
+    echo "$DOCKER_DNS_RULES" | xargs -L 1 iptables -t nat 2>/dev/null || true
+fi
 
 # --- NAT table: redirect HTTP/HTTPS to mitmproxy ---
 
