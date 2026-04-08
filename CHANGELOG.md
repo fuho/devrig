@@ -14,12 +14,17 @@
 - `devrig doctor` version staleness check falls back to `.devrig/.devrig-version` when the environment dir doesn't exist yet (pre-v0.6 migration)
 - `extra_hosts` moved from dev to mitmproxy service (fixes Docker conflict with `network_mode: service:`)
 
+### Removed
+
+- Traefik reverse proxy — the dev server runs on the host, not in the container, so Traefik couldn't route to it. Will be re-added when the dev server moves inside the container.
+
 ### TODO
 
 - Per-subcommand help for `devrig env` (e.g. `devrig env reset --help` shows reset-specific help)
 - Re-enable compose runtime tests when custom mitmproxy image is stable
 - pytest unit tests for `scaffold/mitmproxy/allowlist.py`
 - ShellCheck lint for `firewall.sh` and `entrypoint.sh`
+- Traefik reverse proxy for multi-service projects (when dev server runs in container)
 
 ## 0.6.0 — 2026-04-08
 

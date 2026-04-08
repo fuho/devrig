@@ -122,7 +122,6 @@ export async function launch(argv) {
   loadDotenv(projectDir);
   process.env.DEVRIG_PROJECT = cfg.project;
   process.env.DEVRIG_ENV_DIR = envDirPath;
-  process.env.DEVRIG_DEV_PORT = String(cfg.dev_server_port);
 
   // -- Step 6: Change to project directory and set host UID ----------------
   process.chdir(projectDir);
@@ -276,7 +275,6 @@ export async function launch(argv) {
       try {
         await fetch(devUrl, { signal: AbortSignal.timeout(1000) });
         log(`Dev server ready at ${devUrl}`);
-        log(`Routed via Traefik: http://${cfg.project}.localhost:8000`);
         devReady = true;
         break;
       } catch {
@@ -399,12 +397,10 @@ export async function launch(argv) {
   }
 
   // Log dashboard URLs
-  log('Dashboards:');
   if (cfg.dev_server_cmd) {
-    console.log(`  App:       http://${cfg.project}.localhost:8000`);
+    log(`Dev server: http://localhost:${cfg.dev_server_port}`);
   }
-  console.log(`  Traefik:   http://localhost:8080`);
-  console.log(`  mitmproxy: http://localhost:8081`);
+  log('Network inspector: http://localhost:8081');
 
   log('Connecting to Claude Code in container...');
   log(`CLAUDE_PARAMS: ${claudeParams.join(' ') || '<none>'}`);

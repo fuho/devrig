@@ -196,38 +196,6 @@ describe('scaffold content', () => {
         'mitmproxy web UI should be localhost-only',
       );
     });
-
-    it('has Traefik reverse proxy service', () => {
-      assert.ok(compose.includes('traefik:'), 'should have traefik service');
-      assert.ok(compose.includes('traefik:v3'), 'should use Traefik v3');
-    });
-
-    it('Traefik dashboard is localhost-only', () => {
-      assert.ok(
-        compose.includes('127.0.0.1:8080:8080'),
-        'Traefik dashboard should be localhost-only',
-      );
-    });
-
-    it('Traefik uses Docker provider with explicit opt-in', () => {
-      assert.ok(compose.includes('providers.docker=true'), 'should enable Docker provider');
-      assert.ok(
-        compose.includes('exposedByDefault=false'),
-        'should not expose services by default',
-      );
-    });
-
-    it('Traefik labels on mitmproxy for .localhost routing', () => {
-      assert.ok(compose.includes('traefik.enable'), 'should have traefik.enable label');
-      assert.ok(compose.includes('.localhost'), 'should route to .localhost domain');
-    });
-
-    it('mounts Docker socket read-only for Traefik', () => {
-      assert.ok(
-        compose.includes('/var/run/docker.sock:/var/run/docker.sock:ro'),
-        'Docker socket should be read-only',
-      );
-    });
   });
 
   describe('firewall.sh', () => {

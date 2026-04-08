@@ -13,7 +13,6 @@ Claude Code is powerful — it installs packages, modifies system files, and run
 - **Filesystem isolation** — Claude Code runs in a Docker container and can only touch `/workspace` (your project) and its own home directory. Your host OS, dotfiles, and other projects are untouched.
 - **Browser control** — Claude Code inside Docker can't access a browser on its own. Devrig bridges Chrome's debugging protocol into the container, letting Claude see and interact with your running app.
 - **Shared environments** — Named environments share Claude Code auth, memories, and settings across projects. Log in once, use everywhere.
-- **Inbound routing** — Traefik reverse proxy routes `http://{project}.localhost` to your dev server. Dashboard at `localhost:8080`.
 - **Zero config** — `npx devrig init` scaffolds everything. No Dockerfiles to write, no compose files to maintain.
 - **Clean host** — no global packages, no Claude Code installation on your machine, no leftover processes after sessions end.
 
@@ -36,14 +35,11 @@ Here's what `devrig start` looks like:
 [devrig] Chrome bridge started on port 9229
 [devrig] Starting dev server: npm run dev
 [devrig] Dev server ready at http://localhost:3000
-[devrig] Routed via Traefik: http://my-project.localhost
 [devrig] Opening browser...
 [devrig] Waiting for Claude Code to be ready in container...
 [devrig] Claude Code is ready.
-[devrig] Dashboards:
-  App:       http://my-project.localhost
-  Traefik:   http://localhost:8080
-  mitmproxy: http://localhost:8081
+[devrig] Dev server: http://localhost:3000
+[devrig] Network inspector: http://localhost:8081
 [devrig] Connecting to Claude Code in container...
 ```
 
@@ -115,11 +111,10 @@ All outbound traffic from the dev container passes through a transparent mitmpro
 
 ### Dashboards
 
-| URL                          | What                                          |
-| ---------------------------- | --------------------------------------------- |
-| `http://{project}.localhost` | Your dev server (via Traefik)                 |
-| `http://localhost:8080`      | Traefik dashboard — routing, services, health |
-| `http://localhost:8081`      | mitmproxy web UI — live traffic inspection    |
+| URL                     | What                                       |
+| ----------------------- | ------------------------------------------ |
+| `http://localhost:3000` | Your dev server (port configurable)        |
+| `http://localhost:8081` | mitmproxy web UI — live traffic inspection |
 
 ### Network logs
 
@@ -194,7 +189,7 @@ GIT_AUTHOR_EMAIL=you@example.com
 | **Tools**       | git, ripgrep, gh, socat, vim, tree, pnpm, curl, jq, fzf, git-delta       |
 | **User**        | `dev` with UID matching your host (no permission issues on Linux)        |
 | **Network**     | mitmproxy transparent proxy with domain allowlist + iptables firewall    |
-| **Routing**     | Traefik reverse proxy — `http://{project}.localhost`                     |
+| **Routing**     | Dev server on host, accessible at `http://localhost:{port}`              |
 | **Resources**   | 8 GB memory, 4 CPUs (edit compose files to change)                       |
 | **PID 1**       | tini (`init: true`) for proper zombie process reaping                    |
 | **tmpfs**       | `/tmp` mounted in-memory for faster temp operations                      |
@@ -249,7 +244,7 @@ scaffold/
   Dockerfile            Container image (zsh, Claude Code, tools)
   .dockerignore         Excludes runtime artifacts from Docker build context
   chrome-mcp-bridge.cjs MCP-to-NMH protocol translator for Chrome bridge
-  compose.yml           Docker Compose (Traefik + mitmproxy + dev container)
+  compose.yml           Docker Compose (mitmproxy + dev container)
   entrypoint.sh         Container entrypoint (CA cert install, privilege drop)
   container-setup.js    Runs inside container (bridge setup, settings config)
   firewall.sh           iptables rules for outbound traffic control

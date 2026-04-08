@@ -82,7 +82,6 @@ export function generateClaudeMd(projectDir, cfg) {
     '- `devrig exec` — open a shell in the running container',
     '',
     'Dashboards (when session is running):',
-    '- Traefik routing: http://localhost:8080',
     '- Network traffic: http://localhost:8081',
     DEVRIG_END,
   ].join('\n');

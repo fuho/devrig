@@ -1,23 +1,4 @@
 services:
-  # ── Inbound routing (Traefik) ──────────────────────────────────────────
-  # Routes http://{project}.localhost to the dev container.
-  # Dashboard at http://localhost:8080.
-  traefik:
-    image: traefik:v3.6
-    command:
-      - "--providers.docker=true"
-      - "--providers.docker.exposedByDefault=false"
-      - "--entrypoints.web.address=:8000"
-      - "--api.insecure=true"
-    ports:
-      - "8000:8000"
-      - "127.0.0.1:8080:8080"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    labels:
-      devrig.project: ${DEVRIG_PROJECT:-my-project}
-    restart: unless-stopped
-
   # ── Outbound traffic proxy (mitmproxy) ─────────────────────────────────
   # All dev container traffic routes through this sidecar for inspection
   # and domain allowlisting. Web UI at http://localhost:8081.
@@ -49,11 +30,6 @@ services:
       - "host.docker.internal:host-gateway"
     labels:
       devrig.project: ${DEVRIG_PROJECT:-my-project}
-      # Traefik routes to the dev server via mitmproxy's network namespace
-      traefik.enable: "true"
-      traefik.http.routers.${DEVRIG_PROJECT:-my-project}.rule: "Host(`${DEVRIG_PROJECT:-my-project}.localhost`)"
-      traefik.http.routers.${DEVRIG_PROJECT:-my-project}.entrypoints: "web"
-      traefik.http.services.${DEVRIG_PROJECT:-my-project}.loadbalancer.server.port: "${DEVRIG_DEV_PORT:-3000}"
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "sh", "-c", "curl -so /dev/null -w '%{http_code}' http://127.0.0.1:8081/ | grep -qE '^(200|403)' && iptables -t nat -S OUTPUT | grep -q REDIRECT"]
