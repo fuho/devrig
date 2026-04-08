@@ -8,7 +8,7 @@ Claude Code is powerful — it installs packages, modifies system files, and run
 
 ## Why devrig?
 
-- **Network isolation** — All outbound traffic passes through a transparent MITM proxy with domain allowlisting. Only approved domains (Anthropic API, npm, GitHub) can be reached. Everything else is blocked and logged.
+- **Network isolation** — All outbound traffic passes through a transparent MITM proxy. Traffic is logged and inspectable. Specific domains can be blocked via a configurable blocklist.
 - **Traffic inspection** — Full HTTP/S request/response logging via mitmproxy. Web UI at `localhost:8081` for live monitoring. Captured traffic can be analyzed offline.
 - **Filesystem isolation** — Claude Code runs in a Docker container and can only touch `/workspace` (your project) and its own home directory. Your host OS, dotfiles, and other projects are untouched.
 - **Browser control** — Claude Code inside Docker can't access a browser on its own. Devrig bridges Chrome's debugging protocol into the container, letting Claude see and interact with your running app.
@@ -52,7 +52,7 @@ Here's what `devrig start` looks like:
 | `devrig stop`          | Stop a running session from another terminal                                      |
 | `devrig status`        | Show whether container, bridge, and dev server are running                        |
 | `devrig config`        | Re-run the configuration wizard                                                   |
-| `devrig env <command>` | Manage named environments (`list`, `create`, `inspect`, `delete`)                 |
+| `devrig env <command>` | Manage named environments (`list`, `create`, `reset`, `inspect`, `delete`)        |
 | `devrig clean [flags]` | Remove Docker artifacts (`--project`, `-a/--all`, `-l/--list`, `--orphans`, `-y`) |
 | `devrig logs [flags]`  | Show logs (`--dev-server`, `--container`, `--network`, `-f`)                      |
 | `devrig exec`          | Re-attach to a running container                                                  |
@@ -172,7 +172,7 @@ GIT_AUTHOR_EMAIL=you@example.com
 ```
 
 > [!TIP]
-> `CLAUDE_PARAMS=--dangerously-skip-permissions` lets Claude Code run without confirmation prompts. Inside devrig's container, Claude can only touch `/workspace` and `/home/dev`, and all network traffic is filtered through the mitmproxy allowlist.
+> `CLAUDE_PARAMS=--dangerously-skip-permissions` lets Claude Code run without confirmation prompts. Inside devrig's container, Claude can only touch `/workspace` and `/home/dev`, and all network traffic is inspected via mitmproxy.
 
 > [!NOTE]
 > The container has **no SSH keys and no git credentials** by design. Claude Code can modify files and make commits locally, but it cannot push code or access private repositories. You review and push from your host.
@@ -188,7 +188,7 @@ GIT_AUTHOR_EMAIL=you@example.com
 | **Shell**       | zsh with Powerlevel10k theme                                             |
 | **Tools**       | git, ripgrep, gh, socat, vim, tree, pnpm, curl, jq, fzf, git-delta       |
 | **User**        | `dev` with UID matching your host (no permission issues on Linux)        |
-| **Network**     | mitmproxy transparent proxy with domain allowlist + iptables firewall    |
+| **Network**     | mitmproxy transparent proxy with domain blocklist + iptables firewall    |
 | **Routing**     | Dev server on host, accessible at `http://localhost:{port}`              |
 | **Resources**   | 8 GB memory, 4 CPUs (edit compose files to change)                       |
 | **PID 1**       | tini (`init: true`) for proper zombie process reaping                    |
@@ -249,7 +249,7 @@ scaffold/
   container-setup.js    Runs inside container (bridge setup, settings config)
   firewall.sh           iptables rules for outbound traffic control
   mitmproxy/
-    allowlist.py        Domain allowlist addon for mitmproxy
+    allowlist.py        Domain blocklist addon for mitmproxy
   template/             Starter files for new projects
 docs/
   chrome-bridge.md    Chrome bridge architecture documentation

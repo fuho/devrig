@@ -18,10 +18,12 @@ Container (dev)                    Host
 ┌──────────────┐                  ┌──────────────┐
 │  mitmproxy   │                  │  bridge-host │
 │  (port 8080) │                  │  (port 9229) │
-│  Web UI:8081 │                  │  0.0.0.0     │
+│  Web UI:8081 │                  │  0.0.0.0 ¹   │
 └──────┬───────┘                  └──────────────┘
        │
        ▼ internet
+
+¹ bridge-host.cjs defaults to 127.0.0.1; launcher sets BRIDGE_HOST=0.0.0.0
 ```
 
 ## Key Learnings
@@ -31,6 +33,7 @@ Container (dev)                    Host
 Docker's internal DNS resolver at `127.0.0.11` uses iptables NAT rules to redirect queries to an embedded resolver on a high port. **Flushing the nat OUTPUT chain destroys these rules**, breaking DNS resolution.
 
 Fix: save Docker DNS rules before flush, restore after:
+
 ```bash
 DOCKER_DNS_RULES=$(iptables-save -t nat | grep "127\.0\.0\.11" || true)
 iptables -t nat -F OUTPUT
@@ -40,6 +43,7 @@ echo "$DOCKER_DNS_RULES" | xargs -L 1 iptables -t nat || true
 ### host.docker.internal IP Range
 
 OrbStack (macOS) resolves `host.docker.internal` to `0.250.250.254`, which is outside standard private IP ranges (10/8, 172.16/12, 192.168/16). The firewall must explicitly resolve and allow this IP:
+
 ```bash
 HOST_DOCKER_IP=$(getent hosts host.docker.internal | awk '{print $1}')
 iptables -A OUTPUT -d "$HOST_DOCKER_IP" -j ACCEPT
@@ -48,6 +52,7 @@ iptables -A OUTPUT -d "$HOST_DOCKER_IP" -j ACCEPT
 ### network_mode: service:mitmproxy
 
 When the dev container shares mitmproxy's network namespace:
+
 - Dev container's ports are accessible through the mitmproxy service
 - `extra_hosts` must go on the mitmproxy service (Docker rejects it on the shared container)
 - The bridge host must listen on `0.0.0.0`, not `127.0.0.1`
@@ -55,10 +60,12 @@ When the dev container shares mitmproxy's network namespace:
 ### /home/dev Bind Mount
 
 The compose mounts `${DEVRIG_ENV_DIR}/home:/home/dev` which **replaces everything** the Dockerfile puts in `/home/dev`. This affects:
+
 - Claude Code binary (native installer puts it in `~/.local/bin/`)
 - zsh config (powerlevel10k puts it in `~/.zshrc`, `~/.p10k.zsh`)
 
 Fix for Claude: install to `/home/dev/.local/`, then copy to `/opt/claude/` and symlink to `/usr/local/bin/`:
+
 ```dockerfile
 RUN curl -fsSL https://claude.ai/install.sh | bash
 USER root
@@ -73,6 +80,7 @@ USER dev
 Claude Code v2.1.96 uses `bridge.claudeusercontent.com` as a WebSocket relay for Chrome MCP (instead of the local NMH socket chain). mitmproxy's TLS interception breaks WebSocket connections.
 
 Fix: skip TLS interception for specific domains using `tls_clienthello` hook:
+
 ```python
 def tls_clienthello(data):
     if _is_passthrough(data.context.server.address[0]):
@@ -86,6 +94,7 @@ An allowlist is impractical for Claude Code — it needs many domains (API, auth
 ### mitmproxy 12.x Authentication
 
 mitmproxy 12.x requires web UI authentication by default. If no password is set, a random token is generated on startup (printed to stderr). Set a known password:
+
 ```
 --set web_password=devrig
 ```
@@ -93,6 +102,7 @@ mitmproxy 12.x requires web UI authentication by default. If no password is set,
 ### Build-time vs Runtime Claude Install
 
 The native installer creates:
+
 - `~/.local/bin/claude` — symlink
 - `~/.local/share/claude/versions/<ver>` — 221MB binary
 

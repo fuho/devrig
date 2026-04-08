@@ -82,7 +82,7 @@ Response:
 | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `scaffold/chrome-mcp-bridge.cjs` | Protocol translator (MCP to NMH). Zero dependencies, ~200 lines. Implements MCP server on stdio, translates `tools/call` to NMH `tool_request`. Exports functions for testing.                         |
 | `src/bridge-host.cjs`            | Host-side TCP-to-NMH relay. Listens on TCP (default 9229), finds the alphabetically last `.sock` in `/tmp/claude-mcp-browser-bridge-{user}/` (newest by NMH naming convention), pipes bidirectionally. |
-| `scaffold/container-setup.js`    | Container setup. Writes `chrome-native-host` shim (read-only 0555), starts socat relay, writes MCP server config to `settings.json`.                                                                   |
+| `scaffold/container-setup.js`    | Container setup. Writes `chrome-native-host` shim (writable 0755), starts socat relay, writes MCP server config to `settings.json`.                                                                    |
 | `src/launcher.js`                | Starts `bridge-host.cjs`, waits for live NMH socket (up to 15s), injects `--chrome` flag, writes `mcpServers` config.                                                                                  |
 | `src/doctor.js`                  | `checkChromeBridge()` tests NMH socket health in three steps: directory exists, socket accepts connections, socket responds to messages.                                                               |
 
@@ -96,7 +96,7 @@ Claude Code's `--chrome` flag starts an **in-process Chrome MCP server** that sp
 4. Claude calls `set_permission_mode` internally (handled by Claude's in-process server, never reaches our bridge)
 5. When the LLM calls a Chrome tool, it goes through our bridge to the host NMH
 
-**Claude Code overwrites `chrome-native-host` on every launch** with its own version. We counter this by making the file read-only (`chmod 0555`) in `container-setup.js`, so our shim persists.
+**Claude Code overwrites `chrome-native-host` on every launch** with its own version. The shim is writable (`chmod 0755`) so Claude Code can update it. Our protocol translator (`chrome-mcp-bridge.cjs`) runs via the socat relay regardless of what Claude writes to the shim.
 
 ## Available Chrome tools (18)
 
@@ -135,8 +135,8 @@ Tool definitions are hardcoded in `chrome-mcp-bridge.cjs` for the `tools/list` r
 ## Security
 
 - Bridge runs as unprivileged `dev` user inside container
-- `chrome-native-host` is read-only (0555) to prevent Claude from overwriting
-- TCP bridge binds to `127.0.0.1` only (not `0.0.0.0`)
+- `chrome-native-host` is writable (0755) — Claude Code v2.1.96+ needs to update it on startup
+- TCP bridge binds to `0.0.0.0` (set by launcher via `BRIDGE_HOST` env var, default in code is `127.0.0.1`)
 - Verbose logging truncates content to 500 chars, never logs screenshot base64 data
 - No persistent data storage beyond log files
 

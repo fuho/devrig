@@ -41,22 +41,32 @@
 - Custom mitmproxy web UI
 
 ## 0.6.0 — 2026-04-08
+
+### Breaking Changes
+
+- **Named environments** — Scaffold files and Claude Code home directory now live in `~/.devrig/environments/{name}/` instead of per-project `.devrig/`. Set `environment = "local"` to preserve old behavior.
+- **Git shim removed** — Network-level security (iptables firewall + mitmproxy) replaces the git push/pull blocking shim.
+- **compose.yml restructured** — Now includes mitmproxy sidecar + dev container. Volume paths use `DEVRIG_ENV_DIR` env var.
+
+### Features
+
+- **Named environments** (`devrig env`) — Share Claude Code auth, memories, and settings across projects. Types: `"default"` (shared), named (e.g. `"work"`), `"local"` (project-isolated). CLI: `devrig env list|create|inspect|delete`.
+- **Network security** — iptables firewall + mitmproxy transparent proxy with domain blocklist and traffic inspection.
+- **Traffic inspection** — mitmproxy captures all HTTP/S traffic. Web UI at `localhost:8081`. Hourly `.mitm` file rotation. Offline analysis via `mitmproxy -r` or HAR export.
 - **zsh + Powerlevel10k** — Default shell switched to zsh with Powerlevel10k theme, fzf integration, and git-delta for better diffs.
-- **Build-time Claude install** — Claude Code installed during Docker image build instead of at container startup. Faster session starts.
+- **Build-time Claude install** — Claude Code installed during Docker image build to `/opt/claude`, symlinked to `/usr/local/bin/`. Survives `/home/dev` bind mount.
 - **`devrig logs --network`** — Shows mitmproxy web UI URL, log directory, and recent capture files.
 - **`environment` field in devrig.toml** — Controls which environment a project uses. Added to configuration wizard.
 
 ### Docker
 
-- mitmproxy sidecar service with transparent proxy mode, domain allowlist addon, and traffic capture
-- Traefik v3.6 service with Docker provider, `exposedByDefault=false`, localhost-only dashboard
+- mitmproxy sidecar service with transparent proxy mode, domain blocklist addon, and traffic capture
 - Dev container uses `network_mode: "service:mitmproxy"` for outbound traffic routing
 - mitmproxy CA certificate shared via Docker volume and trusted via `NODE_EXTRA_CA_CERTS` + `update-ca-certificates`
 - `firewall.sh` — iptables rules: DNS/loopback/Docker networks allowed, HTTP/HTTPS redirected to mitmproxy, everything else rejected
 - `DEVRIG_ENV_DIR` environment variable for compose volume paths
-- `DEVRIG_DEV_PORT` environment variable for Traefik routing
 - zsh, fzf, git-delta added to Dockerfile
-- Claude Code installed at build time via native installer
+- Claude Code installed at build time via native installer, moved to `/opt/claude`
 - Git push/pull shim removed from Dockerfile
 
 ### Fixes
@@ -71,7 +81,7 @@
 
 - New `src/env.js` — environment CRUD operations (envDir, ensureEnv, listEnvs, deleteEnv, inspectEnv, envCommand)
 - New `scaffold/firewall.sh` — iptables firewall script
-- New `scaffold/mitmproxy/allowlist.py` — domain allowlist mitmproxy addon
+- New `scaffold/mitmproxy/allowlist.py` — domain blocklist mitmproxy addon
 - `src/config.js` — added `environment` field to loadConfig(), new `resolveEnvDir()` with optional `environmentsRoot` parameter for testability
 - `src/docker.js` — `initVariant()` accepts optional environment directory
 - `src/session.js` — `checkScaffoldStaleness()` accepts optional environment directory
