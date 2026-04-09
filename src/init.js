@@ -65,7 +65,7 @@ function readUserContent(filePath) {
 /**
  * Generates or updates CLAUDE.md (host instructions) and .devrig/CLAUDE.md (container instructions).
  * @param {string} projectDir
- * @param {{ tool: string, dev_server_port: number, bridge_enabled: boolean, bridge_port: number }} cfg
+ * @param {{ tool: string, dev_server_port: number, bridge_enabled: boolean, bridge_port: number, devrig_port: number }} cfg
  */
 export function generateClaudeMd(projectDir, cfg) {
   const hostBlock = [
