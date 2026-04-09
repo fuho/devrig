@@ -28,7 +28,7 @@ import time
 import uuid
 from collections import deque
 from dataclasses import asdict, dataclass, field
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, HTTPServer, ThreadingHTTPServer
 from typing import Optional
 from urllib.parse import urlparse, parse_qs
 
@@ -84,6 +84,15 @@ class TrafficEntry:
     size: Optional[int] = None
     rule_id: Optional[str] = None
     rule_type: Optional[str] = None
+    request_headers: Optional[dict] = None
+    response_headers: Optional[dict] = None
+    content_type: Optional[str] = None
+    request_content: Optional[str] = None
+    response_content: Optional[str] = None
+    request_ts: Optional[float] = None
+    response_ts: Optional[float] = None
+    scheme: Optional[str] = None
+    port: Optional[int] = None
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -275,24 +284,76 @@ class RulesAddon:
     def response(self, flow):
         self._update_response(flow)
 
+    def error(self, flow):
+        """Clean up flow_map for errored flows (connection refused, TLS failure, etc.)."""
+        entry = self._flow_map.pop(flow.id, None)
+        if entry is not None:
+            entry.status = 0
+            self._broadcast_sse(entry)
+
+    def close(self, flow):
+        """Safety net: clean up any flow_map entry when the connection closes."""
+        self._flow_map.pop(flow.id, None)
+
     # -- Traffic recording --------------------------------------------------
 
     def _record_request(self, flow, rule: Optional[Rule] = None) -> TrafficEntry:
+        req_headers = None
+        try:
+            req_headers = dict(flow.request.headers)
+        except (AttributeError, TypeError):
+            pass
+        req_content = None
+        try:
+            body = flow.request.content
+            if body:
+                req_content = body[:10240].decode("utf-8", errors="replace")
+        except (AttributeError, TypeError):
+            pass
+        scheme = None
+        port = None
+        try:
+            scheme = flow.request.scheme
+        except AttributeError:
+            pass
+        try:
+            port = flow.request.port
+        except AttributeError:
+            pass
+        flow_id = flow.id
+        now = time.time()
+        method = flow.request.method
+        url = flow.request.url
+        host = flow.request.pretty_host
+
+        # Use mitmproxy's own flow.id — it's stable across request/response hooks.
+        # If we've already seen this flow (e.g. replayed), update in place.
+        existing = self._flow_map.get(flow_id)
+        if existing is not None:
+            existing.rule_id = rule.id if rule else None
+            existing.rule_type = rule.type if rule else None
+            return existing
+
         entry = TrafficEntry(
-            id=uuid.uuid4().hex,
-            ts=time.time(),
-            method=flow.request.method,
-            url=flow.request.url,
-            host=flow.request.pretty_host,
+            id=flow_id,
+            ts=now,
+            method=method,
+            url=url,
+            host=host,
             rule_id=rule.id if rule else None,
             rule_type=rule.type if rule else None,
+            request_headers=req_headers,
+            request_content=req_content,
+            request_ts=now,
+            scheme=scheme,
+            port=port,
         )
         self._traffic.append(entry)
-        self._flow_map[id(flow)] = entry
+        self._flow_map[flow_id] = entry
         return entry
 
     def _update_response(self, flow):
-        entry = self._flow_map.pop(id(flow), None)
+        entry = self._flow_map.pop(flow.id, None)
         if entry is None:
             return
         try:
@@ -304,6 +365,21 @@ class RulesAddon:
             entry.size = len(content) if content is not None else None
         except AttributeError:
             pass
+        try:
+            entry.response_headers = dict(flow.response.headers)
+        except (AttributeError, TypeError):
+            pass
+        try:
+            entry.content_type = flow.response.headers.get("content-type", None)
+        except (AttributeError, TypeError):
+            pass
+        try:
+            body = flow.response.content
+            if body:
+                entry.response_content = body[:10240].decode("utf-8", errors="replace")
+        except (AttributeError, TypeError):
+            pass
+        entry.response_ts = time.time()
         self._broadcast_sse(entry)
 
     def _broadcast_sse(self, entry: TrafficEntry):
@@ -487,7 +563,7 @@ class APIHandler(BaseHTTPRequestHandler):
 def _start_api_server(addon: RulesAddon):
     APIHandler.addon = addon
     try:
-        server = HTTPServer(("0.0.0.0", API_PORT), APIHandler)
+        server = ThreadingHTTPServer(("0.0.0.0", API_PORT), APIHandler)
     except OSError as e:
         logger.warning("Could not start API server on :%d: %s", API_PORT, e)
         return
@@ -508,7 +584,7 @@ if os.environ.get("DEVRIG_API", "1") != "0":
     _start_api_server(_addon)
 
 
-# Backward-compatible shims
+# Backward-compatible shims for external callers (tests, etc.)
 def _is_blocked(host):
     return _addon.is_blocked(host)
 
@@ -517,16 +593,7 @@ def _is_passthrough(host):
     return _addon.is_passthrough(host)
 
 
-def tls_clienthello(data):
-    return _addon.tls_clienthello(data)
-
-
-def request(flow):
-    return _addon.request(flow)
-
-
-def response(flow):
-    return _addon.response(flow)
-
-
+# mitmproxy calls hooks on BOTH the module and objects in the addons list.
+# Do NOT define module-level request/response/tls_clienthello — it would
+# double-fire every hook.  All hooks live on _addon only.
 addons = [_addon]

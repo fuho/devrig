@@ -14,11 +14,12 @@ os.environ["DEVRIG_API"] = "0"
 # Add scaffold/mitmproxy to sys.path so we can import allowlist
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scaffold" / "mitmproxy"))
 
+import uuid
+
 from allowlist import (
     _is_blocked,
     _is_passthrough,
-    tls_clienthello,
-    request,
+    _addon,
     Rule,
     TrafficEntry,
     RulesAddon,
@@ -27,6 +28,25 @@ from allowlist import (
     DEFAULT_RULES,
     RULES_PATH,
 )
+
+
+def mock_flow(host, method="GET", url=None, content=None, headers=None,
+              scheme=None, port=None, kill=None):
+    """Create a mock flow with a stable id, like mitmproxy's HTTPFlow."""
+    if url is None:
+        url = f"https://{host}/"
+    if headers is None:
+        headers = {}
+    flow = types.SimpleNamespace(
+        id=uuid.uuid4().hex,
+        request=types.SimpleNamespace(
+            pretty_host=host, method=method, url=url,
+            content=content, headers=headers,
+            scheme=scheme, port=port,
+        ),
+        kill=kill or (lambda: None),
+    )
+    return flow
 
 
 # ---------------------------------------------------------------------------
@@ -89,7 +109,7 @@ class TestTlsClienthello:
             ),
             ignore_connection=False,
         )
-        tls_clienthello(data)
+        _addon.tls_clienthello(data)
         assert data.ignore_connection is True
 
     def test_normal_domain_not_ignored(self):
@@ -99,7 +119,7 @@ class TestTlsClienthello:
             ),
             ignore_connection=False,
         )
-        tls_clienthello(data)
+        _addon.tls_clienthello(data)
         assert data.ignore_connection is False
 
     def test_no_address_does_not_crash(self):
@@ -110,7 +130,7 @@ class TestTlsClienthello:
             ignore_connection=False,
         )
         # Should not raise — address is None
-        tls_clienthello(data)
+        _addon.tls_clienthello(data)
         assert data.ignore_connection is False
 
 
@@ -122,30 +142,18 @@ class TestTlsClienthello:
 class TestRequest:
     def test_blocked_domain_killed(self):
         killed = []
-        flow = types.SimpleNamespace(
-            request=types.SimpleNamespace(
-                pretty_host="http-intake.logs.us5.datadoghq.com",
-                method="POST",
-                url="https://http-intake.logs.us5.datadoghq.com/v1/input",
-                headers={},
-            ),
-            kill=lambda: killed.append(True),
-        )
-        request(flow)
+        flow = mock_flow("http-intake.logs.us5.datadoghq.com", method="POST",
+                         url="https://http-intake.logs.us5.datadoghq.com/v1/input",
+                         kill=lambda: killed.append(True))
+        _addon.request(flow)
         assert len(killed) == 1
 
     def test_allowed_domain_not_killed(self):
         killed = []
-        flow = types.SimpleNamespace(
-            request=types.SimpleNamespace(
-                pretty_host="api.anthropic.com",
-                method="GET",
-                url="https://api.anthropic.com/v1/messages",
-                headers={},
-            ),
-            kill=lambda: killed.append(True),
-        )
-        request(flow)
+        flow = mock_flow("api.anthropic.com",
+                         url="https://api.anthropic.com/v1/messages",
+                         kill=lambda: killed.append(True))
+        _addon.request(flow)
         assert len(killed) == 0
 
 
@@ -329,17 +337,8 @@ class TestTrafficBuffer:
     def test_record_request_adds_entry(self):
         addon = RulesAddon()
         addon.rules = []
-        flow = types.SimpleNamespace(
-            request=types.SimpleNamespace(
-                pretty_host="example.com",
-                method="GET",
-                url="https://example.com/",
-                headers={},
-            ),
-            kill=lambda: None,
-        )
-        request_fn = addon.request
-        request_fn(flow)
+        flow = mock_flow("example.com")
+        addon.request(flow)
         assert len(addon._traffic) == 1
         assert addon._traffic[0].host == "example.com"
 
@@ -347,15 +346,7 @@ class TestTrafficBuffer:
         addon = RulesAddon()
         addon.rules = []
         for _ in range(3):
-            flow = types.SimpleNamespace(
-                request=types.SimpleNamespace(
-                    pretty_host="example.com",
-                    method="GET",
-                    url="https://example.com/",
-                    headers={},
-                ),
-                kill=lambda: None,
-            )
+            flow = mock_flow("example.com")
             addon.request(flow)
         assert addon._domain_counts.get("example.com") == 3
 
@@ -363,15 +354,7 @@ class TestTrafficBuffer:
         addon = RulesAddon()
         addon.rules = []
         for i in range(600):
-            flow = types.SimpleNamespace(
-                request=types.SimpleNamespace(
-                    pretty_host=f"host{i}.com",
-                    method="GET",
-                    url=f"https://host{i}.com/",
-                    headers={},
-                ),
-                kill=lambda: None,
-            )
+            flow = mock_flow(f"host{i}.com", url=f"https://host{i}.com/")
             addon.request(flow)
         assert len(addon._traffic) == 500
 
@@ -389,15 +372,7 @@ class TestHeaderManipulation:
                  header="X-Secret"),
         ]
         headers = {"X-Secret": "value", "Accept": "text/html"}
-        flow = types.SimpleNamespace(
-            request=types.SimpleNamespace(
-                pretty_host="example.com",
-                method="GET",
-                url="https://example.com/",
-                headers=headers,
-            ),
-            kill=lambda: None,
-        )
+        flow = mock_flow("example.com", headers=headers)
         addon.request(flow)
         assert "X-Secret" not in headers
         assert "Accept" in headers
@@ -409,15 +384,7 @@ class TestHeaderManipulation:
                  header="X-Missing"),
         ]
         headers = {"Accept": "text/html"}
-        flow = types.SimpleNamespace(
-            request=types.SimpleNamespace(
-                pretty_host="example.com",
-                method="GET",
-                url="https://example.com/",
-                headers=headers,
-            ),
-            kill=lambda: None,
-        )
+        flow = mock_flow("example.com", headers=headers)
         addon.request(flow)  # should not raise
         assert "Accept" in headers
 
@@ -428,17 +395,59 @@ class TestHeaderManipulation:
                  header="Authorization", value="Bearer token123"),
         ]
         headers = {}
-        flow = types.SimpleNamespace(
-            request=types.SimpleNamespace(
-                pretty_host="api.example.com",
-                method="GET",
-                url="https://api.example.com/v2/data",
-                headers=headers,
-            ),
-            kill=lambda: None,
-        )
+        flow = mock_flow("api.example.com", url="https://api.example.com/v2/data",
+                         headers=headers)
         addon.request(flow)
         assert headers["Authorization"] == "Bearer token123"
+
+
+# ---------------------------------------------------------------------------
+# Error / close hooks (flow_map cleanup)
+# ---------------------------------------------------------------------------
+
+
+class TestErrorAndClose:
+    def test_error_cleans_flow_map(self):
+        addon = RulesAddon()
+        addon.rules = []
+        flow = mock_flow("example.com")
+        addon.request(flow)
+        assert flow.id in addon._flow_map
+        addon.error(flow)
+        assert flow.id not in addon._flow_map
+
+    def test_error_sets_status_zero(self):
+        addon = RulesAddon()
+        addon.rules = []
+        flow = mock_flow("example.com")
+        addon.request(flow)
+        entry = addon._traffic[-1]
+        assert entry.status is None
+        addon.error(flow)
+        assert entry.status == 0
+
+    def test_error_on_unknown_flow_no_crash(self):
+        addon = RulesAddon()
+        flow = mock_flow("example.com")
+        addon.error(flow)  # should not raise
+
+    def test_close_cleans_flow_map(self):
+        addon = RulesAddon()
+        addon.rules = []
+        flow = mock_flow("example.com")
+        addon.request(flow)
+        assert flow.id in addon._flow_map
+        addon.close(flow)
+        assert flow.id not in addon._flow_map
+
+    def test_close_after_response_no_crash(self):
+        """close() on a flow already removed by response() should not raise."""
+        addon = RulesAddon()
+        addon.rules = []
+        flow = mock_flow("example.com")
+        addon.request(flow)
+        addon._flow_map.pop(flow.id, None)  # simulate response() cleanup
+        addon.close(flow)  # should not raise
 
 
 # ---------------------------------------------------------------------------
