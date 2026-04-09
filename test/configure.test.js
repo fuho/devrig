@@ -63,7 +63,7 @@ describe('configure', () => {
     try {
       // Answers in order:
       //   project name, shared env Y/N, dev server Y, command, port, timeout,
-      //   chrome Y, port, git name, git email, template N, confirm write Y
+      //   chrome Y, port, devrig port, git name, git email, template N, confirm write Y
       const answers = [
         'test-project',
         '',
@@ -73,6 +73,7 @@ describe('configure', () => {
         '10',
         'y',
         '9229',
+        '',
         'Test User',
         'test@example.com',
         'n',
@@ -114,9 +115,9 @@ describe('configure', () => {
       ].join('\n');
       writeFileSync(join(tmpDir, '.env'), existingEnv);
 
-      // Answers: project name, shared env Y/N, dev server N, chrome N, git name, git email, confirm write Y
+      // Answers: project name, shared env Y/N, dev server N, chrome N, devrig port, git name, git email, confirm write Y
       // (no template question — dev server is off)
-      const answers = ['updated-proj', '', 'n', 'n', 'New User', 'new@example.com', 'y'];
+      const answers = ['updated-proj', '', 'n', 'n', '', 'New User', 'new@example.com', 'y'];
 
       await runConfigure(tmpDir, answers);
 
@@ -138,7 +139,7 @@ describe('configure', () => {
 
     try {
       // Feed invalid port "banana" for dev server
-      // Answers: project, shared Y/N, dev Y, command, bad port, timeout, chrome Y, port, git name, email, template N, confirm Y
+      // Answers: project, shared Y/N, dev Y, command, bad port, timeout, chrome Y, port, devrig port, git name, email, template N, confirm Y
       const answers = [
         'test-project',
         '',
@@ -148,6 +149,7 @@ describe('configure', () => {
         '10',
         'y',
         '9229',
+        '',
         'Test User',
         'test@example.com',
         'n',
@@ -169,7 +171,7 @@ describe('configure', () => {
 
     try {
       // Feed bad project name (uppercase, spaces) and invalid port
-      // Answers: project, shared Y/N, dev Y, command, bad port, timeout, chrome Y, bad port, git name, email, template N, confirm Y
+      // Answers: project, shared Y/N, dev Y, command, bad port, timeout, chrome Y, bad port, devrig port, git name, email, template N, confirm Y
       const answers = [
         'My Cool Project!',
         '',
@@ -179,6 +181,7 @@ describe('configure', () => {
         '10',
         'y',
         '99999',
+        '',
         'Test User',
         'test@example.com',
         'n',

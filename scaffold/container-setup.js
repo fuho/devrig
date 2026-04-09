@@ -6,7 +6,7 @@
  */
 
 import { execFileSync, spawn } from 'node:child_process';
-import { existsSync, readFileSync, mkdirSync, writeFileSync, chmodSync } from 'node:fs';
+import { existsSync, readFileSync, mkdirSync, writeFileSync, chmodSync, openSync, closeSync } from 'node:fs';
 import { join } from 'node:path';
 
 function log(msg) {
@@ -104,6 +104,39 @@ if (process.env.BRIDGE_ENABLED === '1') {
   setupChromeBridge();
 }
 disableAutoUpdater();
+
+// -- Devrig server (dashboard + API proxy) ------------------------------------
+
+function startDevrigServer() {
+  const script = '/usr/local/bin/devrig-server.js';
+  if (!existsSync(script)) {
+    log('WARNING: devrig-server.js not found — dashboard will not be available');
+    return;
+  }
+
+  const logDir = join(process.env.HOME || '/home/dev', '.claude', 'logs');
+  const logPath = join(logDir, 'devrig-server.log');
+  mkdirSync(logDir, { recursive: true });
+
+  // Respawn wrapper: restart the server when it exits (supports hot reload)
+  function spawnServer() {
+    const fd = openSync(logPath, 'a');
+    const child = spawn('node', [script], {
+      stdio: ['ignore', fd, fd],
+      env: process.env,
+    });
+    closeSync(fd);
+    child.on('exit', (code) => {
+      log(`devrig-server exited (code ${code}), respawning...`);
+      setTimeout(spawnServer, 500);
+    });
+  }
+  spawnServer();
+
+  log(`Devrig server starting on port ${process.env.DEVRIG_PORT || 8083}`);
+}
+
+startDevrigServer();
 
 const sentinel = join(process.env.HOME || '/home/dev', '.claude', 'logs', '.setup-ready');
 writeFileSync(sentinel, `ready ${Date.now() / 1000}\n`);

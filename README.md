@@ -109,9 +109,8 @@ All outbound traffic from the dev container passes through a transparent mitmpro
 | URL                                    | What                                                  |
 | -------------------------------------- | ----------------------------------------------------- |
 | `http://localhost:3000`                | Your dev server (port configurable)                   |
-| `http://localhost:3000/devrig/traffic` | Traffic control — live traffic, rules management       |
+| `http://localhost:8083/devrig/traffic` | Traffic control — live traffic, rules management       |
 | `http://localhost:8081`                | mitmproxy web UI — deep request/response inspection   |
-| `http://localhost:8082`                | Firewall API — rules CRUD, traffic stream (SSE)       |
 
 ### Network logs
 
@@ -139,6 +138,9 @@ ready_timeout = 10        # Seconds to wait for the server to respond
 [chrome_bridge]
 port = 9229               # Chrome debugging protocol port
 
+[devrig]
+port = 8083               # Devrig dashboard port
+
 [claude]
 version = "latest"        # "latest", "stable", or a specific version like "2.1.89"
 # ready_timeout = 120     # Seconds to wait for Claude Code setup
@@ -155,6 +157,7 @@ version = "latest"        # "latest", "stable", or a specific version like "2.1.
 | `port`          | `[dev_server]`    | `3000`             | Port the dev server listens on                       |
 | `ready_timeout` | `[dev_server]`    | `10`               | Seconds to wait for dev server readiness             |
 | `port`          | `[chrome_bridge]` | `9229`             | Chrome debugging protocol port                       |
+| `port`          | `[devrig]`        | `8083`             | Devrig dashboard and API proxy port                  |
 | `version`       | `[claude]`        | `"latest"`         | Claude Code version: "latest", "stable", or "2.1.89" |
 | `ready_timeout` | `[claude]`        | `120`              | Seconds to wait for Claude Code setup                |
 
@@ -248,8 +251,9 @@ scaffold/
   compose.yml           Docker Compose (mitmproxy + dev container)
   entrypoint.sh         Container entrypoint (CA cert install, privilege drop)
   container-setup.js    Runs inside container (bridge setup, settings config)
+  devrig-server.js      Dashboard server (runs inside container, proxies rules API)
   firewall.sh           iptables rules for outbound traffic control
-  traffic.html          Traffic control dashboard (served at /devrig/traffic)
+  traffic.html          Traffic control dashboard
   mitmproxy/
     allowlist.py        Rules engine, traffic streaming, and HTTP API addon
   template/             Starter files for new projects

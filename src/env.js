@@ -40,6 +40,7 @@ const ENV_SCAFFOLD_FILES = [
   'entrypoint.sh',
   'firewall.sh',
   'traffic.html',
+  'devrig-server.js',
 ];
 
 /** Directories copied from scaffold/ into a new environment. */

@@ -21,6 +21,7 @@ export const SCAFFOLD_FILES = [
   'entrypoint.sh',
   'firewall.sh',
   'traffic.html',
+  'devrig-server.js',
 ];
 
 const DEVRIG_START = '<!-- devrig:start -->';
@@ -83,7 +84,7 @@ export function generateClaudeMd(projectDir, cfg) {
     '',
     'Dashboards (when session is running):',
     '- Network traffic: http://localhost:8081',
-    `- Traffic control: http://localhost:${cfg.dev_server_port}/devrig/traffic`,
+    `- Traffic control: http://localhost:${cfg.devrig_port}/devrig/traffic`,
     DEVRIG_END,
   ].join('\n');
 
@@ -99,7 +100,7 @@ export function generateClaudeMd(projectDir, cfg) {
     `- **Network:** outbound traffic filtered through mitmproxy (allowlisted domains only)`,
     '',
     'On first message, check if you have the "Claude in Chrome" MCP tool available.',
-    `If YES: use it to navigate to http://localhost:${cfg.dev_server_port}/devrig/hello_claude to confirm the connection.`,
+    `If YES: use it to navigate to http://localhost:${cfg.devrig_port}/devrig/hello_claude to confirm the connection.`,
     `If NO: tell the user to type /exit and run "devrig start" again — Chrome MCP activates on the second launch.`,
     '',
     'Outbound network is default-allow. Specific domains are blocked (e.g. telemetry). Rules are manageable via the traffic control dashboard.',

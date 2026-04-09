@@ -130,6 +130,7 @@ export async function launch(argv) {
   process.env.HOST_GID = String(userInfo().gid);
   process.env.CLAUDE_VERSION = cfg.claude_version;
   process.env.BRIDGE_ENABLED = cfg.bridge_enabled ? '1' : '0';
+  process.env.DEVRIG_PORT = String(cfg.devrig_port);
 
   // -- Step 7: Preflight checks (launcher.py: preflight) --------------------
 
@@ -290,7 +291,7 @@ export async function launch(argv) {
     // -- Step 13: Open browser (launcher.py: open browser) ------------------
     if (!args['no-chrome']) {
       log('Opening browser...');
-      openBrowser(`http://localhost:${cfg.dev_server_port}/devrig/traffic`);
+      openBrowser(`http://localhost:${cfg.devrig_port}/devrig/traffic`);
     }
   }
 
@@ -401,7 +402,7 @@ export async function launch(argv) {
     log(`Dev server: http://localhost:${cfg.dev_server_port}`);
   }
   log('Network inspector: http://localhost:8081  (password: devrig)');
-  log(`Traffic control: http://localhost:${cfg.dev_server_port}/devrig/traffic`);
+  log(`Traffic control: http://localhost:${cfg.devrig_port}/devrig/traffic`);
 
   log('Connecting to Claude Code in container...');
   log(`CLAUDE_PARAMS: ${claudeParams.join(' ') || '<none>'}`);

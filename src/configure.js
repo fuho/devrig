@@ -92,6 +92,9 @@ export async function configure(projectDir) {
     chromePort = parsePort(await ask(rl, 'Chrome debug port', '9229'), 9229);
   }
 
+  // Devrig dashboard port
+  const devrigPort = parsePort(await ask(rl, 'Devrig dashboard port', '8083'), 8083);
+
   // Git info
   const gitName = await ask(rl, 'Git author name', gitConfig('user.name'));
   const gitEmail = await ask(rl, 'Git author email', gitConfig('user.email'));
@@ -121,6 +124,7 @@ export async function configure(projectDir) {
   } else {
     console.log('    chrome bridge  disabled');
   }
+  console.log(`    dashboard      port ${devrigPort}`);
   console.log(`    git author     ${gitName} <${gitEmail}>`);
   if (copyTemplate) {
     console.log('    template       server.js + index.html');
@@ -166,6 +170,7 @@ export async function configure(projectDir) {
     toml += `# [chrome_bridge]\n# port = 9229\n\n`;
   }
 
+  toml += `[devrig]\nport = ${devrigPort}\n\n`;
   toml += `# [claude]\n# version = "latest"\n`;
 
   writeFileSync(tomlPath, toml);

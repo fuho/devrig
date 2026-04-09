@@ -10,6 +10,7 @@ Devrig creates several log files across the host and container. All logs are pla
 | Bridge errors     | `.devrig/logs/bridge-host.err`              | `src/launcher.js`             | Chrome bridge stderr                          |
 | Container startup | `{envDir}/home/.claude/logs/entrypoint.log` | `scaffold/entrypoint.sh`      | Container setup output                        |
 | Setup sentinel    | `{envDir}/home/.claude/logs/.setup-ready`   | `scaffold/container-setup.js` | Empty file signaling setup complete           |
+| Devrig server     | `{envDir}/home/.claude/logs/devrig-server.log` | `scaffold/container-setup.js` | Devrig dashboard server output                |
 | Traffic captures  | `{envDir}/mitmproxy/logs/*.mitm`            | mitmproxy sidecar             | Binary HTTP/S capture files (hourly rotation) |
 
 `{envDir}` is the resolved environment directory — `~/.devrig/shared/` for the shared environment, or `.devrig/` for `environment = "local"`.

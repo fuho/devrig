@@ -230,6 +230,27 @@ describe('scaffold content', () => {
     });
   });
 
+  describe('devrig-server.js', () => {
+    it('exists in scaffold', () => {
+      assert.ok(existsSync(join(scaffoldDir, 'devrig-server.js')));
+    });
+
+    it('serves devrig routes', () => {
+      const content = readFileSync(join(scaffoldDir, 'devrig-server.js'), 'utf8');
+      assert.ok(content.includes('/devrig/hello_claude'), 'should serve hello_claude');
+      assert.ok(content.includes('/devrig/traffic'), 'should serve traffic dashboard');
+      assert.ok(content.includes('/devrig/events'), 'should serve SSE events');
+      assert.ok(content.includes('/devrig/status'), 'should serve status');
+    });
+
+    it('proxies to mitmproxy API', () => {
+      const content = readFileSync(join(scaffoldDir, 'devrig-server.js'), 'utf8');
+      assert.ok(content.includes('localhost:8082'), 'should proxy to mitmproxy');
+      assert.ok(content.includes('/rules'), 'should proxy rules');
+      assert.ok(content.includes('/domains'), 'should proxy domains');
+    });
+  });
+
   describe('mitmproxy/allowlist.py', () => {
     it('exists in scaffold', () => {
       assert.ok(existsSync(join(scaffoldDir, 'mitmproxy', 'allowlist.py')));

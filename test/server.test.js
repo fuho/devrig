@@ -1,14 +1,13 @@
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { mkdtempSync, mkdirSync, rmSync, cpSync } from 'node:fs';
+import { mkdtempSync, rmSync, cpSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const templateDir = join(__dirname, '..', 'scaffold', 'template');
-const scaffoldDir = join(__dirname, '..', 'scaffold');
 
 describe('template server', () => {
   let tmp;
@@ -17,10 +16,8 @@ describe('template server', () => {
 
   before(async () => {
     tmp = mkdtempSync(join(tmpdir(), 'devrig-srv-'));
-    mkdirSync(join(tmp, '.devrig'));
     cpSync(join(templateDir, 'server.js'), join(tmp, 'server.js'));
     cpSync(join(templateDir, 'index.html'), join(tmp, 'index.html'));
-    cpSync(join(scaffoldDir, 'traffic.html'), join(tmp, '.devrig', 'traffic.html'));
 
     proc = spawn('node', ['server.js'], {
       cwd: tmp,
@@ -55,51 +52,8 @@ describe('template server', () => {
     assert.ok((await res.text()).includes('devrig'));
   });
 
-  it('serves /devrig/traffic from .devrig/traffic.html', async () => {
-    const res = await fetch(`http://localhost:${PORT}/devrig/traffic`);
-    assert.equal(res.status, 200);
-    assert.ok((await res.text()).includes('Traffic Control'));
-  });
-
-  it('returns JSON from /devrig/status', async () => {
-    const res = await fetch(`http://localhost:${PORT}/devrig/status`);
-    assert.equal(res.status, 200);
-    const json = await res.json();
-    assert.equal(typeof json.agentConnected, 'boolean');
-    assert.equal(typeof json.agentName, 'string');
-    assert.equal(typeof json.startedAt, 'string');
-  });
-
-  it('marks agent as connected after GET /devrig/hello_claude', async () => {
-    const res = await fetch(`http://localhost:${PORT}/devrig/hello_claude`);
-    assert.equal(res.status, 200);
-    const json = await res.json();
-    assert.equal(json.ok, true);
-
-    const status = await fetch(`http://localhost:${PORT}/devrig/status`);
-    const statusJson = await status.json();
-    assert.equal(statusJson.agentConnected, true);
-  });
-
   it('returns 404 for missing files', async () => {
     const res = await fetch(`http://localhost:${PORT}/nonexistent.html`);
     assert.equal(res.status, 404);
-  });
-
-  it('streams SSE events on /devrig/events', async () => {
-    const res = await fetch(`http://localhost:${PORT}/devrig/events`);
-    assert.equal(res.status, 200);
-    assert.equal(res.headers.get('content-type'), 'text/event-stream');
-    const reader = res.body.getReader();
-    const { value } = await reader.read();
-    reader.cancel();
-    const text = new TextDecoder().decode(value);
-    assert.ok(text.includes('event: connected'), 'should include connected event');
-    // Agent was marked connected by the previous test, so the catch-up
-    // agent-connected event should appear in the initial response
-    assert.ok(
-      text.includes('event: agent-connected'),
-      'should include agent-connected catch-up event',
-    );
   });
 });

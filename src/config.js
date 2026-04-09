@@ -70,6 +70,7 @@ export function loadConfig(projectDir) {
   const dev = raw.dev_server ?? {};
   const bridge = raw.chrome_bridge ?? {};
   const claude = raw.claude ?? {};
+  const devrig = raw.devrig ?? {};
 
   const rawEnv = raw.environment ?? 'shared';
   const environment = rawEnv === 'local' ? 'local' : 'shared';
@@ -88,6 +89,7 @@ export function loadConfig(projectDir) {
     dev_server_timeout: dev.ready_timeout ?? 10,
     claude_timeout: claude.ready_timeout ?? 120,
     claude_version: claude.version ?? 'latest',
+    devrig_port: devrig.port ?? 8083,
   };
 }
 

@@ -84,6 +84,8 @@ iptables -A OUTPUT -m owner --uid-owner "$MITM_UID" -j ACCEPT
 iptables -A OUTPUT -p tcp --dport 8080 -j ACCEPT
 iptables -A OUTPUT -p tcp --dport 8081 -j ACCEPT
 iptables -A OUTPUT -p tcp --dport 8082 -j ACCEPT
+# Allow devrig server port (dashboard + API proxy)
+iptables -A OUTPUT -p tcp --dport "${DEVRIG_PORT:-8083}" -j ACCEPT
 
 # Block everything else with an immediate reject (not silent drop)
 iptables -A OUTPUT -j REJECT --reject-with icmp-port-unreachable

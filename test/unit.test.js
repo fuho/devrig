@@ -231,6 +231,20 @@ describe('loadConfig environment field', () => {
     const cfg = loadConfig(tmpDir);
     assert.equal(cfg.environment, 'local');
   });
+
+  it('defaults devrig_port to 8083', () => {
+    tmpDir = mkdtempSync(join(tmpdir(), 'devrig-test-'));
+    writeFileSync(join(tmpDir, 'devrig.toml'), 'project = "test"');
+    const cfg = loadConfig(tmpDir);
+    assert.equal(cfg.devrig_port, 8083);
+  });
+
+  it('reads devrig_port from [devrig] section', () => {
+    tmpDir = mkdtempSync(join(tmpdir(), 'devrig-test-'));
+    writeFileSync(join(tmpDir, 'devrig.toml'), 'project = "test"\n\n[devrig]\nport = 9090\n');
+    const cfg = loadConfig(tmpDir);
+    assert.equal(cfg.devrig_port, 9090);
+  });
 });
 
 // ---------------------------------------------------------------------------

@@ -13,6 +13,8 @@
 - **Agent connection indicator** in traffic dashboard — "Claude: connected" dot with clickable header inspection
 - **mitmweb deep link** in detail pane — opens the flow in mitmproxy's built-in UI for replay, export, and modification
 - Dark-themed scrollbars matching dashboard aesthetic
+- **Dedicated devrig server** — infrastructure routes (`/devrig/hello_claude`, `/devrig/traffic`, `/devrig/events`, `/devrig/status`) now run on a dedicated Node.js server inside the dev container (port 8083 by default, configurable via `[devrig] port` in toml). Reverse-proxies the mitmproxy rules API so the browser only needs one port. Works independently of the user's dev server — `devrig start --no-dev-server` now has full dashboard support
+- **Configurable devrig dashboard port** via `devrig.toml` `[devrig] port` and the configuration wizard
 - Detail pane payload blocks expand to full height (no inner scroll)
 
 ### Fixes
@@ -41,10 +43,8 @@
 - **Environments simplified** — collapsed three modes (`"default"`, named, `"local"`) to two (`"shared"`, `"local"`). Existing `environment = "default"` configs are auto-normalized to `"shared"`. Legacy `~/.devrig/environments/default/` migrated to `~/.devrig/shared/` on first access. `devrig env` reduced to `inspect` + `reset` (removed `list`, `create`, `delete`)
 - **`devrig config` confirmation step** — wizard now shows a summary of all settings and files before writing anything to disk
 - **`devrig config` template question** — starter template only offered when dev server is enabled and no existing server.js/index.html
-
-### TODO
-
-- Traefik reverse proxy for multi-service projects (when dev server runs in container)
+- **Template server.js simplified** — devrig routes removed from template, now a plain static file server (~40 lines). Devrig features work regardless of user's dev server choice
+- **Port 8082 no longer exposed to host** — rules API proxied through devrig server on port 8083
 
 ## 0.7.1 — 2026-04-08
 
