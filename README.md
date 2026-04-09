@@ -32,14 +32,10 @@ Here's what `devrig start` looks like:
 [devrig] Building Docker image (files changed)...
 [devrig] Build complete.
 [devrig] Chrome bridge started on port 9229
-[devrig] Starting dev server: npm run dev
-[devrig] Dev server ready at http://localhost:3000
-[devrig] Opening browser...
 [devrig] Waiting for Claude Code to be ready in container...
 [devrig] Claude Code is ready.
-[devrig] Dev server: http://localhost:3000
 [devrig] Network inspector: http://localhost:8081  (password: devrig)
-[devrig] Traffic control: http://localhost:3000/devrig/traffic
+[devrig] Traffic control: http://localhost:8083/devrig/traffic
 [devrig] Connecting to Claude Code in container...
 ```
 

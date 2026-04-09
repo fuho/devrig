@@ -8,7 +8,7 @@ request URL or host.
 Usage:
   mitmweb --mode transparent -s /addons/allowlist.py
 
-API (port 8082):
+API (port 8082, internal — proxied to host via devrig-server on port 8083):
   GET  /rules            — list all rules
   POST /rules            — create a rule
   PUT  /rules/{id}       — update a rule

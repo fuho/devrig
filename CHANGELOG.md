@@ -6,7 +6,7 @@
 
 - **Traffic control dashboard** at `/devrig/traffic` (renamed from `/devrig/firewall`) — live traffic stream with pause/resume/clear, domain discovery with request counts, rules management with enable/disable/delete, and add-rule form with client-side regex validation and match preview
 - **Rules engine** — replaces hardcoded `BLOCKED_DOMAINS`/`PASSTHROUGH_DOMAINS` sets with a regex-based rules engine supporting four rule types: `block`, `passthrough`, `strip_header`, `add_header`. Rules are evaluated first-match against the full URL, then hostname
-- **Rules API** on port 8082 — REST endpoints for rules CRUD (`GET/POST/PUT/DELETE /rules`), SSE live traffic stream (`GET /traffic`), domain hit counts (`GET /domains`), recent traffic history (`GET /traffic/recent`). CORS headers included
+- **Rules API** — REST endpoints for rules CRUD (`GET/POST/PUT/DELETE /rules`), SSE live traffic stream (`GET /traffic`), domain hit counts (`GET /domains`), recent traffic history (`GET /traffic/recent`). Runs on mitmproxy port 8082 internally, proxied through devrig server on port 8083
 - Rules persist across container restarts via `rules.json` (bind-mounted from `{envDir}/rules/`)
 - Quick actions: click a domain in the domains panel to pre-fill a block rule in the form
 - **`/devrig/hello_claude` endpoint** — Claude checks in via Chrome MCP; returns a personalized welcome page showing project name, git branch, latest commit, connection speed, proxy traffic stats, and top domains. Browsers get styled HTML, curl/fetch gets JSON
@@ -26,7 +26,7 @@
 - **`devrig update` overhaul** — fixed early return that skipped scaffold directory sync, template files, UI files, and CLAUDE.md regeneration when scaffold files were already up to date. Update now runs all steps independently
 - `devrig update` now detects and reports changes in scaffold directories (`mitmproxy/allowlist.py` etc.) with per-file diff reporting
 - `devrig update` now detects and offers to update template files (`server.js`, `index.html`) in the project root
-- `devrig update` now copies UI files to project `.devrig/` for named environments
+- `devrig update` now copies UI files to project `.devrig/` for shared environments
 - `devrig update` now sets executable permissions (`chmod 755`) on `entrypoint.sh`, `container-setup.js`, `firewall.sh` after copying
 - `devrig update` now ensures `rules/` and `logs/` directories exist in project `.devrig/`
 - `devrig update -f` short flag added (alias for `--force`)

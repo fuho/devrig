@@ -19,12 +19,13 @@ Container (dev)                    Host
 │  mitmproxy   │                  │  bridge-host │
 │  (port 8080) │                  │  (port 9229) │
 │  Web UI:8081 │                  │  0.0.0.0 ¹   │
-│  API:8082    │                  │              │
+│  API:8082 ²  │                  │              │
 └──────┬───────┘                  └──────────────┘
        │
        ▼ internet
 
 ¹ bridge-host.cjs defaults to 127.0.0.1; launcher sets BRIDGE_HOST=0.0.0.0
+² port 8082 is internal only; proxied to host via devrig-server.js on port 8083
 ```
 
 ## Key Learnings
@@ -113,7 +114,7 @@ Moving just the symlink doesn't work (target is under the bind mount). Must copy
 
 ### Live Rules Configuration
 
-The traffic control dashboard at `/devrig/traffic` provides runtime rule management via an HTTP API on port 8082. Rules are stored as regex patterns and support four actions:
+The traffic control dashboard at `/devrig/traffic` provides runtime rule management via the mitmproxy rules API (port 8082 internal, proxied through devrig-server on port 8083). Rules are stored as regex patterns and support four actions:
 
 | Type | Action |
 |------|--------|

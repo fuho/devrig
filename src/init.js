@@ -187,7 +187,7 @@ export async function init(projectDir) {
       cpSync(trafficSrc, join(targetDir, 'traffic.html'));
     }
 
-    // Create rules directory for firewall API persistence
+    // Create rules directory for rules API persistence
     mkdirSync(join(targetDir, 'rules'), { recursive: true });
   } else {
     // Shared environment: ensure it exists at ~/.devrig/shared/
@@ -203,7 +203,7 @@ export async function init(projectDir) {
       cpSync(trafficSrc, join(targetDir, 'traffic.html'));
     }
 
-    // Create rules directory for firewall API persistence
+    // Create rules directory for rules API persistence
     mkdirSync(join(targetDir, 'rules'), { recursive: true });
   }
 
