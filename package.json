@@ -1,6 +1,6 @@
 {
   "name": "devrig",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "description": "Containerized AI coding environment with browser control",
   "type": "module",
   "bin": {
