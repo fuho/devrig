@@ -1,8 +1,8 @@
 // @ts-check
 /**
- * env.js — Named environment CRUD operations.
+ * env.js — Shared environment operations.
  *
- * Environments live at ~/.devrig/environments/{name}/ and hold scaffold files
+ * The shared environment lives at ~/.devrig/shared/ and holds scaffold files
  * plus a shared Claude Code home directory. The special name "local" means
  * the environment lives in the project's own .devrig/ directory.
  */
@@ -12,6 +12,7 @@ import {
   mkdirSync,
   cpSync,
   readdirSync,
+  renameSync,
   rmSync,
   readFileSync,
   writeFileSync,
@@ -25,8 +26,8 @@ import { getPackageVersion } from './config.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-/** Root directory for all named environments. */
-const ENVIRONMENTS_ROOT = join(homedir(), '.devrig', 'environments');
+/** Root directory for devrig home. */
+const DEVRIG_HOME = join(homedir(), '.devrig');
 
 /** Files copied from scaffold/ into a new environment. */
 const ENV_SCAFFOLD_FILES = [
@@ -45,53 +46,61 @@ const ENV_SCAFFOLD_FILES = [
 const ENV_SCAFFOLD_DIRS = ['mitmproxy'];
 
 /**
- * Returns the absolute path for a named environment.
- * "local" is not resolved here — callers must handle it separately.
- * @param {string} name
- * @param {string} [root] - Override environments root (for testing).
- * @returns {string}
- */
-export function envDir(name, root = ENVIRONMENTS_ROOT) {
-  if (name === 'local') {
-    die('envDir() should not be called with "local" — use the project .devrig/ path directly.');
-  }
-  return join(root, name);
-}
-
-/**
- * Ensures a named environment exists with scaffold files and home directory.
+ * Ensures the shared environment exists with scaffold files and home directory.
  * Creates it if missing. Updates scaffold files if the version marker differs.
- * @param {string} name
- * @param {string} [root] - Override environments root (for testing).
- * @returns {string} The absolute path to the environment directory.
+ * Migrates legacy ~/.devrig/environments/default/ to ~/.devrig/shared/ if needed.
+ * @param {string} [root] - Override devrig home (for testing).
+ * @returns {string} The absolute path to the shared environment directory.
  */
-export function ensureEnv(name, root = ENVIRONMENTS_ROOT) {
-  const dir = envDir(name, root);
+export function ensureSharedEnv(root = DEVRIG_HOME) {
+  const sharedDir = join(root, 'shared');
+
+  // Migration: rename legacy environments/default/ to shared/
+  const legacyDefault = join(root, 'environments', 'default');
+  if (!existsSync(sharedDir) && existsSync(legacyDefault)) {
+    log('Migrating environment "default" \u2192 shared...');
+    mkdirSync(dirname(sharedDir), { recursive: true });
+    renameSync(legacyDefault, sharedDir);
+  }
+
+  // Warn about orphaned named environments
+  const legacyEnvs = join(root, 'environments');
+  if (existsSync(legacyEnvs)) {
+    try {
+      const remaining = readdirSync(legacyEnvs).filter(d => d !== '.DS_Store');
+      if (remaining.length > 0) {
+        log(`WARNING: Orphaned environments found: ${remaining.join(', ')}. Back up ~/.devrig/environments/ if needed.`);
+      }
+    } catch {
+      /* ignore read errors */
+    }
+  }
+
   const scaffoldDir = join(__dirname, '..', 'scaffold');
   const version = getPackageVersion();
-  const versionFile = join(dir, '.devrig-version');
+  const versionFile = join(sharedDir, '.devrig-version');
 
   // Check if already up to date
   if (existsSync(versionFile)) {
     const existing = readFileSync(versionFile, 'utf8').trim();
-    if (existing === version) return dir;
-    log(`Updating environment "${name}" from v${existing} to v${version}...`);
-  } else if (existsSync(dir)) {
-    log(`Updating environment "${name}" to v${version}...`);
+    if (existing === version) return sharedDir;
+    log(`Updating shared environment from v${existing} to v${version}...`);
+  } else if (existsSync(sharedDir)) {
+    log(`Updating shared environment to v${version}...`);
   } else {
-    log(`Creating environment "${name}"...`);
+    log('Creating shared environment...');
   }
 
   // Create directory structure
-  mkdirSync(join(dir, 'home', '.claude', 'logs'), { recursive: true });
-  mkdirSync(join(dir, 'mitmproxy', 'logs'), { recursive: true });
-  mkdirSync(join(dir, 'rules'), { recursive: true });
+  mkdirSync(join(sharedDir, 'home', '.claude', 'logs'), { recursive: true });
+  mkdirSync(join(sharedDir, 'mitmproxy', 'logs'), { recursive: true });
+  mkdirSync(join(sharedDir, 'rules'), { recursive: true });
 
   // Copy scaffold files
   for (const file of ENV_SCAFFOLD_FILES) {
     const src = join(scaffoldDir, file);
     if (existsSync(src)) {
-      cpSync(src, join(dir, file));
+      cpSync(src, join(sharedDir, file));
     }
   }
 
@@ -99,70 +108,30 @@ export function ensureEnv(name, root = ENVIRONMENTS_ROOT) {
   for (const subdir of ENV_SCAFFOLD_DIRS) {
     const src = join(scaffoldDir, subdir);
     if (existsSync(src)) {
-      cpSync(src, join(dir, subdir), { recursive: true });
+      cpSync(src, join(sharedDir, subdir), { recursive: true });
     }
   }
 
   // Write version marker
   writeFileSync(versionFile, version + '\n');
 
-  return dir;
+  return sharedDir;
 }
 
 /**
- * Lists all named environments.
- * @param {string} [root] - Override environments root (for testing).
- * @returns {{ name: string, path: string, version: string | null }[]}
+ * Shows information about the shared environment.
+ * @param {string} [root] - Override devrig home (for testing).
  */
-export function listEnvs(root = ENVIRONMENTS_ROOT) {
-  if (!existsSync(root)) return [];
-
-  const entries = readdirSync(root, { withFileTypes: true });
-  return entries
-    .filter((e) => e.isDirectory())
-    .map((e) => {
-      const path = join(root, e.name);
-      const versionFile = join(path, '.devrig-version');
-      let version = null;
-      try {
-        version = readFileSync(versionFile, 'utf8').trim();
-      } catch {
-        /* no version marker */
-      }
-      return { name: e.name, path, version };
-    });
-}
-
-/**
- * Deletes a named environment. Refuses if any active session references it.
- * @param {string} name
- * @param {string} [root] - Override environments root (for testing).
- */
-export function deleteEnv(name, root = ENVIRONMENTS_ROOT) {
-  const dir = envDir(name, root);
+export function inspectSharedEnv(root = DEVRIG_HOME) {
+  const dir = join(root, 'shared');
   if (!existsSync(dir)) {
-    die(`Environment "${name}" does not exist.`);
-  }
-
-  rmSync(dir, { recursive: true, force: true });
-  log(`Deleted environment "${name}".`);
-}
-
-/**
- * Shows information about an environment.
- * @param {string} name
- * @param {string} [root] - Override environments root (for testing).
- */
-export function inspectEnv(name, root = ENVIRONMENTS_ROOT) {
-  const dir = envDir(name, root);
-  if (!existsSync(dir)) {
-    die(`Environment "${name}" does not exist.`);
+    die('Shared environment does not exist. Run "devrig init" to create one.');
   }
 
   const versionFile = join(dir, '.devrig-version');
   const version = existsSync(versionFile) ? readFileSync(versionFile, 'utf8').trim() : 'unknown';
 
-  log(`Environment: ${name}`);
+  log('Environment: shared');
   console.log(`  Path:     ${dir}`);
   console.log(`  Version:  ${version}`);
 
@@ -216,56 +185,26 @@ function formatBytes(bytes) {
 }
 
 const envSubcommandHelp = {
-  list: `List all named environments.
-
-Shows name, version, and path for each environment.
-
-Example:
-  devrig env list`,
-
-  create: `Create a new named environment.
-
-Copies scaffold files and creates the home directory structure.
-
-Usage:
-  devrig env create <name>
-
-Example:
-  devrig env create work`,
-
   reset: `Re-copy scaffold files while preserving Claude auth and memories.
 
 Useful after upgrading devrig or if scaffold files were corrupted.
 The home/ directory (auth tokens, memories, settings) is untouched.
 
 Usage:
-  devrig env reset [name]    (default: "default")
+  devrig env reset
 
 Example:
-  devrig env reset
-  devrig env reset work`,
+  devrig env reset`,
 
-  inspect: `Show details about an environment.
+  inspect: `Show details about the shared environment.
 
 Displays path, version, auth status, and disk usage.
 
 Usage:
-  devrig env inspect [name]  (default: "default")
-
-Example:
   devrig env inspect
-  devrig env inspect work`,
-
-  delete: `Delete a named environment.
-
-Removes the entire environment directory including auth and memories.
-The "default" environment cannot be deleted — use "reset" instead.
-
-Usage:
-  devrig env delete <name>
 
 Example:
-  devrig env delete work`,
+  devrig env inspect`,
 };
 
 /**
@@ -277,71 +216,31 @@ export async function envCommand(argv) {
 
   // Per-subcommand help
   if (sub && (argv.includes('--help') || argv.includes('-h'))) {
-    const canonical = sub === 'ls' ? 'list' : sub === 'rm' ? 'delete' : sub;
-    if (canonical in envSubcommandHelp) {
+    if (sub in envSubcommandHelp) {
       console.log(`Usage: devrig env ${sub}\n`);
-      console.log(envSubcommandHelp[canonical]);
+      console.log(envSubcommandHelp[sub]);
       return;
     }
   }
 
   switch (sub) {
-    case 'list':
-    case 'ls': {
-      const envs = listEnvs();
-      if (envs.length === 0) {
-        log('No environments found. Run "devrig init" to create one.');
-      } else {
-        log(`${envs.length} environment(s):`);
-        for (const env of envs) {
-          const ver = env.version ? `v${env.version}` : 'no version';
-          console.log(`  ${env.name.padEnd(20)} ${ver.padEnd(12)} ${env.path}`);
-        }
-      }
-      break;
-    }
-
-    case 'create': {
-      const name = argv[1];
-      if (!name) die('Usage: devrig env create <name>');
-      const dir = ensureEnv(name);
-      log(`Environment "${name}" ready at ${dir}`);
-      break;
-    }
-
     case 'inspect': {
-      const name = argv[1] || 'default';
-      inspectEnv(name);
+      inspectSharedEnv();
       break;
     }
 
     case 'reset': {
-      const name = argv[1] || 'default';
-      const dir = envDir(name);
+      const dir = join(DEVRIG_HOME, 'shared');
       if (existsSync(dir)) {
-        // Preserve home/ (Claude auth, memories) but re-copy scaffold files
-        log(`Resetting environment "${name}" (preserving home/)...`);
+        log('Resetting shared environment (preserving home/)...');
       }
       // Force re-copy by removing the version marker
       const versionFile = join(dir, '.devrig-version');
       if (existsSync(versionFile)) {
         rmSync(versionFile);
       }
-      const result = ensureEnv(name);
-      log(`Environment "${name}" reset at ${result}`);
-      break;
-    }
-
-    case 'delete':
-    case 'rm': {
-      const name = argv[1];
-      if (!name) die('Usage: devrig env delete <name>');
-      if (name === 'default') {
-        die(
-          'Cannot delete the "default" environment. Use "devrig env reset" to repair it, or "devrig env delete <name>" for named environments.',
-        );
-      }
-      deleteEnv(name);
+      const result = ensureSharedEnv();
+      log(`Shared environment reset at ${result}`);
       break;
     }
 
@@ -349,11 +248,8 @@ export async function envCommand(argv) {
       console.log(`Usage: devrig env <command>
 
 Commands:
-  list              List all environments
-  create <name>     Create a new environment
-  reset [name]      Re-copy scaffold files (preserves Claude auth/memories)
-  inspect [name]    Show environment details (default: "default")
-  delete <name>     Delete a named environment`);
+  inspect     Show shared environment details
+  reset       Re-copy scaffold files (preserves Claude auth/memories)`);
       break;
   }
 }

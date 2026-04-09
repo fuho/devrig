@@ -194,24 +194,18 @@ Example:
 
 See also: devrig init, devrig doctor`,
 
-  env: `Manage named environments.
+  env: `Manage shared environment.
 
-Environments share Claude Code auth, memories, and settings across projects.
-They live at ~/.devrig/environments/<name>/.
+The shared environment keeps Claude Code auth, memories, and settings
+at ~/.devrig/shared/, shared across all projects.
 
 Commands:
-  list              List all environments
-  create <name>     Create a new environment
-  reset [name]      Re-copy scaffold files, preserve auth/memories (default: "default")
-  inspect [name]    Show environment details (default: "default")
-  delete <name>     Delete a named environment
+  inspect     Show shared environment details
+  reset       Re-copy scaffold files, preserve auth/memories
 
 Examples:
-  devrig env list
-  devrig env create work
+  devrig env inspect
   devrig env reset
-  devrig env inspect default
-  devrig env delete work
 
 See also: devrig init`,
 };
@@ -239,7 +233,7 @@ Commands:
   exec      Re-attach to a running container
   doctor    Run pre-flight health checks
   update    Update scaffold files to current version
-  env       Manage named environments
+  env       Manage shared environment
 
 Global flags:
   --verbose  Show detailed diagnostic output

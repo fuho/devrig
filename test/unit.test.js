@@ -177,22 +177,17 @@ describe('resolveEnvDir', () => {
     assert.equal(result, join('/tmp/myproject', '.devrig'));
   });
 
-  it('returns ~/.devrig/environments/{name}/ for named environment', () => {
-    const result = resolveEnvDir({ environment: 'default' }, '/tmp/myproject');
-    assert.equal(result, join(homedir(), '.devrig', 'environments', 'default'));
+  it('returns ~/.devrig/shared/ for shared environment', () => {
+    const result = resolveEnvDir({ environment: 'shared' }, '/tmp/myproject');
+    assert.equal(result, join(homedir(), '.devrig', 'shared'));
   });
 
-  it('returns ~/.devrig/environments/{name}/ for custom environment', () => {
-    const result = resolveEnvDir({ environment: 'work' }, '/tmp/myproject');
-    assert.equal(result, join(homedir(), '.devrig', 'environments', 'work'));
+  it('uses custom devrigHome when provided', () => {
+    const result = resolveEnvDir({ environment: 'shared' }, '/tmp/myproject', '/custom/root');
+    assert.equal(result, join('/custom/root', 'shared'));
   });
 
-  it('uses custom environmentsRoot when provided', () => {
-    const result = resolveEnvDir({ environment: 'work' }, '/tmp/myproject', '/custom/root');
-    assert.equal(result, join('/custom/root', 'work'));
-  });
-
-  it('ignores environmentsRoot for local environment', () => {
+  it('ignores devrigHome for local environment', () => {
     const result = resolveEnvDir({ environment: 'local' }, '/tmp/myproject', '/custom/root');
     assert.equal(result, join('/tmp/myproject', '.devrig'));
   });
@@ -209,18 +204,32 @@ describe('loadConfig environment field', () => {
     if (tmpDir) rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it('defaults environment to "default" when omitted', () => {
+  it('defaults environment to "shared" when omitted', () => {
     tmpDir = mkdtempSync(join(tmpdir(), 'devrig-test-'));
     writeFileSync(join(tmpDir, 'devrig.toml'), 'project = "test"');
     const cfg = loadConfig(tmpDir);
-    assert.equal(cfg.environment, 'default');
+    assert.equal(cfg.environment, 'shared');
   });
 
-  it('reads environment from toml', () => {
+  it('normalizes "default" to "shared"', () => {
+    tmpDir = mkdtempSync(join(tmpdir(), 'devrig-test-'));
+    writeFileSync(join(tmpDir, 'devrig.toml'), 'project = "test"\nenvironment = "default"\n');
+    const cfg = loadConfig(tmpDir);
+    assert.equal(cfg.environment, 'shared');
+  });
+
+  it('normalizes named environments to "shared"', () => {
     tmpDir = mkdtempSync(join(tmpdir(), 'devrig-test-'));
     writeFileSync(join(tmpDir, 'devrig.toml'), 'project = "test"\nenvironment = "work"\n');
     const cfg = loadConfig(tmpDir);
-    assert.equal(cfg.environment, 'work');
+    assert.equal(cfg.environment, 'shared');
+  });
+
+  it('preserves "local" environment', () => {
+    tmpDir = mkdtempSync(join(tmpdir(), 'devrig-test-'));
+    writeFileSync(join(tmpDir, 'devrig.toml'), 'project = "test"\nenvironment = "local"\n');
+    const cfg = loadConfig(tmpDir);
+    assert.equal(cfg.environment, 'local');
   });
 });
 

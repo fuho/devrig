@@ -62,8 +62,8 @@ describe('configure', () => {
 
     try {
       // Answers in order:
-      //   project name, environment, dev server Y, command, port, timeout,
-      //   chrome Y, port, git name, git email, copy template N
+      //   project name, shared env Y/N, dev server Y, command, port, timeout,
+      //   chrome Y, port, git name, git email, template N, confirm write Y
       const answers = [
         'test-project',
         '',
@@ -76,6 +76,7 @@ describe('configure', () => {
         'Test User',
         'test@example.com',
         'n',
+        'y',
       ];
 
       await runConfigure(tmpDir, answers);
@@ -83,6 +84,7 @@ describe('configure', () => {
       // Verify devrig.toml was written
       const toml = readFileSync(join(tmpDir, 'devrig.toml'), 'utf8');
       assert.ok(toml.includes('project = "test-project"'));
+      assert.ok(toml.includes('environment = "shared"'));
       assert.ok(!toml.includes('tool ='));  // tool question removed, hardcoded to claude
       assert.ok(toml.includes('[dev_server]'));
       assert.ok(toml.includes('[chrome_bridge]'));
@@ -112,8 +114,9 @@ describe('configure', () => {
       ].join('\n');
       writeFileSync(join(tmpDir, '.env'), existingEnv);
 
-      // Answers: project name, environment, dev server N, chrome N, git name, git email, copy template N
-      const answers = ['updated-proj', '', 'n', 'n', 'New User', 'new@example.com', 'n'];
+      // Answers: project name, shared env Y/N, dev server N, chrome N, git name, git email, confirm write Y
+      // (no template question — dev server is off)
+      const answers = ['updated-proj', '', 'n', 'n', 'New User', 'new@example.com', 'y'];
 
       await runConfigure(tmpDir, answers);
 
@@ -135,6 +138,7 @@ describe('configure', () => {
 
     try {
       // Feed invalid port "banana" for dev server
+      // Answers: project, shared Y/N, dev Y, command, bad port, timeout, chrome Y, port, git name, email, template N, confirm Y
       const answers = [
         'test-project',
         '',
@@ -147,6 +151,7 @@ describe('configure', () => {
         'Test User',
         'test@example.com',
         'n',
+        'y',
       ];
 
       const { stderr } = await runConfigure(tmpDir, answers);
@@ -164,6 +169,7 @@ describe('configure', () => {
 
     try {
       // Feed bad project name (uppercase, spaces) and invalid port
+      // Answers: project, shared Y/N, dev Y, command, bad port, timeout, chrome Y, bad port, git name, email, template N, confirm Y
       const answers = [
         'My Cool Project!',
         '',
@@ -176,6 +182,7 @@ describe('configure', () => {
         'Test User',
         'test@example.com',
         'n',
+        'y',
       ];
 
       await runConfigure(tmpDir, answers);

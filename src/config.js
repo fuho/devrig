@@ -3,7 +3,7 @@ import { readFileSync, existsSync, statSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { homedir } from 'node:os';
-import { die } from './log.js';
+import { die, log } from './log.js';
 
 const CONFIG_FILE = 'devrig.toml';
 
@@ -71,10 +71,16 @@ export function loadConfig(projectDir) {
   const bridge = raw.chrome_bridge ?? {};
   const claude = raw.claude ?? {};
 
+  const rawEnv = raw.environment ?? 'shared';
+  const environment = rawEnv === 'local' ? 'local' : 'shared';
+  if (rawEnv !== 'local' && rawEnv !== 'shared') {
+    log(`Environment "${rawEnv}" normalized to "shared" — named environments are no longer supported.`);
+  }
+
   return {
     project: raw.project ?? 'claude-project',
     tool: 'claude',  // hardcoded — devrig is Claude-only
-    environment: raw.environment ?? 'default',
+    environment,
     bridge_enabled: 'chrome_bridge' in raw,
     bridge_port: bridge.port ?? 9229,
     dev_server_cmd: dev.command,
@@ -167,19 +173,19 @@ export function getPackageVersion() {
 /**
  * Maps an environment name to an absolute directory path.
  * - "local" → join(projectDir, '.devrig')
- * - anything else → {environmentsRoot}/{name}/
+ * - anything else → {devrigHome}/shared/
  * @param {{ environment: string }} cfg
  * @param {string} projectDir
- * @param {string} [environmentsRoot] - Override environments root (for testing).
+ * @param {string} [devrigHome] - Override devrig home (for testing).
  * @returns {string}
  */
 export function resolveEnvDir(
   cfg,
   projectDir,
-  environmentsRoot = join(homedir(), '.devrig', 'environments'),
+  devrigHome = join(homedir(), '.devrig'),
 ) {
   if (cfg.environment === 'local') {
     return join(projectDir, '.devrig');
   }
-  return join(environmentsRoot, cfg.environment);
+  return join(devrigHome, 'shared');
 }

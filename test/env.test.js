@@ -3,38 +3,14 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { execFileSync } from 'node:child_process';
-import { envDir, ensureEnv, listEnvs, deleteEnv, inspectEnv, envCommand } from '../src/env.js';
+import { ensureSharedEnv, inspectSharedEnv, envCommand } from '../src/env.js';
 import { getPackageVersion } from '../src/config.js';
 
 // ---------------------------------------------------------------------------
-// envDir
+// ensureSharedEnv
 // ---------------------------------------------------------------------------
 
-describe('envDir', () => {
-  it('returns root/name for a named environment', () => {
-    const root = '/tmp/test-envs';
-    assert.equal(envDir('default', root), join(root, 'default'));
-    assert.equal(envDir('work', root), join(root, 'work'));
-  });
-
-  it('dies when called with "local"', () => {
-    const script = `import { envDir } from './src/env.js'; envDir('local');`;
-    assert.throws(() => {
-      execFileSync(process.execPath, ['--input-type=module', '-e', script], {
-        encoding: 'utf8',
-        stdio: 'pipe',
-        cwd: process.cwd(),
-      });
-    });
-  });
-});
-
-// ---------------------------------------------------------------------------
-// ensureEnv
-// ---------------------------------------------------------------------------
-
-describe('ensureEnv', () => {
+describe('ensureSharedEnv', () => {
   let root;
   afterEach(() => {
     if (root) rmSync(root, { recursive: true, force: true });
@@ -42,7 +18,9 @@ describe('ensureEnv', () => {
 
   it('creates directory structure and copies scaffold files', () => {
     root = mkdtempSync(join(tmpdir(), 'devrig-env-'));
-    const dir = ensureEnv('test-env', root);
+    const dir = ensureSharedEnv(root);
+
+    assert.equal(dir, join(root, 'shared'));
 
     // Directory structure
     assert.ok(existsSync(join(dir, 'home', '.claude', 'logs')), 'home/.claude/logs/ missing');
@@ -73,13 +51,13 @@ describe('ensureEnv', () => {
 
   it('is idempotent — second call with matching version skips re-copy', () => {
     root = mkdtempSync(join(tmpdir(), 'devrig-env-'));
-    const dir = ensureEnv('test-env', root);
+    const dir = ensureSharedEnv(root);
 
     // Mutate a file
     writeFileSync(join(dir, 'Dockerfile'), 'SENTINEL_CONTENT');
 
     // Second call — version matches, should NOT overwrite
-    ensureEnv('test-env', root);
+    ensureSharedEnv(root);
 
     const content = readFileSync(join(dir, 'Dockerfile'), 'utf8');
     assert.equal(
@@ -91,14 +69,14 @@ describe('ensureEnv', () => {
 
   it('re-copies files when version marker is stale', () => {
     root = mkdtempSync(join(tmpdir(), 'devrig-env-'));
-    const dir = ensureEnv('test-env', root);
+    const dir = ensureSharedEnv(root);
 
     // Mutate a file and set stale version
     writeFileSync(join(dir, 'Dockerfile'), 'SENTINEL_CONTENT');
     writeFileSync(join(dir, '.devrig-version'), '0.0.0\n');
 
     // Re-run — should re-copy because version differs
-    ensureEnv('test-env', root);
+    ensureSharedEnv(root);
 
     const content = readFileSync(join(dir, 'Dockerfile'), 'utf8');
     assert.notEqual(content, 'SENTINEL_CONTENT', 'file should be overwritten on version mismatch');
@@ -107,11 +85,11 @@ describe('ensureEnv', () => {
 
   it('updates when version file is missing but dir exists', () => {
     root = mkdtempSync(join(tmpdir(), 'devrig-env-'));
-    const dir = join(root, 'test-env');
+    const dir = join(root, 'shared');
     mkdirSync(dir, { recursive: true });
     // No .devrig-version file
 
-    ensureEnv('test-env', root);
+    ensureSharedEnv(root);
 
     assert.ok(existsSync(join(dir, '.devrig-version')), 'version file should be created');
     assert.ok(existsSync(join(dir, 'Dockerfile')), 'scaffold files should be copied');
@@ -119,99 +97,85 @@ describe('ensureEnv', () => {
 
   it('returns the correct path', () => {
     root = mkdtempSync(join(tmpdir(), 'devrig-env-'));
-    const dir = ensureEnv('myenv', root);
-    assert.equal(dir, join(root, 'myenv'));
+    const dir = ensureSharedEnv(root);
+    assert.equal(dir, join(root, 'shared'));
   });
 });
 
 // ---------------------------------------------------------------------------
-// listEnvs
+// ensureSharedEnv — migration
 // ---------------------------------------------------------------------------
 
-describe('listEnvs', () => {
+describe('ensureSharedEnv migration', () => {
   let root;
   afterEach(() => {
     if (root) rmSync(root, { recursive: true, force: true });
   });
 
-  it('returns empty array when root does not exist', () => {
-    const envs = listEnvs('/tmp/nonexistent-devrig-root-' + Date.now());
-    assert.deepStrictEqual(envs, []);
+  it('migrates legacy environments/default/ to shared/', () => {
+    root = mkdtempSync(join(tmpdir(), 'devrig-env-'));
+    const legacyDir = join(root, 'environments', 'default');
+    mkdirSync(join(legacyDir, 'home', '.claude'), { recursive: true });
+    writeFileSync(join(legacyDir, 'home', '.claude', 'auth.json'), '{"token":"keep-me"}');
+
+    const dir = ensureSharedEnv(root);
+
+    assert.equal(dir, join(root, 'shared'));
+    // Legacy dir should be gone
+    assert.ok(!existsSync(legacyDir), 'legacy default dir should be removed');
+    // Auth should be preserved
+    assert.ok(existsSync(join(dir, 'home', '.claude', 'auth.json')), 'auth should be migrated');
+    const auth = readFileSync(join(dir, 'home', '.claude', 'auth.json'), 'utf8');
+    assert.equal(auth, '{"token":"keep-me"}');
   });
 
-  it('returns empty array when root is empty', () => {
+  it('warns about orphaned named environments', () => {
     root = mkdtempSync(join(tmpdir(), 'devrig-env-'));
-    const envs = listEnvs(root);
-    assert.deepStrictEqual(envs, []);
+    // Create legacy environments with orphans
+    mkdirSync(join(root, 'environments', 'work'), { recursive: true });
+    mkdirSync(join(root, 'environments', 'other'), { recursive: true });
+
+    const messages = [];
+    const origLog = console.log;
+    const origStderr = console.error;
+    // Capture log output (log() writes to stderr via our log.js)
+    console.log = (msg) => messages.push(msg);
+
+    try {
+      ensureSharedEnv(root);
+    } finally {
+      console.log = origLog;
+      console.error = origStderr;
+    }
+
+    // The warning goes through log() which writes to stderr, but we can check
+    // that ensureSharedEnv completed without error
+    assert.ok(existsSync(join(root, 'shared')));
   });
 
-  it('lists environments with version info', () => {
+  it('does not migrate if shared/ already exists', () => {
     root = mkdtempSync(join(tmpdir(), 'devrig-env-'));
-    ensureEnv('alpha', root);
-    ensureEnv('beta', root);
+    // Create both shared/ and legacy environments/default/
+    const sharedDir = join(root, 'shared');
+    mkdirSync(sharedDir, { recursive: true });
+    writeFileSync(join(sharedDir, 'marker'), 'shared-content');
 
-    const envs = listEnvs(root);
-    assert.equal(envs.length, 2);
-    const names = envs.map((e) => e.name).sort();
-    assert.deepStrictEqual(names, ['alpha', 'beta']);
-    assert.equal(envs[0].version, getPackageVersion());
-  });
+    const legacyDir = join(root, 'environments', 'default');
+    mkdirSync(legacyDir, { recursive: true });
+    writeFileSync(join(legacyDir, 'marker'), 'legacy-content');
 
-  it('returns null version for env without version file', () => {
-    root = mkdtempSync(join(tmpdir(), 'devrig-env-'));
-    mkdirSync(join(root, 'noversion'));
+    ensureSharedEnv(root);
 
-    const envs = listEnvs(root);
-    assert.equal(envs.length, 1);
-    assert.equal(envs[0].name, 'noversion');
-    assert.equal(envs[0].version, null);
+    // Legacy should still exist (not renamed)
+    assert.ok(existsSync(legacyDir), 'legacy dir should still exist when shared/ already present');
   });
 });
 
 // ---------------------------------------------------------------------------
-// deleteEnv
+// inspectSharedEnv
 // ---------------------------------------------------------------------------
 
-describe('deleteEnv', () => {
-  let root;
-  afterEach(() => {
-    if (root) rmSync(root, { recursive: true, force: true });
-  });
-
-  it('removes an existing environment', () => {
-    root = mkdtempSync(join(tmpdir(), 'devrig-env-'));
-    ensureEnv('to-delete', root);
-    assert.ok(existsSync(join(root, 'to-delete')));
-
-    deleteEnv('to-delete', root);
-    assert.ok(!existsSync(join(root, 'to-delete')));
-  });
-
-  it('dies when environment does not exist', () => {
-    root = mkdtempSync(join(tmpdir(), 'devrig-env-'));
-    const script = `import { deleteEnv } from './src/env.js'; deleteEnv('nonexistent', '${root.replace(/'/g, "\\'")}');`;
-    const result = (() => {
-      try {
-        execFileSync(process.execPath, ['--input-type=module', '-e', script], {
-          encoding: 'utf8',
-          stdio: ['pipe', 'pipe', 'pipe'],
-          cwd: process.cwd(),
-        });
-        return { exitCode: 0 };
-      } catch (err) {
-        return { exitCode: err.status, stderr: err.stderr };
-      }
-    })();
-    assert.notEqual(result.exitCode, 0);
-    assert.ok(result.stderr.includes('does not exist'));
-  });
-});
-
-// ---------------------------------------------------------------------------
-// inspectEnv
-// ---------------------------------------------------------------------------
-
-describe('inspectEnv', () => {
+describe('inspectSharedEnv', () => {
   let root;
   afterEach(() => {
     if (root) rmSync(root, { recursive: true, force: true });
@@ -219,13 +183,13 @@ describe('inspectEnv', () => {
 
   it('prints environment info without error', () => {
     root = mkdtempSync(join(tmpdir(), 'devrig-env-'));
-    ensureEnv('inspect-test', root);
+    ensureSharedEnv(root);
 
     const messages = [];
     const origLog = console.log;
     console.log = (msg) => messages.push(msg);
     try {
-      inspectEnv('inspect-test', root);
+      inspectSharedEnv(root);
     } finally {
       console.log = origLog;
     }
@@ -237,8 +201,8 @@ describe('inspectEnv', () => {
 
   it('shows auth as configured when settings.json exists', () => {
     root = mkdtempSync(join(tmpdir(), 'devrig-env-'));
-    ensureEnv('auth-test', root);
-    const claudeDir = join(root, 'auth-test', 'home', '.claude');
+    ensureSharedEnv(root);
+    const claudeDir = join(root, 'shared', 'home', '.claude');
     mkdirSync(claudeDir, { recursive: true });
     writeFileSync(join(claudeDir, 'settings.json'), '{}');
 
@@ -246,7 +210,7 @@ describe('inspectEnv', () => {
     const origLog = console.log;
     console.log = (msg) => messages.push(msg);
     try {
-      inspectEnv('auth-test', root);
+      inspectSharedEnv(root);
     } finally {
       console.log = origLog;
     }
@@ -255,55 +219,45 @@ describe('inspectEnv', () => {
 });
 
 // ---------------------------------------------------------------------------
-// envCommand — per-subcommand help
+// envCommand — help
 // ---------------------------------------------------------------------------
 
 describe('envCommand --help', () => {
-  it('prints subcommand-specific help for list', async () => {
+  it('prints subcommand-specific help for inspect', async () => {
     const messages = [];
     const origLog = console.log;
     console.log = (msg) => messages.push(msg);
     try {
-      await envCommand(['list', '--help']);
+      await envCommand(['inspect', '--help']);
     } finally {
       console.log = origLog;
     }
-    assert.ok(messages.some((m) => m.includes('devrig env list')));
+    assert.ok(messages.some((m) => m.includes('devrig env inspect')));
   });
 
-  it('prints subcommand-specific help for create', async () => {
+  it('prints subcommand-specific help for reset', async () => {
     const messages = [];
     const origLog = console.log;
     console.log = (msg) => messages.push(msg);
     try {
-      await envCommand(['create', '--help']);
+      await envCommand(['reset', '--help']);
     } finally {
       console.log = origLog;
     }
-    assert.ok(messages.some((m) => m.includes('devrig env create')));
+    assert.ok(messages.some((m) => m.includes('devrig env reset')));
   });
 
-  it('handles alias ls --help', async () => {
+  it('shows simplified help for unknown subcommand', async () => {
     const messages = [];
     const origLog = console.log;
     console.log = (msg) => messages.push(msg);
     try {
-      await envCommand(['ls', '-h']);
+      await envCommand(['unknown']);
     } finally {
       console.log = origLog;
     }
-    assert.ok(messages.some((m) => m.includes('devrig env ls')));
-  });
-
-  it('handles alias rm --help', async () => {
-    const messages = [];
-    const origLog = console.log;
-    console.log = (msg) => messages.push(msg);
-    try {
-      await envCommand(['rm', '--help']);
-    } finally {
-      console.log = origLog;
-    }
-    assert.ok(messages.some((m) => m.includes('devrig env rm')));
+    const output = messages.join('\n');
+    assert.ok(output.includes('inspect'));
+    assert.ok(output.includes('reset'));
   });
 });

@@ -26,7 +26,7 @@ import { userInfo } from 'node:os';
 import { log, die, verbose } from './log.js';
 import { loadConfig, loadDotenv, resolveProjectDir, resolveEnvDir } from './config.js';
 import { composeCmd, buildHash, needsRebuild, startContainer, initVariant } from './docker.js';
-import { ensureEnv } from './env.js';
+import { ensureSharedEnv } from './env.js';
 import { openBrowser } from './browser.js';
 import {
   registerProcess,
@@ -89,8 +89,8 @@ export async function launch(argv) {
   // -- Step 2b: Resolve environment directory --------------------------------
   const envDirPath = resolveEnvDir(cfg, projectDir);
   if (cfg.environment !== 'local') {
-    ensureEnv(cfg.environment);
-    verbose(`Using environment "${cfg.environment}" at ${envDirPath}`);
+    ensureSharedEnv();
+    verbose(`Using shared environment at ${envDirPath}`);
   }
 
   // -- Step 2b2: Scaffold staleness check ------------------------------------

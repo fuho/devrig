@@ -4,7 +4,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createInterface } from 'node:readline/promises';
 import { getPackageVersion, loadConfig } from './config.js';
-import { ensureEnv } from './env.js';
+import { ensureSharedEnv } from './env.js';
 import { configure } from './configure.js';
 import { log, die } from './log.js';
 
@@ -76,7 +76,7 @@ export function generateClaudeMd(projectDir, cfg) {
     'Available commands:',
     '- `devrig start` — launch a container session',
     '- `devrig stop` — stop the running session',
-    '- `devrig env list` — show named environments',
+    '- `devrig env inspect` — show shared environment details',
     '- `devrig doctor` — check system prerequisites',
     '- `devrig logs` — view container, dev server, and network logs',
     '- `devrig exec` — open a shell in the running container',
@@ -189,9 +189,9 @@ export async function init(projectDir) {
     // Create rules directory for firewall API persistence
     mkdirSync(join(targetDir, 'rules'), { recursive: true });
   } else {
-    // Named environment: ensure environment exists at ~/.devrig/environments/{name}/
-    const envPath = ensureEnv(cfg.environment);
-    log(`Using environment "${cfg.environment}" at ${envPath}`);
+    // Shared environment: ensure it exists at ~/.devrig/shared/
+    const envPath = ensureSharedEnv();
+    log(`Using shared environment at ${envPath}`);
 
     // Create project .devrig/ for runtime state only
     mkdirSync(join(targetDir, 'logs'), { recursive: true });
@@ -236,7 +236,7 @@ export async function init(projectDir) {
   if (isLocal) {
     console.log('  .devrig/           Docker infrastructure (Dockerfile, compose, entrypoint)');
   } else {
-    console.log(`  Environment:       "${cfg.environment}" (shared across projects)`);
+    console.log('  Environment:       shared (~/.devrig/shared/)');
   }
   console.log('  devrig.toml        Project configuration');
   console.log('  .env               Environment variables (git author, Claude params)');
