@@ -66,7 +66,8 @@ export function checkDevrigDir(projectDir) {
     const tomlPath = join(projectDir, 'devrig.toml');
     if (existsSync(tomlPath)) {
       const raw = parseTOML(readFileSync(tomlPath, 'utf8'));
-      const environment = raw.environment ?? 'default';
+      const rawEnv = raw.environment ?? 'shared';
+      const environment = rawEnv === 'local' ? 'local' : 'shared';
       envDir = resolveEnvDir({ environment }, projectDir);
     }
   } catch {
@@ -123,7 +124,8 @@ export function checkVersionStaleness(projectDir) {
     const tomlPath = join(projectDir, 'devrig.toml');
     if (existsSync(tomlPath)) {
       const raw = parseTOML(readFileSync(tomlPath, 'utf8'));
-      const environment = raw.environment ?? 'default';
+      const rawEnv = raw.environment ?? 'shared';
+      const environment = rawEnv === 'local' ? 'local' : 'shared';
       envDir = resolveEnvDir({ environment }, projectDir);
     }
   } catch {

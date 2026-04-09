@@ -68,6 +68,7 @@ services:
       - ./.devrig/CLAUDE.md:/workspace/CLAUDE.md:ro
       - devrig-mask:/workspace/.devrig
       - mitmproxy-certs:/usr/local/share/mitmproxy-certs:ro
+      - ${DEVRIG_ENV_DIR:-.devrig}/container-setup.js:/usr/local/bin/container-setup.js:ro
       - ${DEVRIG_ENV_DIR:-.devrig}/devrig-server.js:/usr/local/bin/devrig-server.js:ro
       - ${DEVRIG_ENV_DIR:-.devrig}/traffic.html:/static/traffic.html:ro
     environment:
