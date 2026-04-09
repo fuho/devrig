@@ -62,11 +62,10 @@ describe('configure', () => {
 
     try {
       // Answers in order:
-      //   project name, tool, environment, dev server Y, command, port, timeout,
+      //   project name, environment, dev server Y, command, port, timeout,
       //   chrome Y, port, git name, git email, copy template N
       const answers = [
         'test-project',
-        'claude',
         '',
         'y',
         'npm run dev',
@@ -84,7 +83,7 @@ describe('configure', () => {
       // Verify devrig.toml was written
       const toml = readFileSync(join(tmpDir, 'devrig.toml'), 'utf8');
       assert.ok(toml.includes('project = "test-project"'));
-      assert.ok(toml.includes('tool = "claude"'));
+      assert.ok(!toml.includes('tool ='));  // tool question removed, hardcoded to claude
       assert.ok(toml.includes('[dev_server]'));
       assert.ok(toml.includes('[chrome_bridge]'));
 
@@ -113,8 +112,8 @@ describe('configure', () => {
       ].join('\n');
       writeFileSync(join(tmpDir, '.env'), existingEnv);
 
-      // Answers: project name, tool, environment, dev server N, chrome N, git name, git email, copy template N
-      const answers = ['updated-proj', 'claude', '', 'n', 'n', 'New User', 'new@example.com', 'n'];
+      // Answers: project name, environment, dev server N, chrome N, git name, git email, copy template N
+      const answers = ['updated-proj', '', 'n', 'n', 'New User', 'new@example.com', 'n'];
 
       await runConfigure(tmpDir, answers);
 
@@ -138,7 +137,6 @@ describe('configure', () => {
       // Feed invalid port "banana" for dev server
       const answers = [
         'test-project',
-        'claude',
         '',
         'y',
         'npm run dev',
@@ -168,7 +166,6 @@ describe('configure', () => {
       // Feed bad project name (uppercase, spaces) and invalid port
       const answers = [
         'My Cool Project!',
-        'claude',
         '',
         'y',
         'npm run dev',

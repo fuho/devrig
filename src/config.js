@@ -73,7 +73,7 @@ export function loadConfig(projectDir) {
 
   return {
     project: raw.project ?? 'claude-project',
-    tool: raw.tool ?? 'claude',
+    tool: 'claude',  // hardcoded — devrig is Claude-only
     environment: raw.environment ?? 'default',
     bridge_enabled: 'chrome_bridge' in raw,
     bridge_port: bridge.port ?? 9229,
