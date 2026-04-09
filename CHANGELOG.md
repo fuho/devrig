@@ -38,6 +38,9 @@
 - `devrig config` no longer asks "AI tool" question — devrig is Claude-only; `tool` field removed from generated toml
 - `devrig config` no longer copies `package.json` to project — only `index.html` and `server.js` are offered as starter templates
 - `[claude]` section commented out in generated toml (still parseable if manually added)
+- **Environments simplified** — collapsed three modes (`"default"`, named, `"local"`) to two (`"shared"`, `"local"`). Existing `environment = "default"` configs are auto-normalized to `"shared"`. Legacy `~/.devrig/environments/default/` migrated to `~/.devrig/shared/` on first access. `devrig env` reduced to `inspect` + `reset` (removed `list`, `create`, `delete`)
+- **`devrig config` confirmation step** — wizard now shows a summary of all settings and files before writing anything to disk
+- **`devrig config` template question** — starter template only offered when dev server is enabled and no existing server.js/index.html
 
 ### TODO
 

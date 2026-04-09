@@ -12,7 +12,7 @@ Claude Code is powerful — it installs packages, modifies system files, and run
 - **Traffic inspection** — Full HTTP/S request/response logging via mitmproxy. Web UI at `localhost:8081` for live monitoring. Captured traffic can be analyzed offline.
 - **Filesystem isolation** — Claude Code runs in a Docker container and can only touch `/workspace` (your project) and its own home directory. Your host OS, dotfiles, and other projects are untouched.
 - **Browser control** — Claude Code inside Docker can't access a browser on its own. Devrig bridges Chrome's debugging protocol into the container, letting Claude see and interact with your running app.
-- **Shared environments** — Named environments share Claude Code auth, memories, and settings across projects. Log in once, use everywhere.
+- **Shared environment** — Claude Code auth, memories, and settings stored in `~/.devrig/shared/`, reused across all projects. No per-project login.
 - **Zero config** — `npx devrig init` scaffolds everything. No Dockerfiles to write, no compose files to maintain.
 - **Clean host** — no global packages, no Claude Code installation on your machine, no leftover processes after sessions end.
 
@@ -52,7 +52,7 @@ Here's what `devrig start` looks like:
 | `devrig stop`          | Stop a running session from another terminal                                      |
 | `devrig status`        | Show whether container, bridge, and dev server are running                        |
 | `devrig config`        | Re-run the configuration wizard                                                   |
-| `devrig env <command>` | Manage named environments (`list`, `create`, `reset`, `inspect`, `delete`)        |
+| `devrig env <command>` | Manage shared environment (`inspect`, `reset`)                                    |
 | `devrig clean [flags]` | Remove Docker artifacts (`--project`, `-a/--all`, `-l/--list`, `--orphans`, `-y`) |
 | `devrig logs [flags]`  | Show logs (`--dev-server`, `--container`, `--network`, `-f`)                      |
 | `devrig exec`          | Re-attach to a running container                                                  |
@@ -77,27 +77,22 @@ All commands support `--help` for usage details. Use `devrig help <command>` as 
 
 ## Environments
 
-Environments share Claude Code auth, memories, and settings across projects. They live at `~/.devrig/environments/{name}/`.
+The shared environment stores Claude Code auth, memories, and settings at `~/.devrig/shared/`, reused across all projects.
 
 ```bash
-devrig env list                # Show all environments
-devrig env create work         # Create a named environment
-devrig env inspect default     # Show details (path, version, auth status)
-devrig env delete work         # Remove an environment
+devrig env inspect     # Show details (path, version, auth status, disk usage)
+devrig env reset       # Re-copy scaffold files (preserves auth/memories)
 ```
 
-### Environment types
-
-| Type             | Location                          | Use case                                   |
-| ---------------- | --------------------------------- | ------------------------------------------ |
-| `"default"`      | `~/.devrig/environments/default/` | Most users — shared across all projects    |
-| Named (`"work"`) | `~/.devrig/environments/work/`    | Separate Claude identity for work/personal |
-| `"local"`        | `.devrig/` in project             | Fully isolated, legacy behavior            |
+| Type       | Location              | Use case                                      |
+| ---------- | --------------------- | --------------------------------------------- |
+| `"shared"` | `~/.devrig/shared/`   | Most users — shared across projects (default) |
+| `"local"`  | `.devrig/` in project | Fully isolated per-project                    |
 
 Set during `devrig init` or in `devrig.toml`:
 
 ```toml
-environment = "default"   # or "work", "local", etc.
+environment = "shared"   # or "local"
 ```
 
 ## Network Security
@@ -133,9 +128,8 @@ Devrig writes logs to `.devrig/logs/` (host side) and the environment directory 
 ### devrig.toml
 
 ```toml
-tool = "claude"           # AI tool (currently only "claude")
 project = "my-project"    # Docker image and container name
-environment = "default"   # Shared environment name, or "local"
+environment = "shared"    # "shared" or "local"
 
 [dev_server]
 command = "npm run dev"   # Command to start your dev server
@@ -155,9 +149,8 @@ version = "latest"        # "latest", "stable", or a specific version like "2.1.
 
 | Field           | Section           | Default            | Description                                          |
 | --------------- | ----------------- | ------------------ | ---------------------------------------------------- |
-| `tool`          | top-level         | `"claude"`         | AI tool to use                                       |
 | `project`       | top-level         | `"claude-project"` | Docker image/container name                          |
-| `environment`   | top-level         | `"default"`        | Environment name: "default", named, or "local"       |
+| `environment`   | top-level         | `"shared"`         | `"shared"` or `"local"`                              |
 | `command`       | `[dev_server]`    | _(none)_           | Shell command to start your dev server               |
 | `port`          | `[dev_server]`    | `3000`             | Port the dev server listens on                       |
 | `ready_timeout` | `[dev_server]`    | `10`               | Seconds to wait for dev server readiness             |
@@ -235,7 +228,7 @@ bin/
 src/
   launcher.js        Main orchestrator (build, start, connect)
   config.js          TOML parser, config loading, resolveEnvDir
-  env.js             Named environment CRUD operations
+  env.js             Shared environment operations
   session.js         Session lock, stop, status, staleness
   cleanup.js         Process termination, Docker teardown
   docker.js          Compose commands, build hash, rebuild detection

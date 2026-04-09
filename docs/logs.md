@@ -12,7 +12,7 @@ Devrig creates several log files across the host and container. All logs are pla
 | Setup sentinel    | `{envDir}/home/.claude/logs/.setup-ready`   | `scaffold/container-setup.js` | Empty file signaling setup complete           |
 | Traffic captures  | `{envDir}/mitmproxy/logs/*.mitm`            | mitmproxy sidecar             | Binary HTTP/S capture files (hourly rotation) |
 
-`{envDir}` is the resolved environment directory — `~/.devrig/environments/{name}/` for named environments, or `.devrig/` for `environment = "local"`.
+`{envDir}` is the resolved environment directory — `~/.devrig/shared/` for the shared environment, or `.devrig/` for `environment = "local"`.
 
 ## Viewing Logs
 
@@ -45,5 +45,5 @@ The mitmproxy web UI at `http://localhost:8081` (password: `devrig`) shows live 
 | `devrig stop`                 | Preserved                   | Preserved                         | Preserved                                     |
 | `devrig start`                | Overwritten                 | Appended                          | New hourly files created                      |
 | `devrig clean`                | Untouched                   | Untouched                         | Untouched                                     |
-| `devrig env delete`           | Untouched                   | Deleted with env                  | Deleted with env                              |
+| `devrig env reset`            | Untouched                   | Untouched (home/ preserved)       | Untouched (preserved)                         |
 | Manual `rm -rf .devrig/logs/` | Deleted                     | Untouched                         | Untouched                                     |
