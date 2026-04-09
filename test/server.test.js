@@ -20,8 +20,7 @@ describe('template server', () => {
     mkdirSync(join(tmp, '.devrig'));
     cpSync(join(templateDir, 'server.js'), join(tmp, 'server.js'));
     cpSync(join(templateDir, 'index.html'), join(tmp, 'index.html'));
-    cpSync(join(scaffoldDir, 'setup.html'), join(tmp, '.devrig', 'setup.html'));
-    cpSync(join(scaffoldDir, 'firewall.html'), join(tmp, '.devrig', 'firewall.html'));
+    cpSync(join(scaffoldDir, 'traffic.html'), join(tmp, '.devrig', 'traffic.html'));
 
     proc = spawn('node', ['server.js'], {
       cwd: tmp,
@@ -56,10 +55,10 @@ describe('template server', () => {
     assert.ok((await res.text()).includes('devrig'));
   });
 
-  it('serves /devrig/setup from .devrig/setup.html', async () => {
-    const res = await fetch(`http://localhost:${PORT}/devrig/setup`);
+  it('serves /devrig/traffic from .devrig/traffic.html', async () => {
+    const res = await fetch(`http://localhost:${PORT}/devrig/traffic`);
     assert.equal(res.status, 200);
-    assert.ok((await res.text()).includes('Setup status'));
+    assert.ok((await res.text()).includes('Traffic Control'));
   });
 
   it('returns JSON from /devrig/status', async () => {
@@ -71,18 +70,15 @@ describe('template server', () => {
     assert.equal(typeof json.startedAt, 'string');
   });
 
-  it('marks agent as connected after GET /?agent=test', async () => {
-    // Trigger agent detection with ?agent= query param
-    await fetch(`http://localhost:${PORT}/?agent=test`);
-    const res = await fetch(`http://localhost:${PORT}/devrig/status`);
-    const json = await res.json();
-    assert.equal(json.agentConnected, true);
-  });
-
-  it('serves /devrig/firewall from .devrig/firewall.html', async () => {
-    const res = await fetch(`http://localhost:${PORT}/devrig/firewall`);
+  it('marks agent as connected after GET /devrig/hello_claude', async () => {
+    const res = await fetch(`http://localhost:${PORT}/devrig/hello_claude`);
     assert.equal(res.status, 200);
-    assert.ok((await res.text()).includes('Traffic Control'));
+    const json = await res.json();
+    assert.equal(json.ok, true);
+
+    const status = await fetch(`http://localhost:${PORT}/devrig/status`);
+    const statusJson = await status.json();
+    assert.equal(statusJson.agentConnected, true);
   });
 
   it('returns 404 for missing files', async () => {
