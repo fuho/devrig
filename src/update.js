@@ -194,7 +194,7 @@ export async function update(argv) {
   }
 
   // ── Step 4: UI files to project .devrig/ ────────────────────────────────
-  const UI_FILES = ['setup.html', 'firewall.html'];
+  const UI_FILES = ['traffic.html'];
   const devrigDir = join(projectDir, '.devrig');
   if (existsSync(devrigDir)) {
     for (const file of UI_FILES) {

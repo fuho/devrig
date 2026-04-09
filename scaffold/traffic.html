@@ -1,0 +1,1166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>devrig — Traffic Control</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    /* Scrollbar theme */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #444; }
+    ::-webkit-scrollbar-corner { background: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      background: #0a0a0a; color: #e0e0e0;
+      height: 100vh; display: flex; flex-direction: column; overflow: hidden;
+    }
+
+    /* Header */
+    .header {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 16px; border-bottom: 1px solid #2a2a2a; flex-shrink: 0;
+      flex-wrap: wrap;
+    }
+    .header h1 { font-size: 15px; font-weight: 600; white-space: nowrap; }
+    .header h1 span { color: #888; font-weight: 400; }
+    .search-group {
+      display: flex; gap: 8px; flex: 1; min-width: 200px; max-width: 600px;
+    }
+    .search-box {
+      flex: 1;
+      background: #111; border: 1px solid #2a2a2a; border-radius: 4px;
+      color: #e0e0e0; font-size: 12px; padding: 5px 10px;
+      font-family: 'SF Mono', SFMono-Regular, Consolas, monospace;
+    }
+    .search-box:focus { border-color: #3b82f6; outline: none; }
+    .search-box.invalid { border-color: #f87171; }
+
+    .stats-bar {
+      display: flex; align-items: center; gap: 10px; font-size: 11px; color: #888;
+      white-space: nowrap;
+    }
+    .stats-bar .stat-total { font-variant-numeric: tabular-nums; }
+    .stats-badge {
+      font-size: 10px; padding: 1px 6px; border-radius: 3px; font-weight: 600;
+    }
+    .stats-badge.passed { background: #14532d; color: #4ade80; }
+    .stats-badge.blocked { background: #7f1d1d; color: #f87171; }
+    .stats-badge.modified-badge { background: #713f12; color: #fbbf24; }
+
+    .api-status { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #888; margin-left: auto; }
+    .api-dot { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; flex-shrink: 0; }
+    .api-dot.offline { background: #555; animation: pulse 1.5s ease-in-out infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
+
+    /* Main grid */
+    .grid {
+      display: grid; grid-template-columns: 1fr 380px; gap: 0;
+      flex: 1; min-height: 0; overflow: hidden;
+    }
+
+    /* Panels */
+    .panel {
+      background: #0a0a0a; display: flex; flex-direction: column; min-height: 0; overflow: hidden;
+    }
+    .panel-head {
+      padding: 8px 12px; border-bottom: 1px solid #2a2a2a;
+      font-size: 11px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.05em; color: #888;
+      display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+    }
+    .panel-body { overflow-y: auto; flex: 1; min-height: 0; }
+
+    /* Left column: traffic + detail */
+    .left-col {
+      display: flex; flex-direction: column; min-height: 0;
+      border-right: 1px solid #2a2a2a; overflow: hidden;
+    }
+    .traffic-section { flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+
+    /* Detail section: hidden by default */
+    .detail-section {
+      display: none; flex-direction: column; overflow: hidden;
+    }
+    .detail-section.open { display: flex; }
+
+    /* Side layout: traffic and detail side by side */
+    .left-col.detail-side { flex-direction: row; }
+    .left-col.detail-side .traffic-section { flex: 1; min-width: 0; }
+    .left-col.detail-side .detail-section.open {
+      flex: 1; min-width: 0;
+      border-left: 1px solid #2a2a2a; border-top: none;
+    }
+
+    /* Below layout: detail below traffic */
+    .left-col.detail-below { flex-direction: column; }
+    .left-col.detail-below .traffic-section { flex: 1; min-height: 0; }
+    .left-col.detail-below .detail-section.open {
+      flex: 0 0 45%; min-height: 0;
+      border-top: 1px solid #2a2a2a; border-left: none;
+    }
+
+    /* Right column: domains + rules stack */
+    .right-col {
+      display: flex; flex-direction: column; min-height: 0; overflow: hidden;
+    }
+    .right-col > .panel { border-bottom: 1px solid #2a2a2a; }
+    .right-col > .panel:last-child { border-bottom: none; flex: 1; }
+    .right-col > .panel:first-child { max-height: 40%; }
+
+    /* Buttons */
+    button {
+      background: #222; border: 1px solid #333; border-radius: 4px;
+      color: #ccc; font-size: 11px; padding: 3px 8px; cursor: pointer;
+    }
+    button:hover { background: #2a2a2a; border-color: #444; }
+    button:focus-visible { outline: 2px solid #3b82f6; outline-offset: 1px; }
+    button.active { background: #7f1d1d; border-color: #991b1b; color: #fca5a5; }
+
+    .filter-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: #1e3a5f; color: #93c5fd; font-size: 11px; font-weight: 400;
+      padding: 2px 8px; border-radius: 10px;
+      text-transform: none; letter-spacing: 0;
+    }
+    .filter-badge button {
+      background: none; border: none; color: #93c5fd; cursor: pointer;
+      font-size: 13px; line-height: 1; padding: 0 0 0 2px;
+    }
+    .filter-badge button:hover { color: #fff; }
+
+    /* Traffic header row */
+    .traffic-header {
+      display: flex; align-items: center; gap: 8px;
+      padding: 4px 8px; font-size: 11px;
+      font-family: 'SF Mono', SFMono-Regular, Consolas, monospace;
+      color: #666; border-bottom: 1px solid #2a2a2a;
+      position: sticky; top: 0; background: #0a0a0a; z-index: 2; flex-shrink: 0;
+    }
+    .traffic-header .time { width: 60px; flex-shrink: 0; }
+    .traffic-header .method { width: 48px; flex-shrink: 0; }
+    .traffic-header .host { max-width: 180px; flex-shrink: 0; }
+    .traffic-header .path { flex: 1; }
+    .traffic-header .status { width: 32px; flex-shrink: 0; text-align: right; }
+
+    /* Traffic rows */
+    .traffic-row {
+      display: flex; align-items: center; gap: 8px;
+      padding: 4px 8px; font-size: 12px; cursor: pointer;
+      font-family: 'SF Mono', SFMono-Regular, Consolas, monospace;
+      white-space: nowrap; overflow: hidden; min-height: 24px; flex-shrink: 0;
+    }
+    .traffic-row:hover { background: #1a1a1a; }
+    .traffic-row.selected { background: #1e3a5f33; }
+    .traffic-row .time { color: #666; width: 60px; flex-shrink: 0; }
+    .traffic-row .method { width: 48px; flex-shrink: 0; font-weight: 600; }
+    .traffic-row .host { color: #ccc; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex-shrink: 0; }
+    .traffic-row .path { color: #888; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .traffic-row .status { width: 32px; flex-shrink: 0; text-align: right; }
+    .traffic-row.allowed { color: #4ade80; }
+    .traffic-row.blocked { color: #f87171; }
+    .traffic-row.modified { color: #fbbf24; }
+
+    .rule-badge {
+      font-size: 10px; padding: 1px 6px; border-radius: 3px;
+      font-weight: 600; text-transform: uppercase; flex-shrink: 0;
+    }
+    .rule-badge.block { background: #7f1d1d; color: #fca5a5; }
+    .rule-badge.passthrough { background: #1e3a5f; color: #93c5fd; }
+    .rule-badge.strip_header { background: #713f12; color: #fcd34d; }
+    .rule-badge.add_header { background: #14532d; color: #86efac; }
+
+    /* Detail pane */
+    .detail-head {
+      padding: 6px 12px; border-bottom: 1px solid #2a2a2a;
+      display: flex; align-items: center; gap: 0; flex-shrink: 0;
+      font-size: 11px; color: #888;
+    }
+    .detail-tabs {
+      display: flex; gap: 0;
+    }
+    .detail-tab {
+      padding: 4px 12px; cursor: pointer; border: none; background: none;
+      color: #888; font-size: 11px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.05em; border-bottom: 2px solid transparent;
+      border-radius: 0;
+    }
+    .detail-tab:hover { color: #ccc; background: none; }
+    .detail-tab.active { color: #93c5fd; border-bottom-color: #3b82f6; background: none; }
+    .detail-head-actions {
+      margin-left: auto; display: flex; align-items: center; gap: 4px;
+    }
+    .detail-body {
+      flex: 1; overflow-y: auto; padding: 8px 12px;
+      font-family: 'SF Mono', SFMono-Regular, Consolas, monospace;
+      font-size: 12px; line-height: 1.5;
+    }
+    .detail-section-title { color: #4ade80; font-weight: 600; margin: 8px 0 4px; }
+    .detail-section-title:first-child { margin-top: 0; }
+    .detail-key { color: #93c5fd; }
+    .detail-val { color: #e0e0e0; }
+    .detail-dim { color: #666; }
+    .detail-kv { margin: 2px 0; }
+    .detail-prominent {
+      font-size: 14px; font-weight: 600; color: #e0e0e0; margin-bottom: 8px;
+      word-break: break-all;
+    }
+    .payload-wrapper { position: relative; margin: 4px 0 8px; }
+    .payload-pre {
+      background: #111; border: 1px solid #2a2a2a; border-radius: 4px;
+      padding: 8px; font-size: 11px; line-height: 1.4; overflow-x: auto;
+      white-space: pre; color: #ccc;
+    }
+    .payload-pre.wrap { white-space: pre-wrap; word-break: break-all; }
+    .payload-wrap-btn {
+      position: absolute; top: 4px; right: 4px;
+      font-size: 10px; padding: 1px 6px; opacity: 0.7;
+    }
+    .payload-wrap-btn:hover { opacity: 1; }
+    .payload-wrap-btn.active { background: #1e3a5f; border-color: #2563eb; color: #93c5fd; }
+
+    /* Domains */
+    .domain-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 5px 10px; font-size: 12px; cursor: pointer;
+    }
+    .domain-row:hover { background: #1a1a1a; }
+    .domain-row.active { background: #1e3a5f; }
+    .domain-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .domain-count { color: #666; font-size: 11px; font-family: monospace; flex-shrink: 0; margin-left: 8px; }
+
+    /* Rules */
+    .rule-item {
+      display: flex; align-items: center; gap: 6px;
+      padding: 6px 10px; border-bottom: 1px solid #1e1e1e; font-size: 12px;
+    }
+    .rule-item:last-child { border-bottom: none; }
+    .rule-pattern {
+      font-family: 'SF Mono', SFMono-Regular, Consolas, monospace;
+      font-size: 11px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .rule-header-val { color: #888; font-size: 10px; margin-left: 4px; }
+    .rule-actions { display: flex; gap: 4px; flex-shrink: 0; }
+    .rule-actions button { padding: 2px 6px; font-size: 10px; }
+    .rule-actions .delete-btn:hover { background: #7f1d1d; border-color: #991b1b; color: #fca5a5; }
+    .rule-disabled { opacity: 0.45; }
+
+    /* Add rule form */
+    .form-group { margin-bottom: 8px; }
+    .form-group label { display: block; font-size: 10px; color: #888; margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.03em; }
+    .form-group select, .form-group input {
+      width: 100%; background: #111; border: 1px solid #2a2a2a; border-radius: 4px;
+      color: #e0e0e0; font-size: 12px; padding: 5px 8px; font-family: inherit;
+    }
+    .form-group input:focus, .form-group select:focus { border-color: #3b82f6; outline: none; }
+    .form-group input.invalid { border-color: #f87171; }
+    .match-preview { font-size: 10px; color: #888; margin-top: 2px; }
+    .match-preview.error { color: #f87171; }
+    .form-error { font-size: 11px; color: #f87171; margin-bottom: 6px; }
+    .form-submit {
+      width: 100%; background: #1e3a5f; border: 1px solid #2563eb; border-radius: 4px;
+      color: #93c5fd; font-size: 12px; font-weight: 600; padding: 6px; cursor: pointer;
+    }
+    .form-submit:hover { background: #1e40af; }
+    .panel-offline { display: flex; align-items: center; justify-content: center; height: 40px; color: #555; font-size: 11px; }
+
+    /* Footer */
+    .footer {
+      padding: 6px 16px; border-top: 1px solid #2a2a2a;
+      font-size: 11px; color: #555; text-align: center; flex-shrink: 0;
+    }
+    .footer a { color: #888; text-decoration: none; }
+    .footer a:hover { color: #ccc; }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .grid { grid-template-columns: 1fr; }
+      .left-col { border-right: none; min-height: 300px; }
+      .left-col.detail-side { flex-direction: column; }
+      .left-col.detail-side .detail-section.open {
+        border-left: none; border-top: 1px solid #2a2a2a;
+        flex: 0 0 45%;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>devrig <span>Traffic Control</span></h1>
+    <div class="search-group">
+      <input type="text" class="search-box" id="search-url" placeholder="URL filter (regex)..." autocomplete="off">
+      <input type="text" class="search-box" id="search-body" placeholder="Headers/Body (regex)..." autocomplete="off">
+    </div>
+    <div class="stats-bar" id="stats-bar">
+      <span class="stat-total" id="stat-total">0</span>
+      <span class="stat-size" id="stat-size">0 B</span>
+      <span class="stats-badge passed" id="stat-passed">0%</span>
+      <span class="stats-badge blocked" id="stat-blocked">0%</span>
+      <span class="stats-badge modified-badge" id="stat-modified">0%</span>
+    </div>
+    <div class="api-status">
+      <span id="agent-label" style="color:#555;">Claude: waiting</span>
+      <span class="api-dot offline" id="agent-dot"></span>
+    </div>
+    <div class="api-status">
+      <span id="api-label">Connecting...</span>
+      <span class="api-dot offline" id="api-dot"></span>
+    </div>
+  </div>
+
+  <div class="grid">
+    <!-- Left: Traffic list + Detail pane -->
+    <div class="left-col detail-side" id="left-col">
+      <div class="traffic-section" id="traffic-section">
+        <div class="panel-head" id="traffic-head">
+          <span>Traffic</span>
+          <span id="filter-badge-slot"></span>
+          <span style="flex:1"></span>
+          <button id="btn-pause" type="button">Pause</button>
+          <button id="btn-clear" type="button">Clear</button>
+        </div>
+        <div class="traffic-header" id="traffic-header">
+          <span class="time">Time</span>
+          <span class="method">Method</span>
+          <span class="host">Host</span>
+          <span class="path">Path</span>
+          <span class="status">Status</span>
+        </div>
+        <div class="panel-body" id="traffic-list"></div>
+      </div>
+      <div class="detail-section" id="detail-section">
+        <div class="detail-head">
+          <div class="detail-tabs" id="detail-tabs">
+            <button class="detail-tab active" type="button" data-tab="request">Request</button>
+            <button class="detail-tab" type="button" data-tab="response">Response</button>
+            <button class="detail-tab" type="button" data-tab="connection">Connection</button>
+            <button class="detail-tab" type="button" data-tab="timing">Timing</button>
+          </div>
+          <div class="detail-head-actions">
+            <a id="btn-mitmweb" href="#" target="_blank" rel="noopener" style="font-size:11px;color:#888;text-decoration:none;padding:3px 8px;" title="Open in mitmweb for replay, export, modification">mitmweb &#8599;</a>
+            <button id="btn-detail-pos" type="button" title="Toggle detail position">Below</button>
+            <button id="btn-close-detail" type="button">Close</button>
+          </div>
+        </div>
+        <div class="detail-body" id="detail-body"></div>
+      </div>
+    </div>
+
+    <!-- Right: Domains + Rules -->
+    <div class="right-col" id="right-col">
+      <div class="panel" id="domains-panel">
+        <div class="panel-head" id="domains-head">
+          <span>Domains</span>
+        </div>
+        <div class="panel-body" id="domains-list">
+          <div class="panel-offline" id="domains-offline" hidden>API offline</div>
+        </div>
+      </div>
+
+      <div class="panel" id="rules-panel">
+        <div class="panel-head" id="rules-head">Rules</div>
+        <div class="panel-body" id="rules-body">
+          <div id="rules-list"></div>
+          <div class="panel-offline" id="rules-offline" hidden>API offline</div>
+          <div id="add-rule-form" style="border-top: 1px solid #2a2a2a; padding: 8px 10px; margin-top: 4px;">
+            <div class="form-group">
+              <label for="rule-type">Type</label>
+              <select id="rule-type">
+                <option value="block">block</option>
+                <option value="passthrough">passthrough</option>
+                <option value="strip_header">strip_header</option>
+                <option value="add_header">add_header</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="rule-match">Match (regex)</label>
+              <input type="text" id="rule-match" placeholder="e\.g\. example\.com">
+              <div class="match-preview" id="match-preview"></div>
+            </div>
+            <div class="form-group" id="header-group" hidden>
+              <label for="rule-header">Header</label>
+              <input type="text" id="rule-header" placeholder="X-Custom-Header">
+            </div>
+            <div class="form-group" id="value-group" hidden>
+              <label for="rule-value">Value</label>
+              <input type="text" id="rule-value" placeholder="header value">
+            </div>
+            <div class="form-error" id="form-error" hidden></div>
+            <button class="form-submit" id="btn-create" type="button">Create Rule</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer" id="footer">
+    mitmproxy <a href="http://localhost:8081" target="_blank" rel="noopener">&#8599; localhost:8081</a> (password: devrig)
+  </div>
+
+  <script>
+    var API = 'http://localhost:8082';
+    var MAX_ROWS = 500;
+
+    var state = {
+      paused: false,
+      domainFilter: null,
+      searchUrlFilter: null,
+      searchBodyFilter: null,
+      trafficRows: [],
+      domains: {},
+      rules: [],
+      apiOnline: false,
+      selectedId: null,
+      activeTab: 'request',
+      detailPosition: 'side',
+    };
+
+    // --- Utility ---
+    function escapeRegex(str) { return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+    function formatTime(ts) {
+      var d = new Date(ts * 1000);
+      return [d.getHours(), d.getMinutes(), d.getSeconds()]
+        .map(function(n) { return String(n).padStart(2, '0'); }).join(':');
+    }
+    function debounce(fn, ms) {
+      var t; return function() { var a = arguments, s = this; clearTimeout(t); t = setTimeout(function() { fn.apply(s, a); }, ms); };
+    }
+    function sanitize(str) { var el = document.createElement('span'); el.textContent = str; return el.innerHTML; }
+    async function apiFetch(path, opts) {
+      opts = opts || {};
+      try {
+        var res = await fetch(API + path, Object.assign({}, opts, { signal: AbortSignal.timeout(5000) }));
+        var data = await res.json();
+        return { ok: res.ok, data: data, error: res.ok ? null : (data.error || 'Request failed') };
+      } catch (e) {
+        return { ok: false, data: null, error: e.name === 'AbortError' ? 'Timeout' : 'Network error' };
+      }
+    }
+
+    function formatBytes(bytes) {
+      if (bytes == null || bytes === 0) return '0 B';
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+      return (bytes / 1048576).toFixed(1) + ' MB';
+    }
+
+    function formatNumber(n) {
+      return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    }
+
+    function tryFormatJSON(str) {
+      if (!str) return str;
+      var trimmed = str.trim();
+      if (trimmed[0] === '{' || trimmed[0] === '[') {
+        try { return JSON.stringify(JSON.parse(trimmed), null, 2); } catch (e) {}
+      }
+      return str;
+    }
+
+    // --- Search matching ---
+    function matchesUrlFilter(entry) {
+      if (!state.searchUrlFilter) return true;
+      try {
+        var re = state.searchUrlFilter;
+        if (re.test(entry.url || '')) return true;
+        if (re.test(entry.host || '')) return true;
+        if (re.test(entry.method || '')) return true;
+        return false;
+      } catch (e) { return true; }
+    }
+
+    function matchesBodyFilter(entry) {
+      if (!state.searchBodyFilter) return true;
+      try {
+        var re = state.searchBodyFilter;
+        if (re.test(entry.content_type || '')) return true;
+        if (re.test(entry.request_content || '')) return true;
+        if (re.test(entry.response_content || '')) return true;
+        if (entry.request_headers) {
+          for (var k in entry.request_headers) {
+            if (re.test(k + ': ' + entry.request_headers[k])) return true;
+          }
+        }
+        if (entry.response_headers) {
+          for (var k in entry.response_headers) {
+            if (re.test(k + ': ' + entry.response_headers[k])) return true;
+          }
+        }
+        return false;
+      } catch (e) { return true; }
+    }
+
+    function matchesSearch(entry) {
+      return matchesUrlFilter(entry) && matchesBodyFilter(entry);
+    }
+
+    // --- API Status ---
+    var apiDot = document.getElementById('api-dot');
+    var apiLabel = document.getElementById('api-label');
+    function setApiOnline(online) {
+      state.apiOnline = online;
+      apiDot.classList.toggle('offline', !online);
+      apiLabel.textContent = online ? 'Connected' : 'Offline';
+    }
+
+    // --- Stats ---
+    var statTotal = document.getElementById('stat-total');
+    var statSize = document.getElementById('stat-size');
+    var statPassed = document.getElementById('stat-passed');
+    var statBlocked = document.getElementById('stat-blocked');
+    var statModified = document.getElementById('stat-modified');
+
+    function updateStats() {
+      var total = state.trafficRows.length;
+      var totalSize = 0;
+      var passed = 0, blocked = 0, modified = 0;
+      for (var i = 0; i < total; i++) {
+        var r = state.trafficRows[i];
+        if (r.size) totalSize += r.size;
+        if (r.rule_type === 'block') blocked++;
+        else if (r.rule_type === 'strip_header' || r.rule_type === 'add_header') modified++;
+        else passed++;
+      }
+      statTotal.textContent = formatNumber(total);
+      statSize.textContent = formatBytes(totalSize);
+      var pPassed = total ? Math.round(passed / total * 100) : 0;
+      var pBlocked = total ? Math.round(blocked / total * 100) : 0;
+      var pModified = total ? Math.round(modified / total * 100) : 0;
+      statPassed.textContent = pPassed + '% passed';
+      statBlocked.textContent = pBlocked + '% blocked';
+      statModified.textContent = pModified + '% modified';
+    }
+
+    // --- Search inputs ---
+    var searchUrl = document.getElementById('search-url');
+    var searchBody = document.getElementById('search-body');
+
+    function bindSearchInput(inputEl, stateKey) {
+      inputEl.addEventListener('input', debounce(function() {
+        var val = inputEl.value.trim();
+        if (!val) {
+          state[stateKey] = null;
+          inputEl.classList.remove('invalid');
+          rebuildTrafficList();
+          return;
+        }
+        try {
+          state[stateKey] = new RegExp(val, 'i');
+          inputEl.classList.remove('invalid');
+          rebuildTrafficList();
+        } catch (e) {
+          inputEl.classList.add('invalid');
+        }
+      }, 200));
+    }
+    bindSearchInput(searchUrl, 'searchUrlFilter');
+    bindSearchInput(searchBody, 'searchBodyFilter');
+
+    function rebuildTrafficList() {
+      var list = document.getElementById('traffic-list');
+      var rows = list.querySelectorAll('.traffic-row');
+      rows.forEach(function(el) { el.remove(); });
+      rowMap.clear();
+      for (var i = 0; i < state.trafficRows.length; i++) {
+        var d = state.trafficRows[i];
+        if (state.domainFilter && d.host !== state.domainFilter) continue;
+        if (!matchesSearch(d)) continue;
+        appendTrafficRowDOM(d);
+      }
+    }
+
+    // --- Traffic Panel ---
+    var trafficList = document.getElementById('traffic-list');
+    var btnPause = document.getElementById('btn-pause');
+    var btnClear = document.getElementById('btn-clear');
+    var filterSlot = document.getElementById('filter-badge-slot');
+    var eventSource = null;
+    var rowMap = new Map();
+
+    function rowClass(ruleType) {
+      if (ruleType === 'block') return 'blocked';
+      if (ruleType === 'strip_header' || ruleType === 'add_header') return 'modified';
+      return 'allowed';
+    }
+
+    function createBadge(ruleType) {
+      if (!ruleType) return null;
+      var badge = document.createElement('span');
+      badge.className = 'rule-badge ' + ruleType;
+      badge.textContent = ruleType.replace('_', ' ');
+      return badge;
+    }
+
+    function parseURL(url) {
+      try { var u = new URL(url); return { host: u.host, path: u.pathname + u.search }; }
+      catch (e) { return { host: '', path: url || '' }; }
+    }
+
+    function appendTrafficRowDOM(data) {
+      var parsed = parseURL(data.url);
+      var host = data.host || parsed.host;
+
+      var row = document.createElement('div');
+      row.className = 'traffic-row ' + rowClass(data.rule_type);
+      if (state.selectedId === data.id) row.classList.add('selected');
+      row.dataset.id = data.id;
+      if (data.id) row.id = 'row-' + data.id;
+
+      var timeSpan = document.createElement('span');
+      timeSpan.className = 'time';
+      timeSpan.textContent = formatTime(data.ts);
+      var methodSpan = document.createElement('span');
+      methodSpan.className = 'method';
+      methodSpan.textContent = data.method || '';
+      var hostSpan = document.createElement('span');
+      hostSpan.className = 'host';
+      hostSpan.textContent = host;
+      var pathSpan = document.createElement('span');
+      pathSpan.className = 'path';
+      pathSpan.textContent = parsed.path;
+      var statusSpan = document.createElement('span');
+      statusSpan.className = 'status';
+      statusSpan.textContent = data.status || '';
+
+      row.appendChild(timeSpan);
+      row.appendChild(methodSpan);
+      row.appendChild(hostSpan);
+      row.appendChild(pathSpan);
+      row.appendChild(statusSpan);
+      var badge = createBadge(data.rule_type);
+      if (badge) row.appendChild(badge);
+
+      row.addEventListener('click', function() { selectRow(data.id); });
+      if (data.id) rowMap.set(data.id, row);
+
+      trafficList.appendChild(row);
+
+      // Cap DOM elements
+      var allRows = trafficList.querySelectorAll('.traffic-row');
+      while (allRows.length > MAX_ROWS) {
+        var first = allRows[0];
+        if (first.dataset.id) rowMap.delete(first.dataset.id);
+        first.remove();
+        allRows = trafficList.querySelectorAll('.traffic-row');
+      }
+
+      autoScrollTraffic();
+    }
+
+    function autoScrollTraffic() {
+      var el = trafficList;
+      if (el.scrollHeight - el.scrollTop - el.clientHeight < 60) {
+        el.scrollTop = el.scrollHeight;
+      }
+    }
+
+    function addTrafficRow(data) {
+      // Update existing row (response arrived, or duplicate from history)
+      if (data.id && rowMap.has(data.id)) {
+        var existing = state.trafficRows.find(function(r) { return r.id === data.id; });
+        if (existing) {
+          if (data.status != null) existing.status = data.status;
+          if (data.size != null) existing.size = data.size;
+          if (data.response_headers) existing.response_headers = data.response_headers;
+          if (data.content_type) existing.content_type = data.content_type;
+          if (data.response_content != null) existing.response_content = data.response_content;
+          if (data.response_ts != null) existing.response_ts = data.response_ts;
+          var rowEl = rowMap.get(data.id);
+          var statusEl = rowEl.querySelector('.status');
+          if (statusEl && data.status != null) statusEl.textContent = data.status;
+          // Update row color if rule changed
+          if (data.rule_type) {
+            rowEl.className = 'traffic-row ' + rowClass(data.rule_type);
+            if (state.selectedId === data.id) rowEl.classList.add('selected');
+          }
+          if (state.selectedId === data.id) showDetail(existing);
+          updateStats();
+        }
+        return;
+      }
+      // Deduplicate by ID in state (history entries may already be in state)
+      if (data.id && state.trafficRows.some(function(r) { return r.id === data.id; })) {
+        return;
+      }
+
+      // Always track in state
+      state.trafficRows.push(data);
+      if (state.trafficRows.length > MAX_ROWS) state.trafficRows.shift();
+
+      updateStats();
+
+      // Domain filter
+      var host = data.host || '';
+      if (state.domainFilter && host !== state.domainFilter) return;
+
+      // Search filter
+      if (!matchesSearch(data)) return;
+
+      appendTrafficRowDOM(data);
+    }
+
+    function connectSSE() {
+      if (eventSource) { eventSource.close(); eventSource = null; }
+      try { eventSource = new EventSource(API + '/traffic'); }
+      catch (e) { setApiOnline(false); setTimeout(connectSSE, 3000); return; }
+      eventSource.onopen = function() { setApiOnline(true); };
+      eventSource.onmessage = function(e) {
+        if (state.paused) return;
+        try { addTrafficRow(JSON.parse(e.data)); } catch (err) {}
+      };
+      eventSource.onerror = function() {
+        setApiOnline(false); eventSource.close(); eventSource = null;
+        setTimeout(connectSSE, 3000);
+      };
+    }
+
+    btnPause.addEventListener('click', function() {
+      state.paused = !state.paused;
+      btnPause.textContent = state.paused ? 'Resume' : 'Pause';
+      btnPause.classList.toggle('active', state.paused);
+    });
+    btnClear.addEventListener('click', function() {
+      state.trafficRows = [];
+      rowMap.clear();
+      trafficList.querySelectorAll('.traffic-row').forEach(function(el) { el.remove(); });
+      closeDetail();
+      updateStats();
+    });
+
+    function renderFilterBadge() {
+      while (filterSlot.firstChild) filterSlot.removeChild(filterSlot.firstChild);
+      if (state.domainFilter) {
+        var badge = document.createElement('span');
+        badge.className = 'filter-badge';
+        badge.textContent = state.domainFilter + ' ';
+        var closeBtn = document.createElement('button');
+        closeBtn.type = 'button';
+        closeBtn.setAttribute('aria-label', 'Clear filter');
+        closeBtn.textContent = '\u00d7';
+        closeBtn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          state.domainFilter = null;
+          renderFilterBadge();
+          rebuildTrafficList();
+          renderDomains();
+        });
+        badge.appendChild(closeBtn);
+        filterSlot.appendChild(badge);
+      }
+    }
+
+    // --- Detail Pane ---
+    var leftCol = document.getElementById('left-col');
+    var detailSection = document.getElementById('detail-section');
+    var detailBody = document.getElementById('detail-body');
+    var btnDetailPos = document.getElementById('btn-detail-pos');
+    var btnCloseDetail = document.getElementById('btn-close-detail');
+    var detailTabBtns = document.querySelectorAll('.detail-tab');
+
+    function applyDetailPosition() {
+      leftCol.classList.remove('detail-side', 'detail-below');
+      leftCol.classList.add(state.detailPosition === 'side' ? 'detail-side' : 'detail-below');
+      btnDetailPos.textContent = state.detailPosition === 'side' ? 'Below' : 'Side';
+    }
+    applyDetailPosition();
+
+    btnDetailPos.addEventListener('click', function() {
+      state.detailPosition = state.detailPosition === 'side' ? 'below' : 'side';
+      applyDetailPosition();
+    });
+
+    detailTabBtns.forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        state.activeTab = btn.dataset.tab;
+        detailTabBtns.forEach(function(b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+        var entry = state.trafficRows.find(function(r) { return r.id === state.selectedId; });
+        if (entry) showDetail(entry);
+      });
+    });
+
+    function selectRow(id) {
+      var prev = trafficList.querySelector('.traffic-row.selected');
+      if (prev) prev.classList.remove('selected');
+
+      if (state.selectedId === id) { closeDetail(); return; }
+      state.selectedId = id;
+
+      var row = rowMap.get(id);
+      if (row) row.classList.add('selected');
+
+      var entry = state.trafficRows.find(function(r) { return r.id === id; });
+      if (entry) showDetail(entry);
+    }
+
+    function createPayloadBlock(content, label) {
+      var wrapper = document.createElement('div');
+      wrapper.className = 'payload-wrapper';
+      var pre = document.createElement('pre');
+      pre.className = 'payload-pre';
+      pre.textContent = tryFormatJSON(content);
+      var wrapBtn = document.createElement('button');
+      wrapBtn.type = 'button';
+      wrapBtn.className = 'payload-wrap-btn';
+      wrapBtn.textContent = 'Wrap';
+      wrapBtn.addEventListener('click', function() {
+        var isWrapped = pre.classList.toggle('wrap');
+        wrapBtn.classList.toggle('active', isWrapped);
+      });
+      wrapper.appendChild(wrapBtn);
+      wrapper.appendChild(pre);
+      return wrapper;
+    }
+
+    function addKV(container, key, val) {
+      var row = document.createElement('div');
+      row.className = 'detail-kv';
+      var k = document.createElement('span');
+      k.className = 'detail-key';
+      k.textContent = key + ': ';
+      var v = document.createElement('span');
+      v.className = 'detail-val';
+      v.textContent = val;
+      row.appendChild(k);
+      row.appendChild(v);
+      container.appendChild(row);
+    }
+
+    function addSectionTitle(container, title) {
+      var el = document.createElement('div');
+      el.className = 'detail-section-title';
+      el.textContent = title;
+      container.appendChild(el);
+    }
+
+    var btnMitmweb = document.getElementById('btn-mitmweb');
+
+    function showDetail(entry) {
+      detailSection.classList.add('open');
+      btnMitmweb.href = 'http://localhost:8081/#/flows/' + entry.id + '/request';
+      while (detailBody.firstChild) detailBody.removeChild(detailBody.firstChild);
+
+      var tab = state.activeTab;
+
+      if (tab === 'request') {
+        // Method + URL prominent
+        var prominent = document.createElement('div');
+        prominent.className = 'detail-prominent';
+        prominent.textContent = (entry.method || 'GET') + ' ' + (entry.url || '');
+        detailBody.appendChild(prominent);
+
+        // Request headers
+        if (entry.request_headers && Object.keys(entry.request_headers).length > 0) {
+          addSectionTitle(detailBody, 'Request Headers');
+          for (var k in entry.request_headers) {
+            addKV(detailBody, k, entry.request_headers[k]);
+          }
+        }
+
+        // Request body
+        if (entry.request_content) {
+          addSectionTitle(detailBody, 'Request Body');
+          detailBody.appendChild(createPayloadBlock(entry.request_content));
+        }
+
+      } else if (tab === 'response') {
+        // Status
+        if (entry.status != null) {
+          addKV(detailBody, 'Status', String(entry.status));
+        }
+        if (entry.content_type) {
+          addKV(detailBody, 'Content-Type', entry.content_type);
+        }
+        if (entry.size != null) {
+          addKV(detailBody, 'Size', formatBytes(entry.size));
+        }
+
+        // Response headers
+        if (entry.response_headers && Object.keys(entry.response_headers).length > 0) {
+          addSectionTitle(detailBody, 'Response Headers');
+          for (var k in entry.response_headers) {
+            addKV(detailBody, k, entry.response_headers[k]);
+          }
+        }
+
+        // Response body
+        if (entry.response_content) {
+          addSectionTitle(detailBody, 'Response Body');
+          detailBody.appendChild(createPayloadBlock(entry.response_content));
+        }
+
+      } else if (tab === 'connection') {
+        addKV(detailBody, 'Scheme', (entry.scheme || 'http').toUpperCase());
+        addKV(detailBody, 'Host', entry.host || '');
+        addKV(detailBody, 'Port', entry.port != null ? String(entry.port) : '');
+
+        addSectionTitle(detailBody, 'Rule');
+        if (entry.rule_type) {
+          addKV(detailBody, 'Type', entry.rule_type);
+          addKV(detailBody, 'ID', entry.rule_id || '');
+          if (entry.rule_match) addKV(detailBody, 'Match', entry.rule_match);
+        } else {
+          var noRule = document.createElement('div');
+          noRule.className = 'detail-dim';
+          noRule.textContent = 'No rule matched';
+          detailBody.appendChild(noRule);
+        }
+
+      } else if (tab === 'timing') {
+        var reqTs = entry.request_ts || entry.ts;
+        var respTs = entry.response_ts;
+        if (reqTs) {
+          addKV(detailBody, 'Request', new Date(reqTs * 1000).toISOString());
+        }
+        if (respTs) {
+          addKV(detailBody, 'Response', new Date(respTs * 1000).toISOString());
+        }
+        if (reqTs && respTs) {
+          var durationMs = Math.round((respTs - reqTs) * 1000);
+          addKV(detailBody, 'Duration', durationMs + ' ms');
+        }
+      }
+    }
+
+    function closeDetail() {
+      state.selectedId = null;
+      detailSection.classList.remove('open');
+      var prev = trafficList.querySelector('.traffic-row.selected');
+      if (prev) prev.classList.remove('selected');
+    }
+
+    btnCloseDetail.addEventListener('click', closeDetail);
+
+    // --- Domains Panel ---
+    var domainsList = document.getElementById('domains-list');
+    var domainsOffline = document.getElementById('domains-offline');
+
+    function renderDomains() {
+      var sorted = Object.entries(state.domains).sort(function(a, b) { return b[1] - a[1]; });
+      domainsList.querySelectorAll('.domain-row').forEach(function(el) { el.remove(); });
+      domainsOffline.hidden = true;
+      sorted.forEach(function(entry) {
+        var host = entry[0], count = entry[1];
+        var row = document.createElement('div');
+        row.className = 'domain-row' + (state.domainFilter === host ? ' active' : '');
+        var nameSpan = document.createElement('span');
+        nameSpan.className = 'domain-name';
+        nameSpan.textContent = host;
+        var countSpan = document.createElement('span');
+        countSpan.className = 'domain-count';
+        countSpan.textContent = count;
+        row.appendChild(nameSpan);
+        row.appendChild(countSpan);
+        row.addEventListener('click', function() {
+          state.domainFilter = state.domainFilter === host ? null : host;
+          renderFilterBadge();
+          rebuildTrafficList();
+          renderDomains();
+        });
+        row.addEventListener('dblclick', function() { prefillBlock(host); });
+        domainsList.insertBefore(row, domainsOffline);
+      });
+    }
+
+    async function refreshDomains() {
+      var result = await apiFetch('/domains');
+      if (result.ok && result.data) {
+        state.domains = result.data;
+        renderDomains();
+      } else {
+        // Keep showing last known data; only show offline if zero data
+        if (Object.keys(state.domains).length === 0) domainsOffline.hidden = false;
+      }
+    }
+
+    // --- Rules Panel ---
+    var rulesList = document.getElementById('rules-list');
+    var rulesOffline = document.getElementById('rules-offline');
+
+    function renderRules() {
+      while (rulesList.firstChild) rulesList.removeChild(rulesList.firstChild);
+      rulesOffline.hidden = true;
+      state.rules.forEach(function(rule) {
+        var item = document.createElement('div');
+        item.className = 'rule-item' + (rule.enabled === false ? ' rule-disabled' : '');
+        var badge = document.createElement('span');
+        badge.className = 'rule-badge ' + rule.type;
+        badge.textContent = rule.type.replace('_', ' ');
+        var pattern = document.createElement('span');
+        pattern.className = 'rule-pattern';
+        pattern.textContent = rule.match;
+        if (rule.header) {
+          var hv = document.createElement('span');
+          hv.className = 'rule-header-val';
+          hv.textContent = rule.header + (rule.value ? ' = ' + rule.value : '');
+          pattern.appendChild(hv);
+        }
+        var actions = document.createElement('div');
+        actions.className = 'rule-actions';
+        var toggleBtn = document.createElement('button');
+        toggleBtn.type = 'button';
+        toggleBtn.textContent = rule.enabled === false ? 'Enable' : 'Disable';
+        toggleBtn.addEventListener('click', function() { toggleRule(rule); });
+        var deleteBtn = document.createElement('button');
+        deleteBtn.type = 'button';
+        deleteBtn.className = 'delete-btn';
+        deleteBtn.textContent = '\u00d7';
+        deleteBtn.addEventListener('click', function() { deleteRule(rule); });
+        actions.appendChild(toggleBtn);
+        actions.appendChild(deleteBtn);
+        item.appendChild(badge);
+        item.appendChild(pattern);
+        item.appendChild(actions);
+        rulesList.appendChild(item);
+      });
+    }
+
+    async function fetchAndRenderRules() {
+      var result = await apiFetch('/rules');
+      if (result.ok && Array.isArray(result.data)) { state.rules = result.data; renderRules(); }
+      else { rulesOffline.hidden = false; }
+    }
+    async function toggleRule(rule) {
+      await apiFetch('/rules/' + rule.id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled: !(rule.enabled !== false) }) });
+      fetchAndRenderRules();
+    }
+    async function deleteRule(rule) {
+      await apiFetch('/rules/' + rule.id, { method: 'DELETE' });
+      fetchAndRenderRules();
+    }
+
+    // --- Add Rule Form ---
+    var ruleType = document.getElementById('rule-type');
+    var ruleMatch = document.getElementById('rule-match');
+    var ruleHeader = document.getElementById('rule-header');
+    var ruleValue = document.getElementById('rule-value');
+    var headerGroup = document.getElementById('header-group');
+    var valueGroup = document.getElementById('value-group');
+    var matchPreview = document.getElementById('match-preview');
+    var formError = document.getElementById('form-error');
+    var btnCreate = document.getElementById('btn-create');
+
+    function updateFormVisibility() {
+      var t = ruleType.value;
+      headerGroup.hidden = !(t === 'strip_header' || t === 'add_header');
+      valueGroup.hidden = !(t === 'add_header');
+    }
+    ruleType.addEventListener('change', updateFormVisibility);
+
+    var updateMatchPreview = debounce(function() {
+      var val = ruleMatch.value;
+      if (!val) { matchPreview.textContent = ''; matchPreview.className = 'match-preview'; ruleMatch.classList.remove('invalid'); return; }
+      try {
+        var re = new RegExp(val, 'i');
+        ruleMatch.classList.remove('invalid');
+        var count = state.trafficRows.filter(function(r) { return re.test(r.url || '') || re.test(r.host || ''); }).length;
+        matchPreview.textContent = 'Matches ' + count + ' recent request' + (count !== 1 ? 's' : '');
+        matchPreview.className = 'match-preview';
+      } catch (e) {
+        ruleMatch.classList.add('invalid');
+        matchPreview.textContent = 'Invalid regex';
+        matchPreview.className = 'match-preview error';
+      }
+    }, 200);
+    ruleMatch.addEventListener('input', updateMatchPreview);
+
+    async function createRule() {
+      formError.hidden = true;
+      var body = { type: ruleType.value, match: ruleMatch.value };
+      if (!body.match) { formError.textContent = 'Match pattern required'; formError.hidden = false; return; }
+      try { new RegExp(body.match); } catch (e) { formError.textContent = 'Invalid regex'; formError.hidden = false; return; }
+      if (ruleType.value === 'strip_header' || ruleType.value === 'add_header') {
+        body.header = ruleHeader.value;
+        if (!body.header) { formError.textContent = 'Header name required'; formError.hidden = false; return; }
+      }
+      if (ruleType.value === 'add_header') body.value = ruleValue.value;
+      var result = await apiFetch('/rules', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      if (result.ok) { ruleMatch.value = ''; ruleHeader.value = ''; ruleValue.value = ''; matchPreview.textContent = ''; fetchAndRenderRules(); }
+      else { formError.textContent = result.error || 'Failed'; formError.hidden = false; }
+    }
+    btnCreate.addEventListener('click', createRule);
+    [ruleMatch, ruleHeader, ruleValue].forEach(function(el) {
+      el.addEventListener('keydown', function(e) { if (e.key === 'Enter') createRule(); });
+    });
+
+    function prefillBlock(host) {
+      ruleType.value = 'block'; updateFormVisibility();
+      ruleMatch.value = escapeRegex(host); ruleMatch.focus(); updateMatchPreview();
+    }
+
+    // --- Agent connection (via devrig dev server SSE) ---
+    var agentDot = document.getElementById('agent-dot');
+    var agentLabel = document.getElementById('agent-label');
+    var agentHeaders = null;
+
+    function setAgentConnected(headers) {
+      agentDot.classList.remove('offline');
+      agentLabel.textContent = 'Claude: connected';
+      agentLabel.style.color = '';
+      agentLabel.style.cursor = headers ? 'pointer' : '';
+      agentLabel.title = headers ? 'Click to view request headers' : '';
+      if (headers) agentHeaders = headers;
+    }
+
+    agentLabel.addEventListener('click', function() {
+      if (!agentHeaders) return;
+      // Toggle: if detail is already showing agent headers, close it
+      if (state.selectedId === '__agent__') { closeDetail(); return; }
+      state.selectedId = '__agent__';
+      detailSection.classList.add('open');
+      while (detailBody.firstChild) detailBody.removeChild(detailBody.firstChild);
+      // Force to connection tab
+      state.activeTab = 'connection';
+      detailTabBtns.forEach(function(b) { b.classList.remove('active'); });
+      document.querySelector('[data-tab="connection"]').classList.add('active');
+
+      addSectionTitle(detailBody, 'Claude Check-in Headers');
+      for (var k in agentHeaders) {
+        addKV(detailBody, k, agentHeaders[k]);
+      }
+      btnMitmweb.href = '#';
+    });
+
+    function connectAgentSSE() {
+      var es;
+      try { es = new EventSource('/devrig/events'); } catch (e) { return; }
+      es.addEventListener('agent-connected', function(e) {
+        try {
+          var data = JSON.parse(e.data);
+          setAgentConnected(data.headers || null);
+        } catch (err) { setAgentConnected(null); }
+      });
+      es.addEventListener('connected', function() {
+        // Check if agent already connected (page loaded after agent)
+        fetch('/devrig/status').then(function(r) { return r.json(); }).then(function(d) {
+          if (d.agentConnected) {
+            setAgentConnected(d.agentHeaders || null);
+          }
+        }).catch(function() {});
+      });
+      es.onerror = function() { es.close(); setTimeout(connectAgentSSE, 5000); };
+    }
+
+    // --- Bootstrap ---
+    (async function bootstrap() {
+      // Load traffic history before connecting SSE
+      var result = await apiFetch('/traffic/recent?n=500');
+      if (result.ok && Array.isArray(result.data)) {
+        for (var i = 0; i < result.data.length; i++) {
+          addTrafficRow(result.data[i]);
+        }
+        updateStats();
+      }
+
+      connectSSE();
+      connectAgentSSE();
+      fetchAndRenderRules();
+      refreshDomains();
+      setInterval(refreshDomains, 5000);
+    })();
+  </script>
+</body>
+</html>

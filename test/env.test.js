@@ -57,7 +57,7 @@ describe('ensureEnv', () => {
       'chrome-mcp-bridge.cjs',
       '.dockerignore',
       'firewall.sh',
-      'setup.html',
+      'traffic.html',
     ]) {
       assert.ok(existsSync(join(dir, f)), `missing scaffold file: ${f}`);
     }

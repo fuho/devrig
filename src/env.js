@@ -38,8 +38,7 @@ const ENV_SCAFFOLD_FILES = [
   'container-setup.js',
   'entrypoint.sh',
   'firewall.sh',
-  'setup.html',
-  'firewall.html',
+  'traffic.html',
 ];
 
 /** Directories copied from scaffold/ into a new environment. */

@@ -150,8 +150,7 @@ describe('CLAUDE.md generation', () => {
     assert.ok(content.includes('/workspace'));
     assert.ok(content.includes('http://localhost:3000'));
     assert.ok(
-      content.includes('outbound network access is restricted') ||
-        content.includes('Outbound network access'),
+      content.includes('Outbound network') || content.includes('outbound network'),
     );
   });
 

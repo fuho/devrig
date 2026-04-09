@@ -290,7 +290,7 @@ export async function launch(argv) {
     // -- Step 13: Open browser (launcher.py: open browser) ------------------
     if (!args['no-chrome']) {
       log('Opening browser...');
-      openBrowser(`http://localhost:${cfg.dev_server_port}/devrig/setup`);
+      openBrowser(`http://localhost:${cfg.dev_server_port}/devrig/traffic`);
     }
   }
 
@@ -392,7 +392,7 @@ export async function launch(argv) {
   // Add initial prompt so Claude acts immediately on launch
   if (bridgeRunning) {
     claudeParams.push(
-      'You have Chrome MCP tools. Open the dev server URL from CLAUDE.md using the Chrome tools.',
+      'You have Chrome MCP tools. Navigate to the hello_claude URL from CLAUDE.md using Chrome tools to confirm your connection.',
     );
   }
 
@@ -401,7 +401,7 @@ export async function launch(argv) {
     log(`Dev server: http://localhost:${cfg.dev_server_port}`);
   }
   log('Network inspector: http://localhost:8081  (password: devrig)');
-  log(`Firewall dashboard: http://localhost:${cfg.dev_server_port}/devrig/firewall`);
+  log(`Traffic control: http://localhost:${cfg.dev_server_port}/devrig/traffic`);
 
   log('Connecting to Claude Code in container...');
   log(`CLAUDE_PARAMS: ${claudeParams.join(' ') || '<none>'}`);

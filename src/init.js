@@ -20,8 +20,7 @@ export const SCAFFOLD_FILES = [
   'container-setup.js',
   'entrypoint.sh',
   'firewall.sh',
-  'setup.html',
-  'firewall.html',
+  'traffic.html',
 ];
 
 const DEVRIG_START = '<!-- devrig:start -->';
@@ -84,7 +83,7 @@ export function generateClaudeMd(projectDir, cfg) {
     '',
     'Dashboards (when session is running):',
     '- Network traffic: http://localhost:8081',
-    `- Firewall: http://localhost:${cfg.dev_server_port}/devrig/firewall`,
+    `- Traffic control: http://localhost:${cfg.dev_server_port}/devrig/traffic`,
     DEVRIG_END,
   ].join('\n');
 
@@ -100,13 +99,10 @@ export function generateClaudeMd(projectDir, cfg) {
     `- **Network:** outbound traffic filtered through mitmproxy (allowlisted domains only)`,
     '',
     'On first message, check if you have the "Claude in Chrome" MCP tool available.',
-    'If YES: use it to navigate to the dev server URL below and confirm the connection.',
+    `If YES: use it to navigate to http://localhost:${cfg.dev_server_port}/devrig/hello_claude to confirm the connection.`,
     `If NO: tell the user to type /exit and run "devrig start" again — Chrome MCP activates on the second launch.`,
     '',
-    `Dev server URL: http://localhost:${cfg.dev_server_port}?agent=${cfg.tool}`,
-    'Do NOT use WebFetch or Fetch for this URL — they cannot reach localhost.',
-    '',
-    'Outbound network access is restricted to approved domains (Anthropic API, npm, GitHub).',
+    'Outbound network is default-allow. Specific domains are blocked (e.g. telemetry). Rules are manageable via the traffic control dashboard.',
     'Make commits freely — the user will review and push from the host.',
     DEVRIG_END,
   ].join('\n');
@@ -184,16 +180,10 @@ export async function init(projectDir) {
       log(`WARNING: Could not write version marker: ${err.message}`);
     }
 
-    // Copy setup.html into .devrig/
-    const setupSrc = join(scaffoldDir, 'setup.html');
-    if (existsSync(setupSrc)) {
-      cpSync(setupSrc, join(targetDir, 'setup.html'));
-    }
-
-    // Copy firewall.html into .devrig/
-    const firewallSrc = join(scaffoldDir, 'firewall.html');
-    if (existsSync(firewallSrc)) {
-      cpSync(firewallSrc, join(targetDir, 'firewall.html'));
+    // Copy traffic.html into .devrig/
+    const trafficSrc = join(scaffoldDir, 'traffic.html');
+    if (existsSync(trafficSrc)) {
+      cpSync(trafficSrc, join(targetDir, 'traffic.html'));
     }
 
     // Create rules directory for firewall API persistence
@@ -206,16 +196,10 @@ export async function init(projectDir) {
     // Create project .devrig/ for runtime state only
     mkdirSync(join(targetDir, 'logs'), { recursive: true });
 
-    // Copy setup.html to project .devrig/ so the dev server can find it
-    const setupSrc = join(scaffoldDir, 'setup.html');
-    if (existsSync(setupSrc)) {
-      cpSync(setupSrc, join(targetDir, 'setup.html'));
-    }
-
-    // Copy firewall.html to project .devrig/ so the dev server can find it
-    const firewallSrc = join(scaffoldDir, 'firewall.html');
-    if (existsSync(firewallSrc)) {
-      cpSync(firewallSrc, join(targetDir, 'firewall.html'));
+    // Copy traffic.html to project .devrig/ so the dev server can find it
+    const trafficSrc = join(scaffoldDir, 'traffic.html');
+    if (existsSync(trafficSrc)) {
+      cpSync(trafficSrc, join(targetDir, 'traffic.html'));
     }
 
     // Create rules directory for firewall API persistence
