@@ -4,11 +4,40 @@
 
 ### Features
 
-- **Firewall dashboard** at `/devrig/firewall` — live traffic stream, domain discovery, and rules management
-- **Rules engine** replaces hardcoded domain sets — regex-based rules for blocking, passthrough, header stripping, and header injection
-- **Firewall API** on port 8082 — CRUD endpoints for rules, SSE traffic stream, domain hit counts
-- Rules persist across container restarts via `rules.json`
-- Quick actions: click a domain to pre-fill a block rule
+- **Traffic control dashboard** at `/devrig/traffic` (renamed from `/devrig/firewall`) — live traffic stream with pause/resume/clear, domain discovery with request counts, rules management with enable/disable/delete, and add-rule form with client-side regex validation and match preview
+- **Rules engine** — replaces hardcoded `BLOCKED_DOMAINS`/`PASSTHROUGH_DOMAINS` sets with a regex-based rules engine supporting four rule types: `block`, `passthrough`, `strip_header`, `add_header`. Rules are evaluated first-match against the full URL, then hostname
+- **Rules API** on port 8082 — REST endpoints for rules CRUD (`GET/POST/PUT/DELETE /rules`), SSE live traffic stream (`GET /traffic`), domain hit counts (`GET /domains`), recent traffic history (`GET /traffic/recent`). CORS headers included
+- Rules persist across container restarts via `rules.json` (bind-mounted from `{envDir}/rules/`)
+- Quick actions: click a domain in the domains panel to pre-fill a block rule in the form
+- **`/devrig/hello_claude` endpoint** — Claude checks in via Chrome MCP; returns a personalized welcome page showing project name, git branch, latest commit, connection speed, proxy traffic stats, and top domains. Browsers get styled HTML, curl/fetch gets JSON
+- **Agent connection indicator** in traffic dashboard — "Claude: connected" dot with clickable header inspection
+- **mitmweb deep link** in detail pane — opens the flow in mitmproxy's built-in UI for replay, export, and modification
+- Dark-themed scrollbars matching dashboard aesthetic
+- Detail pane payload blocks expand to full height (no inner scroll)
+
+### Fixes
+
+- **Double-fired mitmproxy hooks** — module-level `request()`/`response()`/`tls_clienthello()` functions plus `addons = [_addon]` caused mitmproxy to call every hook twice, creating duplicate traffic entries. Removed module-level hook functions; all hooks now live solely on the addon instance
+- **Traffic entry IDs** now use `flow.id` (mitmproxy's stable UUID) instead of `uuid.uuid4().hex` — eliminates ID mismatches between request and response hooks
+- **`error`/`close` hooks** added to `RulesAddon` — cleans up `_flow_map` entries for errored/timed-out flows that never reach `response()`, preventing memory leak
+- **Port 8082** added to iptables accept list in `firewall.sh` — API responses were being rejected by the final REJECT rule
+- **`devrig update` overhaul** — fixed early return that skipped scaffold directory sync, template files, UI files, and CLAUDE.md regeneration when scaffold files were already up to date. Update now runs all steps independently
+- `devrig update` now detects and reports changes in scaffold directories (`mitmproxy/allowlist.py` etc.) with per-file diff reporting
+- `devrig update` now detects and offers to update template files (`server.js`, `index.html`) in the project root
+- `devrig update` now copies UI files to project `.devrig/` for named environments
+- `devrig update` now sets executable permissions (`chmod 755`) on `entrypoint.sh`, `container-setup.js`, `firewall.sh` after copying
+- `devrig update` now ensures `rules/` and `logs/` directories exist in project `.devrig/`
+- `devrig update -f` short flag added (alias for `--force`)
+- CLAUDE.md network description corrected — "default-allow with specific blocks" instead of "restricted to approved domains"
+
+### Changed
+
+- `/devrig/firewall` renamed to `/devrig/traffic`; `firewall.html` renamed to `traffic.html`
+- Setup page (`/devrig/setup`) removed — traffic control dashboard is now the landing page opened by `devrig start`
+- Agent check-in via `/devrig/hello_claude` replaces `?agent=` query param on index page (legacy `?agent=` kept for backward compat)
+- `devrig config` no longer asks "AI tool" question — devrig is Claude-only; `tool` field removed from generated toml
+- `devrig config` no longer copies `package.json` to project — only `index.html` and `server.js` are offered as starter templates
+- `[claude]` section commented out in generated toml (still parseable if manually added)
 
 ### TODO
 

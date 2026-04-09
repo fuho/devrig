@@ -19,6 +19,7 @@ Container (dev)                    Host
 │  mitmproxy   │                  │  bridge-host │
 │  (port 8080) │                  │  (port 9229) │
 │  Web UI:8081 │                  │  0.0.0.0 ¹   │
+│  API:8082    │                  │              │
 └──────┬───────┘                  └──────────────┘
        │
        ▼ internet
@@ -91,6 +92,8 @@ def tls_clienthello(data):
 
 An allowlist is impractical for Claude Code — it needs many domains (API, auth, bridge, telemetry, package registries, Chrome relay) and the list changes with each version. A blocklist (default-allow, block specific domains) is more maintainable and doesn't break when Claude adds new services.
 
+The blocklist has evolved into a full rules engine (see [Live Rules Configuration](#live-rules-configuration)) — the term "blocklist" is now shorthand for the default-allow policy with specific block rules.
+
 ### mitmproxy 12.x Authentication
 
 mitmproxy 12.x requires web UI authentication by default. If no password is set, a random token is generated on startup (printed to stderr). Set a known password:
@@ -110,7 +113,7 @@ Moving just the symlink doesn't work (target is under the bind mount). Must copy
 
 ### Live Rules Configuration
 
-The firewall dashboard at `/devrig/firewall` provides runtime rule management via an HTTP API on port 8082. Rules are stored as regex patterns and support four actions:
+The traffic control dashboard at `/devrig/traffic` provides runtime rule management via an HTTP API on port 8082. Rules are stored as regex patterns and support four actions:
 
 | Type | Action |
 |------|--------|
@@ -120,6 +123,30 @@ The firewall dashboard at `/devrig/firewall` provides runtime rule management vi
 | `add_header` | Inject a header into requests matching the URL pattern |
 
 Rules are persisted to `/data/rules.json` inside the mitmproxy container (bind-mounted from `{envDir}/rules/`). The API runs as a daemon thread inside the mitmproxy addon — no separate process needed. Changes take effect immediately on the next request.
+
+#### API Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/rules` | List all rules |
+| `POST` | `/rules` | Create a rule (`{type, match, header?, value?}`) |
+| `PUT` | `/rules/{id}` | Update a rule (e.g. `{enabled: false}`) |
+| `DELETE` | `/rules/{id}` | Delete a rule |
+| `GET` | `/traffic` | SSE stream of live traffic events |
+| `GET` | `/traffic/recent` | Last N traffic entries (`?n=50`) |
+| `GET` | `/domains` | Domain hit counts (`{host: count}`) |
+
+#### Rule Matching
+
+Rules use regex patterns (`re.IGNORECASE`) matched against the full URL first, then the hostname. First matching enabled rule wins. Default rules use anchored patterns like `(^|\.)datadoghq\.com$` to match exact domains and subdomains without false positives on partial matches.
+
+#### Dashboard
+
+The dashboard at `/devrig/traffic` provides:
+- **Live traffic stream** via SSE with pause/resume, domain filtering, and color-coded rows (green=allowed, red=blocked, amber=modified)
+- **Domain discovery** — auto-refreshing list of all domains seen, sorted by request count
+- **Rules panel** — view, enable/disable, and delete rules
+- **Add rule form** — type selector, regex input with client-side validation and match preview, conditional header/value fields
 
 ### chrome-native-host Permissions
 

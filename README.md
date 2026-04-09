@@ -39,6 +39,7 @@ Here's what `devrig start` looks like:
 [devrig] Claude Code is ready.
 [devrig] Dev server: http://localhost:3000
 [devrig] Network inspector: http://localhost:8081  (password: devrig)
+[devrig] Traffic control: http://localhost:3000/devrig/traffic
 [devrig] Connecting to Claude Code in container...
 ```
 
@@ -56,7 +57,7 @@ Here's what `devrig start` looks like:
 | `devrig logs [flags]`  | Show logs (`--dev-server`, `--container`, `--network`, `-f`)                      |
 | `devrig exec`          | Re-attach to a running container                                                  |
 | `devrig doctor`        | Run pre-flight health checks                                                      |
-| `devrig update`        | Update scaffold files to current devrig version                                   |
+| `devrig update`        | Update scaffold files, directories, and templates to current version               |
 
 All commands support `--help` for usage details. Use `devrig help <command>` as an alternative.
 
@@ -103,7 +104,7 @@ environment = "default"   # or "work", "local", etc.
 
 All outbound traffic from the dev container passes through a transparent mitmproxy:
 
-- **Domain blocklist** — All traffic is allowed by default. Specific domains can be blocked (e.g. telemetry endpoints). Rules are configurable live via the firewall dashboard or API — no container restart needed. Supports regex matching with block, passthrough, strip-header, and add-header rule types.
+- **Domain blocklist** — All traffic is allowed by default. Specific domains can be blocked (e.g. telemetry endpoints). Rules are configurable live via the traffic control dashboard or API — no container restart needed. Supports regex matching with block, passthrough, strip-header, and add-header rule types.
 - **HTTPS inspection** — mitmproxy CA certificate is trusted inside the container. Full request/response bodies are captured.
 - **Traffic capture** — `.mitm` files with hourly rotation. Analyze offline with `mitmproxy -r <file>` or convert to HAR.
 - **Firewall** — iptables rules redirect HTTP/HTTPS to mitmproxy and block all other outbound traffic.
@@ -113,7 +114,7 @@ All outbound traffic from the dev container passes through a transparent mitmpro
 | URL                                    | What                                                  |
 | -------------------------------------- | ----------------------------------------------------- |
 | `http://localhost:3000`                | Your dev server (port configurable)                   |
-| `http://localhost:3000/devrig/firewall`| Firewall dashboard — live traffic, rules management   |
+| `http://localhost:3000/devrig/traffic` | Traffic control — live traffic, rules management       |
 | `http://localhost:8081`                | mitmproxy web UI — deep request/response inspection   |
 | `http://localhost:8082`                | Firewall API — rules CRUD, traffic stream (SSE)       |
 
@@ -217,7 +218,7 @@ GIT_AUTHOR_EMAIL=you@example.com
 | ----------------------- | ---------------------------------------------------------- |
 | `npm test`              | Unit + integration tests (including scaffold verification) |
 | `npm run test:docker`   | Docker integration tests (build + runtime)                 |
-| `npm run test:python`   | pytest tests for mitmproxy blocklist addon                 |
+| `npm run test:python`   | pytest tests for rules engine, API, and traffic streaming  |
 | `npm run test:coverage` | Tests with V8 coverage report                              |
 | `npm run lint`          | ESLint                                                     |
 | `npm run lint:shell`    | ShellCheck for scaffold shell scripts                      |
@@ -255,8 +256,9 @@ scaffold/
   entrypoint.sh         Container entrypoint (CA cert install, privilege drop)
   container-setup.js    Runs inside container (bridge setup, settings config)
   firewall.sh           iptables rules for outbound traffic control
+  traffic.html          Traffic control dashboard (served at /devrig/traffic)
   mitmproxy/
-    allowlist.py        Domain blocklist addon for mitmproxy
+    allowlist.py        Rules engine, traffic streaming, and HTTP API addon
   template/             Starter files for new projects
 docs/
   chrome-bridge.md    Chrome bridge architecture documentation
