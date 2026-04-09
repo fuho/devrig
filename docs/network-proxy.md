@@ -116,26 +116,26 @@ Moving just the symlink doesn't work (target is under the bind mount). Must copy
 
 The traffic control dashboard at `/devrig/traffic` provides runtime rule management via the mitmproxy rules API (port 8082 internal, proxied through devrig-server on port 8083). Rules are stored as regex patterns and support four actions:
 
-| Type | Action |
-|------|--------|
-| `block` | Reject the request (`flow.kill()`) |
-| `passthrough` | Skip TLS interception (for WebSocket connections etc.) |
-| `strip_header` | Remove a header matching the pattern from requests |
-| `add_header` | Inject a header into requests matching the URL pattern |
+| Type           | Action                                                 |
+| -------------- | ------------------------------------------------------ |
+| `block`        | Reject the request (`flow.kill()`)                     |
+| `passthrough`  | Skip TLS interception (for WebSocket connections etc.) |
+| `strip_header` | Remove a header matching the pattern from requests     |
+| `add_header`   | Inject a header into requests matching the URL pattern |
 
 Rules are persisted to `/data/rules.json` inside the mitmproxy container (bind-mounted from `{envDir}/rules/`). The API runs as a daemon thread inside the mitmproxy addon — no separate process needed. Changes take effect immediately on the next request.
 
 #### API Endpoints
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/rules` | List all rules |
-| `POST` | `/rules` | Create a rule (`{type, match, header?, value?}`) |
-| `PUT` | `/rules/{id}` | Update a rule (e.g. `{enabled: false}`) |
-| `DELETE` | `/rules/{id}` | Delete a rule |
-| `GET` | `/traffic` | SSE stream of live traffic events |
-| `GET` | `/traffic/recent` | Last N traffic entries (`?n=50`) |
-| `GET` | `/domains` | Domain hit counts (`{host: count}`) |
+| Method   | Path              | Description                                      |
+| -------- | ----------------- | ------------------------------------------------ |
+| `GET`    | `/rules`          | List all rules                                   |
+| `POST`   | `/rules`          | Create a rule (`{type, match, header?, value?}`) |
+| `PUT`    | `/rules/{id}`     | Update a rule (e.g. `{enabled: false}`)          |
+| `DELETE` | `/rules/{id}`     | Delete a rule                                    |
+| `GET`    | `/traffic`        | SSE stream of live traffic events                |
+| `GET`    | `/traffic/recent` | Last N traffic entries (`?n=50`)                 |
+| `GET`    | `/domains`        | Domain hit counts (`{host: count}`)              |
 
 #### Rule Matching
 
@@ -144,6 +144,7 @@ Rules use regex patterns (`re.IGNORECASE`) matched against the full URL first, t
 #### Dashboard
 
 The dashboard at `/devrig/traffic` provides:
+
 - **Live traffic stream** via SSE with pause/resume, domain filtering, and color-coded rows (green=allowed, red=blocked, amber=modified)
 - **Domain discovery** — auto-refreshing list of all domains seen, sorted by request count
 - **Rules panel** — view, enable/disable, and delete rules

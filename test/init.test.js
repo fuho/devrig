@@ -149,9 +149,7 @@ describe('CLAUDE.md generation', () => {
     assert.ok(content.includes('<!-- devrig:end -->'));
     assert.ok(content.includes('/workspace'));
     assert.ok(content.includes('http://localhost:3000'));
-    assert.ok(
-      content.includes('Outbound network') || content.includes('outbound network'),
-    );
+    assert.ok(content.includes('Outbound network') || content.includes('outbound network'));
   });
 
   it('user content outside sentinels preserved in both files', () => {

@@ -53,7 +53,7 @@ Here's what `devrig start` looks like:
 | `devrig logs [flags]`  | Show logs (`--dev-server`, `--container`, `--network`, `-f`)                      |
 | `devrig exec`          | Re-attach to a running container                                                  |
 | `devrig doctor`        | Run pre-flight health checks                                                      |
-| `devrig update`        | Update scaffold files, directories, and templates to current version               |
+| `devrig update`        | Update scaffold files, directories, and templates to current version              |
 
 All commands support `--help` for usage details. Use `devrig help <command>` as an alternative.
 
@@ -102,11 +102,11 @@ All outbound traffic from the dev container passes through a transparent mitmpro
 
 ### Dashboards
 
-| URL                                    | What                                                  |
-| -------------------------------------- | ----------------------------------------------------- |
-| `http://localhost:3000`                | Your dev server (port configurable)                   |
-| `http://localhost:8083/devrig/traffic` | Traffic control — live traffic, rules management       |
-| `http://localhost:8081`                | mitmproxy web UI — deep request/response inspection   |
+| URL                                    | What                                                |
+| -------------------------------------- | --------------------------------------------------- |
+| `http://localhost:3000`                | Your dev server (port configurable)                 |
+| `http://localhost:8083/devrig/traffic` | Traffic control — live traffic, rules management    |
+| `http://localhost:8081`                | mitmproxy web UI — deep request/response inspection |
 
 ### Network logs
 

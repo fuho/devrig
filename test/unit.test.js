@@ -99,7 +99,7 @@ describe('loadConfig', () => {
 
     const cfg = loadConfig(tmpDir);
     assert.equal(cfg.project, 'test-proj');
-    assert.equal(cfg.tool, 'claude');  // hardcoded, tool field in toml is ignored
+    assert.equal(cfg.tool, 'claude'); // hardcoded, tool field in toml is ignored
     assert.equal(cfg.dev_server_cmd, 'node server.js');
     assert.equal(cfg.dev_server_port, 4000);
     assert.equal(cfg.bridge_enabled, true);

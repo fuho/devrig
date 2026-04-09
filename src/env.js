@@ -68,9 +68,11 @@ export function ensureSharedEnv(root = DEVRIG_HOME) {
   const legacyEnvs = join(root, 'environments');
   if (existsSync(legacyEnvs)) {
     try {
-      const remaining = readdirSync(legacyEnvs).filter(d => d !== '.DS_Store');
+      const remaining = readdirSync(legacyEnvs).filter((d) => d !== '.DS_Store');
       if (remaining.length > 0) {
-        log(`WARNING: Orphaned environments found: ${remaining.join(', ')}. Back up ~/.devrig/environments/ if needed.`);
+        log(
+          `WARNING: Orphaned environments found: ${remaining.join(', ')}. Back up ~/.devrig/environments/ if needed.`,
+        );
       }
     } catch {
       /* ignore read errors */

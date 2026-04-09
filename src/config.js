@@ -75,12 +75,14 @@ export function loadConfig(projectDir) {
   const rawEnv = raw.environment ?? 'shared';
   const environment = rawEnv === 'local' ? 'local' : 'shared';
   if (rawEnv !== 'local' && rawEnv !== 'shared') {
-    log(`Environment "${rawEnv}" normalized to "shared" — named environments are no longer supported.`);
+    log(
+      `Environment "${rawEnv}" normalized to "shared" — named environments are no longer supported.`,
+    );
   }
 
   return {
     project: raw.project ?? 'claude-project',
-    tool: 'claude',  // hardcoded — devrig is Claude-only
+    tool: 'claude', // hardcoded — devrig is Claude-only
     environment,
     bridge_enabled: 'chrome_bridge' in raw,
     bridge_port: bridge.port ?? 9229,
@@ -181,11 +183,7 @@ export function getPackageVersion() {
  * @param {string} [devrigHome] - Override devrig home (for testing).
  * @returns {string}
  */
-export function resolveEnvDir(
-  cfg,
-  projectDir,
-  devrigHome = join(homedir(), '.devrig'),
-) {
+export function resolveEnvDir(cfg, projectDir, devrigHome = join(homedir(), '.devrig')) {
   if (cfg.environment === 'local') {
     return join(projectDir, '.devrig');
   }

@@ -69,7 +69,7 @@ export async function configure(projectDir) {
 
   // Environment selection
   console.log('\n  shared = Claude auth & memories in ~/.devrig/shared/ (reused across projects)');
-  console.log('  local  = everything isolated in this project\'s .devrig/\n');
+  console.log("  local  = everything isolated in this project's .devrig/\n");
   const useShared = await askYN(rl, 'Use shared environment?');
   const environment = useShared ? 'shared' : 'local';
 

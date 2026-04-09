@@ -62,14 +62,7 @@ describe('configure', () => {
 
     try {
       // Answers: project, shared env Y/N, devrig port, git name, git email, confirm Y
-      const answers = [
-        'test-project',
-        '',
-        '',
-        'Test User',
-        'test@example.com',
-        'y',
-      ];
+      const answers = ['test-project', '', '', 'Test User', 'test@example.com', 'y'];
 
       await runConfigure(tmpDir, answers);
 
@@ -124,14 +117,7 @@ describe('configure', () => {
 
     try {
       // Answers: bad project name, shared env, devrig port, git name, email, confirm Y
-      const answers = [
-        'My Cool Project!',
-        '',
-        '',
-        'Test User',
-        'test@example.com',
-        'y',
-      ];
+      const answers = ['My Cool Project!', '', '', 'Test User', 'test@example.com', 'y'];
 
       await runConfigure(tmpDir, answers);
 
@@ -146,14 +132,7 @@ describe('configure', () => {
     const tmpDir = mkdtempSync(join(tmpdir(), 'devrig-cfg-'));
 
     try {
-      const answers = [
-        'test-proj',
-        '',
-        '9090',
-        'Test User',
-        'test@example.com',
-        'y',
-      ];
+      const answers = ['test-proj', '', '9090', 'Test User', 'test@example.com', 'y'];
 
       await runConfigure(tmpDir, answers);
 
