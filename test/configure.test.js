@@ -61,36 +61,25 @@ describe('configure', () => {
     const tmpDir = mkdtempSync(join(tmpdir(), 'devrig-cfg-'));
 
     try {
-      // Answers in order:
-      //   project name, shared env Y/N, dev server Y, command, port, timeout,
-      //   chrome Y, port, devrig port, git name, git email, template N, confirm write Y
+      // Answers: project, shared env Y/N, devrig port, git name, git email, confirm Y
       const answers = [
         'test-project',
         '',
-        'y',
-        'npm run dev',
-        '3000',
-        '10',
-        'y',
-        '9229',
         '',
         'Test User',
         'test@example.com',
-        'n',
         'y',
       ];
 
       await runConfigure(tmpDir, answers);
 
-      // Verify devrig.toml was written
       const toml = readFileSync(join(tmpDir, 'devrig.toml'), 'utf8');
       assert.ok(toml.includes('project = "test-project"'));
       assert.ok(toml.includes('environment = "shared"'));
-      assert.ok(!toml.includes('tool ='));  // tool question removed, hardcoded to claude
-      assert.ok(toml.includes('[dev_server]'));
-      assert.ok(toml.includes('[chrome_bridge]'));
+      assert.ok(toml.includes('[chrome_bridge]'), 'chrome bridge always enabled');
+      assert.ok(toml.includes('[devrig]'));
+      assert.ok(toml.includes('# [dev_server]'), 'dev server commented out');
 
-      // Verify .env was written
       const env = readFileSync(join(tmpDir, '.env'), 'utf8');
       assert.ok(env.includes('GIT_AUTHOR_NAME=Test User'));
       assert.ok(env.includes('GIT_AUTHOR_EMAIL=test@example.com'));
@@ -103,7 +92,6 @@ describe('configure', () => {
     const tmpDir = mkdtempSync(join(tmpdir(), 'devrig-cfg-'));
 
     try {
-      // Write existing .env with a sentinel-based managed block
       const existingEnv = [
         'EXISTING_VAR=hello',
         '# devrig:start',
@@ -115,18 +103,15 @@ describe('configure', () => {
       ].join('\n');
       writeFileSync(join(tmpDir, '.env'), existingEnv);
 
-      // Answers: project name, shared env Y/N, dev server N, chrome N, devrig port, git name, git email, confirm write Y
-      // (no template question — dev server is off)
-      const answers = ['updated-proj', '', 'n', 'n', '', 'New User', 'new@example.com', 'y'];
+      // Answers: project, shared env Y/N, devrig port, git name, git email, confirm Y
+      const answers = ['updated-proj', '', '', 'New User', 'new@example.com', 'y'];
 
       await runConfigure(tmpDir, answers);
 
       const env = readFileSync(join(tmpDir, '.env'), 'utf8');
       assert.ok(env.includes('EXISTING_VAR=hello'));
       assert.ok(env.includes('GIT_AUTHOR_NAME=New User'));
-      // Should NOT contain old values
       assert.ok(!env.includes('GIT_AUTHOR_NAME=Old'));
-      // Should have exactly one start and one end sentinel
       assert.equal((env.match(/# devrig:start/g) || []).length, 1, 'one start sentinel');
       assert.equal((env.match(/# devrig:end/g) || []).length, 1, 'one end sentinel');
     } finally {
@@ -134,69 +119,46 @@ describe('configure', () => {
     }
   });
 
-  it('warns when port falls back to default', async () => {
+  it('sanitizes project name', async () => {
     const tmpDir = mkdtempSync(join(tmpdir(), 'devrig-cfg-'));
 
     try {
-      // Feed invalid port "banana" for dev server
-      // Answers: project, shared Y/N, dev Y, command, bad port, timeout, chrome Y, port, devrig port, git name, email, template N, confirm Y
-      const answers = [
-        'test-project',
-        '',
-        'y',
-        'npm run dev',
-        'banana',
-        '10',
-        'y',
-        '9229',
-        '',
-        'Test User',
-        'test@example.com',
-        'n',
-        'y',
-      ];
-
-      const { stderr } = await runConfigure(tmpDir, answers);
-      assert.ok(
-        stderr.includes('Invalid port') || stderr.includes('invalid port'),
-        'should warn about invalid port in stderr',
-      );
-    } finally {
-      rmSync(tmpDir, { recursive: true, force: true });
-    }
-  });
-
-  it('sanitizes project name and validates ports', async () => {
-    const tmpDir = mkdtempSync(join(tmpdir(), 'devrig-cfg-'));
-
-    try {
-      // Feed bad project name (uppercase, spaces) and invalid port
-      // Answers: project, shared Y/N, dev Y, command, bad port, timeout, chrome Y, bad port, devrig port, git name, email, template N, confirm Y
+      // Answers: bad project name, shared env, devrig port, git name, email, confirm Y
       const answers = [
         'My Cool Project!',
         '',
-        'y',
-        'npm run dev',
-        'not-a-number',
-        '10',
-        'y',
-        '99999',
         '',
         'Test User',
         'test@example.com',
-        'n',
         'y',
       ];
 
       await runConfigure(tmpDir, answers);
 
       const toml = readFileSync(join(tmpDir, 'devrig.toml'), 'utf8');
-      // Project name should be sanitized to lowercase with hyphens
       assert.ok(toml.includes('project = "my-cool-project"'), 'project name sanitized');
-      // Invalid port should fall back to default 3000
-      assert.ok(toml.includes('port = 3000'), 'invalid dev port falls back to 3000');
-      // Port 99999 is out of range, should fall back to 9229
-      assert.ok(toml.includes('port = 9229'), 'out-of-range chrome port falls back to 9229');
+    } finally {
+      rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('accepts custom devrig port', async () => {
+    const tmpDir = mkdtempSync(join(tmpdir(), 'devrig-cfg-'));
+
+    try {
+      const answers = [
+        'test-proj',
+        '',
+        '9090',
+        'Test User',
+        'test@example.com',
+        'y',
+      ];
+
+      await runConfigure(tmpDir, answers);
+
+      const toml = readFileSync(join(tmpDir, 'devrig.toml'), 'utf8');
+      assert.ok(toml.includes('port = 9090'), 'custom devrig port in toml');
     } finally {
       rmSync(tmpDir, { recursive: true, force: true });
     }

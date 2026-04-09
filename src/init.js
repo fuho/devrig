@@ -246,18 +246,6 @@ export async function init(projectDir) {
   console.log('  .devrig/CLAUDE.md  Instructions for container Claude Code (shadow-mounted)');
   console.log('');
 
-  // Show config files
-  const tomlPath = join(projectDir, 'devrig.toml');
-  const envFilePath = join(projectDir, '.env');
-  if (existsSync(tomlPath)) {
-    console.log('  ── devrig.toml ──');
-    console.log(readFileSync(tomlPath, 'utf8').replace(/^/gm, '  '));
-  }
-  if (existsSync(envFilePath)) {
-    console.log('  ── .env ──');
-    console.log(readFileSync(envFilePath, 'utf8').replace(/^/gm, '  '));
-  }
-
   log('To start a session, run:');
   console.log('');
   console.log('  devrig start');
