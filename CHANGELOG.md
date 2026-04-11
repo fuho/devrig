@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.3 — 2026-04-11
+
+### Features
+
+- **Dev server auto-detection in `devrig init`** — wizard now inspects the project for known frameworks (Vite, Angular, Astro, Next/Nuxt/Remix/CRA, Django, Rails, Laravel, Phoenix, FastAPI) and offers a single `Y/n` to enable the detected dev server with the right command and port. Decline (or no match) keeps today's commented `[dev_server]` stub — no regression. New `detectDevServer()` function in `src/configure.js` walks an inline registry; first match wins. Vite projects get port 5173, Angular gets 4200, Astro gets 4321, generic Node falls back to 3000
+
 ## 0.8.0 — 2026-04-09
 
 ### Features

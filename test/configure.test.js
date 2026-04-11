@@ -142,4 +142,122 @@ describe('configure', () => {
       rmSync(tmpDir, { recursive: true, force: true });
     }
   });
+
+  it('detects Vite and writes live [dev_server] block', async () => {
+    const tmpDir = mkdtempSync(join(tmpdir(), 'devrig-cfg-'));
+
+    try {
+      writeFileSync(
+        join(tmpDir, 'package.json'),
+        JSON.stringify({
+          name: 'vite-app',
+          scripts: { dev: 'vite' },
+          devDependencies: { vite: '^5.0.0' },
+        }),
+      );
+
+      // Answers: project, shared env, ENABLE detected dev server, devrig port, git name, git email, confirm
+      const answers = ['vite-proj', '', 'y', '', 'Test User', 'test@example.com', 'y'];
+
+      const { stdout } = await runConfigure(tmpDir, answers);
+      assert.ok(stdout.includes('Found Vite'), 'detection banner shown');
+
+      const toml = readFileSync(join(tmpDir, 'devrig.toml'), 'utf8');
+      assert.ok(/^\[dev_server\]$/m.test(toml), '[dev_server] section uncommented');
+      assert.ok(toml.includes('command = "npm run dev"'));
+      assert.ok(toml.includes('port = 5173'), 'Vite default port');
+      assert.ok(!toml.includes('# [dev_server]'), 'no commented stub');
+    } finally {
+      rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('detects Angular (regression guard for grouped regex)', async () => {
+    const tmpDir = mkdtempSync(join(tmpdir(), 'devrig-cfg-'));
+
+    try {
+      writeFileSync(
+        join(tmpDir, 'package.json'),
+        JSON.stringify({
+          name: 'ng-app',
+          scripts: { dev: 'ng serve', build: 'ng build' },
+          dependencies: { '@angular/core': '^17.0.0' },
+        }),
+      );
+
+      const answers = ['ng-proj', '', 'y', '', 'Test User', 'test@example.com', 'y'];
+
+      const { stdout } = await runConfigure(tmpDir, answers);
+      assert.ok(stdout.includes('Found Angular'), 'Angular detected');
+
+      const toml = readFileSync(join(tmpDir, 'devrig.toml'), 'utf8');
+      assert.ok(toml.includes('port = 4200'), 'Angular default port');
+    } finally {
+      rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('detects Django from manage.py', async () => {
+    const tmpDir = mkdtempSync(join(tmpdir(), 'devrig-cfg-'));
+
+    try {
+      writeFileSync(join(tmpDir, 'manage.py'), '');
+
+      const answers = ['dj-proj', '', 'y', '', 'Test User', 'test@example.com', 'y'];
+
+      const { stdout } = await runConfigure(tmpDir, answers);
+      assert.ok(stdout.includes('Found Django'), 'Django detected');
+
+      const toml = readFileSync(join(tmpDir, 'devrig.toml'), 'utf8');
+      assert.ok(toml.includes('command = "python manage.py runserver 0:8000"'));
+      assert.ok(toml.includes('port = 8000'));
+    } finally {
+      rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('keeps commented stub when user declines detection', async () => {
+    const tmpDir = mkdtempSync(join(tmpdir(), 'devrig-cfg-'));
+
+    try {
+      writeFileSync(
+        join(tmpDir, 'package.json'),
+        JSON.stringify({
+          scripts: { dev: 'vite' },
+          devDependencies: { vite: '^5.0.0' },
+        }),
+      );
+
+      // Same shape but user answers 'n' to detection
+      const answers = ['vite-proj', '', 'n', '', 'Test User', 'test@example.com', 'y'];
+
+      await runConfigure(tmpDir, answers);
+
+      const toml = readFileSync(join(tmpDir, 'devrig.toml'), 'utf8');
+      assert.ok(toml.includes('# [dev_server]'), 'stub stays commented');
+      assert.ok(!/^\[dev_server\]$/m.test(toml), 'no live section');
+    } finally {
+      rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('skips Node detection when package.json is malformed', async () => {
+    const tmpDir = mkdtempSync(join(tmpdir(), 'devrig-cfg-'));
+
+    try {
+      writeFileSync(join(tmpDir, 'package.json'), '{not valid json');
+
+      // No detection prompt should appear — same answers as the baseline test
+      const answers = ['bad-pkg', '', '', 'Test User', 'test@example.com', 'y'];
+
+      const { stdout } = await runConfigure(tmpDir, answers);
+      assert.ok(!stdout.includes('Found '), 'no detection banner');
+      assert.ok(!stdout.includes('Enable it?'), 'no detection prompt');
+
+      const toml = readFileSync(join(tmpDir, 'devrig.toml'), 'utf8');
+      assert.ok(toml.includes('# [dev_server]'), 'falls back to commented stub');
+    } finally {
+      rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
 });

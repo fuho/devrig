@@ -13,7 +13,7 @@ Claude Code is powerful — it installs packages, modifies system files, and run
 - **Filesystem isolation** — Claude Code runs in a Docker container and can only touch `/workspace` (your project) and its own home directory. Your host OS, dotfiles, and other projects are untouched.
 - **Browser control** — Claude Code inside Docker can't access a browser on its own. Devrig bridges Chrome's debugging protocol into the container, letting Claude see and interact with your running app.
 - **Shared environment** — Claude Code auth, memories, and settings stored in `~/.devrig/shared/`, reused across all projects. No per-project login.
-- **Zero config** — `npx devrig init` scaffolds everything. No Dockerfiles to write, no compose files to maintain.
+- **Zero config** — `npx devrig init` scaffolds everything and auto-detects your dev server (Vite, Next, Angular, Astro, Django, Rails, Laravel, Phoenix, FastAPI). No Dockerfiles to write, no compose files to maintain.
 - **Clean host** — no global packages, no Claude Code installation on your machine, no leftover processes after sessions end.
 
 ## Quick Start
@@ -126,7 +126,7 @@ Devrig writes logs to `.devrig/logs/` (host side) and the environment directory 
 project = "my-project"    # Docker image and container name
 environment = "shared"    # "shared" or "local"
 
-[dev_server]
+[dev_server]                # Auto-filled by `devrig init` when a known framework is detected
 command = "npm run dev"   # Command to start your dev server
 port = 3000               # Port the dev server listens on
 ready_timeout = 10        # Seconds to wait for the server to respond

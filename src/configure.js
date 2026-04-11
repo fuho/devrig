@@ -34,6 +34,107 @@ function gitConfig(key) {
   }
 }
 
+// defaults current as of 2026-04 — update as frameworks drift
+const DEV_SERVER_DETECTORS = [
+  {
+    name: 'Vite',
+    file: 'package.json',
+    test: (pkg) => pkg.scripts?.dev && /vite/.test(JSON.stringify(pkg)),
+    command: 'npm run dev',
+    port: 5173,
+  },
+  {
+    name: 'Angular',
+    file: 'package.json',
+    test: (pkg) => pkg.scripts?.dev && /(@angular|"ng )/.test(JSON.stringify(pkg)),
+    command: 'npm run dev',
+    port: 4200,
+  },
+  {
+    name: 'Astro',
+    file: 'package.json',
+    test: (pkg) => pkg.scripts?.dev && /astro/.test(JSON.stringify(pkg)),
+    command: 'npm run dev',
+    port: 4321,
+  },
+  {
+    name: 'Node',
+    file: 'package.json',
+    test: (pkg) => Boolean(pkg.scripts?.dev),
+    command: 'npm run dev',
+    port: 3000,
+  },
+  {
+    name: 'Django',
+    file: 'manage.py',
+    command: 'python manage.py runserver 0:8000',
+    port: 8000,
+  },
+  {
+    name: 'Rails',
+    file: 'Gemfile',
+    test: (raw) => /\brails\b/.test(raw),
+    command: 'bin/rails server',
+    port: 3000,
+  },
+  {
+    name: 'Laravel',
+    file: 'composer.json',
+    test: (raw) => /laravel/.test(raw),
+    command: 'php artisan serve --port=8000',
+    port: 8000,
+  },
+  {
+    name: 'Phoenix',
+    file: 'mix.exs',
+    test: (raw) => /phoenix/.test(raw),
+    command: 'mix phx.server',
+    port: 4000,
+  },
+  {
+    name: 'FastAPI',
+    file: 'pyproject.toml',
+    test: (raw) => /fastapi/.test(raw),
+    command: 'uvicorn main:app --reload',
+    port: 8000,
+  },
+];
+
+/**
+ * Walks the detector registry and returns the first match for the given project,
+ * or null if nothing matches. Node detectors parse package.json once; others use
+ * raw string regex. Malformed package.json silently skips Node detectors.
+ */
+export function detectDevServer(projectDir) {
+  let pkgCache;
+  let pkgParseFailed = false;
+
+  for (const det of DEV_SERVER_DETECTORS) {
+    const filePath = join(projectDir, det.file);
+    if (!existsSync(filePath)) continue;
+
+    if (det.file === 'package.json') {
+      if (pkgParseFailed) continue;
+      if (pkgCache === undefined) {
+        try {
+          pkgCache = JSON.parse(readFileSync(filePath, 'utf8'));
+        } catch {
+          pkgParseFailed = true;
+          continue;
+        }
+      }
+      if (det.test && !det.test(pkgCache)) continue;
+    } else if (det.test) {
+      const raw = readFileSync(filePath, 'utf8');
+      if (!det.test(raw)) continue;
+    }
+
+    return { name: det.name, command: det.command, port: det.port };
+  }
+
+  return null;
+}
+
 /** Interactive configuration wizard. Generates devrig.toml and .env from user input. */
 export async function configure(projectDir) {
   const rl = createInterface({ input: process.stdin, output: process.stdout });
@@ -73,6 +174,16 @@ export async function configure(projectDir) {
   const useShared = await askYN(rl, 'Use shared environment?');
   const environment = useShared ? 'shared' : 'local';
 
+  // Dev server detection
+  const detected = detectDevServer(projectDir);
+  let devServer = null;
+  if (detected) {
+    console.log(`\n  Found ${detected.name} (${detected.command} on :${detected.port}).`);
+    if (await askYN(rl, 'Enable it?')) {
+      devServer = { command: detected.command, port: detected.port };
+    }
+  }
+
   // Devrig dashboard port
   const devrigPort = parsePort(await ask(rl, 'Devrig dashboard port', '8083'), 8083);
 
@@ -91,7 +202,11 @@ export async function configure(projectDir) {
   toml += `environment = "${environment}"\n\n`;
   toml += `[chrome_bridge]\nport = 9229\n\n`;
   toml += `[devrig]\nport = ${devrigPort}\n\n`;
-  toml += `# [dev_server]\n# command = "npm run dev"\n# port = 3000\n\n`;
+  if (devServer) {
+    toml += `[dev_server]\ncommand = "${devServer.command}"\nport = ${devServer.port}\n\n`;
+  } else {
+    toml += `# [dev_server]\n# command = "npm run dev"\n# port = 3000\n\n`;
+  }
   toml += `# [claude]\n# version = "latest"\n`;
 
   // Build .env block
